@@ -21,7 +21,7 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 ---
 
-**Polish Pack v1.2**: 🟡 **3/3 completato su branch `feature/polish-pack-v1.2`** (da mergiare)
+**Polish Pack v1.2**: ✅ **3/3 completato** (merged su `main` — commit `241c8a1`)
 
 | # | Funzionalità | Gruppo | Stato | Note |
 |---|---|---|---|---|
@@ -31,29 +31,39 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 **Totale Polish Pack v1.2**: 3 feature, ~50 righe in 1 file (`elevator.html` + 2 docs).
 
+---
+
+**Polish Pack v1.3**: ✅ **5/5 completato su branch `feature/polish-pack-v1.3`** (da mergiare)
+
+5 quick-win selezionati per rapporto impatto/sforzo dal backlog §11.
+
+| # | Funzionalità | Gruppo | Stato | Commit | Note |
+|---|---|---|---|---|---|
+| #4 | Indicatore direzione "passo passo" sul cartello corridoio | §11.1 Core | ✅ | `356bf5b` | `drawMovingSign()` + hook in `tickMove()` con guard `_lastShownFloor` |
+| #6 | Modalità "Fuori servizio" (tasto `O`) | §11.2 Premium | ✅ | `3a968f1` | `state.outOfOrder`, display/cartello rossi, beep rifiuto, annuncio vocale |
+| #7 | Numerazione camere hotel contestuale | §11.2 Premium | ✅ | `f3f79bb` | `floorRoomRange(f)` — visibile a cabina ferma |
+| #8 | Orologio mondiale sul pannello pubblicitario | §11.2 Premium | ✅ | `ac29bbd` | 6ª schermata rotante, `toLocaleTimeString` per 5 città |
+| #22 | Schermata "Welcome" interattiva | §11.6 Nuove | ✅ | `fb8576a` | Carosello 5 slide, auto-rotate 2.5s, stop su startBtn |
+
+**Totale Polish Pack v1.3**: 5 feature, 1 file principale + sync dist, ~330 righe in `elevator.html` (5 commit feature + 1 sync dist + 1 docs).
+
 ## Indice per gruppo
 
 | Gruppo | File | # Features | Implementate |
 |---|---|---|---|
-| §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 2/4 (#1 ✅, #3 ✅) |
-| §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 0/4 |
-| §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 0/4 |
+| §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 3/4 (#1 ✅, #3 ✅, #4 ✅) |
+| §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 4/4 (#5 ✅, #6 ✅, #7 ✅, #8 ✅) |
+| §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 2/4 (#10 ✅, #11 ✅) |
 | §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 1/3 (#15 ✅) |
 | §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) |
-| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 1/4 (#21 ✅) |
+| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 2/4 (#21 ✅, #22 ✅) |
 
-**Totale backlog residuo**: 17/22 funzionalità non ancora implementate.
+**Totale backlog residuo post-v1.3**: 12/22 funzionalità non ancora implementate.
 
-## Funzionalità non implementate (backlog residuo)
+## Funzionalità non implementate (backlog residuo post-v1.3)
 
-### §11.1 Core (2)
+### §11.1 Core (1)
 - #2 — Musica di sottofondo contestuale (jazz/classica per piano)
-- #4 — Indicatore direzione "passo passo" sul cartello corridoio
-
-### §11.2 Hotel premium (3)
-- #6 — Modalità "Fuori servizio" (tasto O)
-- #7 — Numerazione camere hotel contestuale
-- #8 — Orologio mondiale sul pannello pubblicitario
 
 ### §11.3 UX / accessibilità (2)
 - #9 — Comando vocale (speech-to-text)
@@ -67,28 +77,23 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 - #16 — Service Worker offline-first + PWA (richiede multi-file → decisione D2)
 - #18 — Texture atlas / caching canvas offscreen
 
-### §11.6 Nuove (3)
+### §11.6 Nuove (2)
 - #19 — Modalità manutentore (`Shift+M`)
 - #20 — Sistema di prenotazione cabina dal corridoio
-- #22 — Schermata "Welcome" interattiva
 
-## Ordine di implementazione raccomandato (prossimi)
+## Prossimi candidati (post-v1.3)
 
-Da `PIANO_MIGLIORAMENTI.md` §11.7, dopo Polish Pack v1.1 i candidati per impatto/sforzo sono:
-
-| # | Idea | Impatto | Sforzo |
-|---|---|---|---|
-| #10 | Scorciatoie tastiera 1-9 per piani | Medio | Basso |
-| #5 | Suono "ding" differenziato all'arrivo | Medio | Basso |
-| #22 | Schermata Welcome interattiva | Basso | Basso |
-| #6 | Modalità Fuori servizio | Medio | Basso |
-| #11 | Sottotitoli annunci vocali | Medio | Basso |
+| # | Idea | Impatto | Sforzo | Note |
+|---|---|---|---|---|
+| #2 | Musica di sottofondo contestuale | Alto | Medio | Backlog §11.1. WebAudio oscillator loop |
+| #20 | Prenotazione automatica dal corridoio | Alto | Medio | Backlog §11.6. Proximity check nel loop FPS |
+| #9 | Comando vocale | Alto | Medio | Backlog §11.3. SpeechRecognition API |
+| #19 | Modalità manutentore | Basso | Medio | Backlog §11.6. Overlay debug, `Shift+M` |
 
 ## Decisioni aperte residue
 
 Vedi `PIANO_MIGLIORAMENTI.md` §11.8:
-- **D2**: singolo file vs aggiunta `sw.js` + `manifest.json` per PWA (#16)
-- **D3**: aprire Fase 11 o continuare come bug-fix/miglioramenti minori
-- **D4**: frequenza sync `dist/index.html` (risolto: per ora solo a fine feature)
+- **D2**: singolo file vs aggiunta `sw.js` + `manifest.json` per PWA (#16) — pendente
+- **D3**: aprire Fase 11 o continuare come bug-fix/miglioramenti minori — risolta (Polish Pack approach)
 
-D1 e parte di D3 sono state risolte durante Polish Pack v1.1 (scelta: Polish Pack come scope, sync dist a fine feature).
+D1, D3 e D4 sono state risolte: scope = Polish Pack, sync dist a fine feature.
