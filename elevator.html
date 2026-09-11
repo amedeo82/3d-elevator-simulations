@@ -2621,6 +2621,21 @@ function cancelDoorCountdown() {
   }
 }
 
+// Polish Pack v1.3 #7 — numerazione camere hotel contestuale
+// Restituisce la stringa da mostrare sul display in base al piano corrente
+function floorRoomRange(f) {
+  if (f >= 4 && f <= 6) {
+    // piano hotel: 32 camere per piano (es. 401–432, 501–532, 601–632)
+    const start = f * 100 + 1;
+    const end = start + 31;
+    return `Camere ${start}–${end}`;
+  }
+  if (f === 0) return 'Lobby · Reception';
+  if (f >= 1 && f <= 3) return `Uffici ${f}° piano`;
+  if (f >= 7) return `Attico · Suite ${f}0${f}`;
+  return '';
+}
+
 function drawModernDisplay() {
   const ctx = displayCtx;
   const W = displayCanvas.width, H = displayCanvas.height;
@@ -2728,6 +2743,15 @@ function drawModernDisplay() {
     ctx.font = '13px Arial';
     ctx.fillStyle = '#aaffb4';
     ctx.fillText(arrowLabel, W/2, 330);
+    // Polish Pack v1.3 #7: numerazione camere hotel contestuale (solo a cabina ferma)
+    if (!state.isMoving && !state.alarmOn) {
+      const range = floorRoomRange(state.currentFloor);
+      if (range) {
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#8af';
+        ctx.fillText(range, W/2, 348);
+      }
+    }
   }
   // linea separatrice
   ctx.strokeStyle = '#c9a55a';
