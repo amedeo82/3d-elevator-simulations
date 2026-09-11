@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -3471,26 +3470,5 @@ document.getElementById('startBtn').addEventListener('click', () => {
 
 requestAnimationFrame(loop);
 </script>
-
-<script data-minimax-analytics="minimax-website-analytics-v1">(function(){
-"use strict";
-var t="eyJ2IjoxLCJraWQiOiJwcmUtdXMtMjAyNjA4MTUtdjEiLCJiaXpfaWQiOiJNYXZpcyIsIm5vZGVfaWQiOiI0NDA2Mzg2NTYwNjU3OTAiLCJpc3N1ZWRfYXQiOjE3ODkxMzEyMzk0ODZ9.3otkymmnYO1I-BF5-mqhVg2mUomP6gPBQbEN34MO6fM",u="https://agent.minimax.io/minimax-cloud/api/v1/website-traffic/page-views",last="";
-function path(){
-var h=window.location.hash||"",p=h.indexOf("#!")===0?h.slice(2):h.indexOf("#/")===0?h.slice(1):(window.location.pathname||"/");
-p=p.split(/[?#]/,1)[0]||"/";
-if(p.charAt(0)!=="/")p="/"+p;
-p=p.replace(/\/+/g,"/").replace(/%([0-9a-fA-F]{2})/g,function(_,x){var c=String.fromCharCode(parseInt(x,16));return /[A-Za-z0-9._~-]/.test(c)?c:"%"+x.toUpperCase();});
-if(p.length>1)p=p.replace(/\/+$/,"");
-return p||"/";
-}
-function send(){
-var p=path();if(p===last)return;last=p;
-var b="v=1&t="+encodeURIComponent(t)+"&p="+encodeURIComponent(p),ok=false;
-try{if(navigator.sendBeacon){ok=navigator.sendBeacon(u,new Blob([b],{type:"application/x-www-form-urlencoded;charset=UTF-8"}));}}catch(e){}
-if(!ok){try{fetch(u,{method:"POST",body:b,keepalive:true,mode:"no-cors",credentials:"omit",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"}});}catch(e){}}
-}
-["pushState","replaceState"].forEach(function(n){var f=history[n];if(!f)return;history[n]=function(){var r=f.apply(this,arguments);setTimeout(send,0);return r;};});
-window.addEventListener("popstate",send);window.addEventListener("hashchange",send);send();
-})();</script>
 </body>
 </html>
