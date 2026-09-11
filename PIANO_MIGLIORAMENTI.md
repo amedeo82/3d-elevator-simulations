@@ -14,7 +14,8 @@ Documento di design e implementation log.
 |---|---|
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
-| Bug fix post-fasi | ✅ 4 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate) |
+| Polish Pack v1.1 | 🟡 2/5 (#17 ✅, #15 ✅, #21 ⏳, #1 ⏳, #3 ⏳) |
+| Bug fix post-fasi | ✅ 5 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
 | File di progetto | `elevator.html` (~120KB, single file) |
@@ -182,6 +183,15 @@ Sostituisce la sezione "Decisioni richieste" del piano originale. Tutte le 7 dec
 - ✅ Verifica una sola dichiarazione di `state` e `hoveredBtn`
 - ✅ File deployato e funzionante
 
+### Fase 10 — Polish Pack v1.1 🟡 (in corso, branch `feature/polish-pack-v1.1`)
+Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità impatto/sforzo.
+
+- ✅ **#17 Fix dispose corridoi** — `disposeCorridor()` aveva un `if` con corpo vuoto: le texture di tutti i materiali del corridoio (esclusi i `signMat`) non venivano mai dispose(), causando memory leak a ogni cambio piano. Riscritto il ciclo per gestire materiali singoli e array, scartare esplicitamente `signTex` condivisa, e dispose() texture + materiali in modo uniforme.
+- ✅ **#15 Persistenza preferenze in localStorage** — aggiunte `loadPrefs()` / `savePrefs()` con chiave versionata `bossHotelPrefs@v1`. `muted`, `ttsEnabled`, `nightMode` ora permangono dopo il refresh. Hook chiamato nei 3 toggle handler (M, V, N). Aggiunto feedback visivo "Audio: ON/OFF" al tasto M (era assente).
+- ⏳ **#21 Specchio riflettente** — Reflector di Three.js al posto della texture statica
+- ⏳ **#1 Shake cabina durante viaggio** — estendere `state.vibration` per vibrazione continua in `tickMove`
+- ⏳ **#3 Whoosh loop** — white noise modulato in pitch dalla velocità cabina
+
 ---
 
 ## 5. Scostamenti dal piano
@@ -252,6 +262,7 @@ Dopo i bug sopra, ho fatto `grep` per verificare che non ci fossero altri riferi
 | Arredi 3D | ~30 tipi diversi (piante, divani, scrivanie, porte camere, vetrata, ecc.) |
 | Audio effetti | ~6 tipi (beep, chime, allarme, porta, countdown) |
 | Comandi tastiera | 6 (M, V, N, E, WASD, ESC) |
+| Preferenze persistenti | 3 (muted, tts, nightMode) via localStorage `bossHotelPrefs@v1` |
 | Tempo di sviluppo | ~3 sessioni |
 
 ---
@@ -421,14 +432,14 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 |---|---|---|---|---|---|
 | 13 | **Verifica accessibilità tastiera nel corridoio** — controllare se `WASD` è correttamente disattivato quando si è nella cabina (potrebbe creare drift di posizione della camera) | Medio | Basso | 🟡 | Da testare in playtest |
 | 14 | **Logica passeggeri coerente** — i "passeggeri" cambiano ma senza coerenza (possono scendere da 8 a 0 durante la notte). Aggiungere logica: "scendono quando le porte sono aperte al lobby/ufficio, salgono ai piani alti" | Basso | Medio | 🟢 | Estensione di Fase 8 |
-| 15 | **Persistenza preferenze in localStorage** — salvare `muted`, `ttsEnabled`, `nightMode` così rimangono al refresh | Medio | Basso | 🟡 | 5 righe di codice + init in avvio |
+| 15 | ~~**Persistenza preferenze in localStorage**~~ — ✅ **Implementato in Polish Pack v1.1 (#15)** | Medio | Basso | 🟡 | Chiave `bossHotelPrefs@v1`, hook in M/V/N toggle |
 
 ### 11.5 Tecnico / performance
 
 | # | Idea | Impatto | Sforzo | Prio | Note |
 |---|---|---|---|---|---|
 | 16 | **Service Worker offline-first + PWA installabile** — l'app è già single-file e statica, perfetta per PWA. Richiede un file `sw.js` + `manifest.json` | Alto | Medio | 🟡 | Backlog §9.2. Aggiunge 2 file ma abilita installazione mobile |
-| 17 | **Verifica `dispose()` dei corridoi ricostruiti** — controllare che geometrie, materiali e texture dei corridoi vecchi siano effettivamente dispose()d in `buildCorridor()` per evitare memory leak durante le 10+ ricostruzioni | Alto | Basso | 🔴 | Bug latente potenziale, da verificare |
+| 17 | ~~**Verifica `dispose()` dei corridoi ricostruiti**~~ — ✅ **Implementato in Polish Pack v1.1 (#17)** | Alto | Basso | 🔴 | Trovato e corretto bug reale: `if` con corpo vuoto leakava tutte le texture non-cartello |
 | 18 | **Texture atlas / caching canvas offscreen per il display touch** — oggi ridisegni l'intero canvas a ogni frame sporco. Cachare le sezioni statiche (cornice, header) in canvas offscreen e redraw solo le sezioni dinamiche | Medio | Medio | 🟢 | Backlog §9.2 |
 
 ### 11.6 Idee nuove (non presenti nel backlog originale)

@@ -118,6 +118,9 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 ### 🌙 Modalità notte
 - Tasto **N** per luci soffuse e atmosfera più intima
 
+### 💾 Preferenze persistenti
+- **Mute**, **annunci vocali** e **modalità notte** vengono salvati in `localStorage` e ripristinati al refresh della pagina (chiave `bossHotelPrefs@v1`)
+
 ### 👤 Indicatore carico
 - "👤 X/8" sul display, varia casualmente ogni 8 secondi quando la cabina è ferma
 

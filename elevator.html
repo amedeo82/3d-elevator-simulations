@@ -3284,6 +3284,10 @@ document.addEventListener('pointerlockchange', () => {
 addEventListener('keydown', e => {
   if (e.code === 'KeyM') {
     state.muted = !state.muted;
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = state.muted ? 'Audio: OFF' : 'Audio: ON';
+    setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
     if (ttsEnabled) speak('Annunci vocali attivati');
@@ -3291,11 +3295,13 @@ addEventListener('keydown', e => {
     const status = document.getElementById('statusText');
     if (status) status.textContent = ttsEnabled ? 'Voce: ON' : 'Voce: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyN') {
     state.nightMode = !state.nightMode;
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.nightMode ? 'Modalità notte: ON' : 'Modalità notte: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
@@ -3459,6 +3465,35 @@ function loop(now) {
 // ============================================================
 // AVVIO
 // ============================================================
+
+// ---- Preferenze persistenti (localStorage) ----
+const PREFS_KEY = 'bossHotelPrefs';
+const PREFS_VERSION = 1;
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (p && p.v === PREFS_VERSION) {
+      if (typeof p.muted === 'boolean') state.muted = p.muted;
+      if (typeof p.tts === 'boolean') ttsEnabled = p.tts;
+      if (typeof p.night === 'boolean') state.nightMode = p.night;
+    }
+  } catch(e) { /* localStorage non disponibile o corrotto: ignora */ }
+}
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      v: PREFS_VERSION,
+      muted: state.muted,
+      tts: ttsEnabled,
+      night: state.nightMode,
+    }));
+  } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
+}
+
+loadPrefs();
+
 placeCameraInCabin();
 updateFloorDisplay();
 refreshHudButtons();
