@@ -128,7 +128,11 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - "👤 X/8" sul display, varia casualmente ogni 8 secondi quando la cabina è ferma
 
 ### 📳 Vibrazione cabina
-- Oscillazione Y di pochi mm per 200ms dopo ogni click sui tasti
+- **One-shot al click**: oscillazione Y di pochi mm per 200ms dopo ogni click sui tasti
+- **Continua durante il viaggio**: micro-oscillazioni X/Z (±3.5mm) + roll/pitch, con envelope a campana (max al centro della corsa, nullo ai capi). Decay graduale all'arrivo.
+
+### 🌬️ Whoosh loop
+- White noise modulato in pitch (300→1100Hz) che segue la velocità della cabina: più acuto al centro della corsa, più grave ai capi. Si interrompe su STOP, allarme e arrivo al piano.
 
 ### 🚨 Sistema di emergenza
 - Tasto ! rosso (fisico) per attivare

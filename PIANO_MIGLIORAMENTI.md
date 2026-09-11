@@ -14,7 +14,7 @@ Documento di design e implementation log.
 |---|---|
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
-| Polish Pack v1.1 | 🟡 4/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ⏳) |
+| Polish Pack v1.1 | ✅ 5/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ✅) |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -190,7 +190,7 @@ Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità im
 - ✅ **#15 Persistenza preferenze in localStorage** — aggiunte `loadPrefs()` / `savePrefs()` con chiave versionata `bossHotelPrefs@v1`. `muted`, `ttsEnabled`, `nightMode` ora permangono dopo il refresh. Hook chiamato nei 3 toggle handler (M, V, N). Aggiunto feedback visivo "Audio: ON/OFF" al tasto M (era assente).
 - ✅ **#21 Specchio riflettente** — sostituito `MeshStandardMaterial` con `Reflector` di `three/addons/objects/Reflector.js` (riga ~622). Render target 512×512, `clipBias: 0.003`, tinta `0xb0b4b8`. Lo specchio riflette ora davvero l'interno cabina (display LED, striscia LED soffitto, pannello, passeggeri). Importmap `three/addons/` era già pronto da una predisposizione precedente.
 - ✅ **#1 Shake cabina durante viaggio** — aggiunti 5 nuovi campi a `state` (`vibrationX`, `vibrationZ`, `vibrationRoll`, `vibrationPitch`, `_movePhase`). In `tickMove()` calcolo oscillazioni X/Z ±3.5mm + roll/pitch ~2° con envelope a campana `sin(π·moveT)` (max al centro, nullo ai capi). Decay graduale (`×0.85`/frame) quando la cabina è ferma. Applicato al `cabin` group nel LOOP.
-- ⏳ **#3 Whoosh loop** — white noise modulato in pitch dalla velocità cabina
+- ✅ **#3 Whoosh loop** — aggiunte 3 funzioni audio (`makeNoiseBuffer`, `startWhoosh`, `stopWhoosh`) in sezione AUDIO (~riga 2856). White noise 1s in loop attraverso `BiquadFilter` bandpass; pitch 300→1100Hz modulato da `sin(π·moveT)` (envelope a campana), gain 0→0.025. Stop con `linearRampToValueAtTime(0, +0.05s)` per evitare click. Hook start/stop in cima a `tickMove()` (riga ~2998) basato su `state.isMoving && !movePaused`.
 
 ---
 
@@ -267,7 +267,7 @@ Dopo i bug sopra, ho fatto `grep` per verificare che non ci fossero altri riferi
 | Condizioni meteo | 7 |
 | Piani | 10 (T + 1..9) |
 | Arredi 3D | ~30 tipi diversi (piante, divani, scrivanie, porte camere, vetrata, ecc.) |
-| Audio effetti | ~6 tipi (beep, chime, allarme, porta, countdown) |
+| Audio effetti | ~7 tipi (beep, chime, allarme, porta, countdown, whoosh loop) |
 | Comandi tastiera | 6 (M, V, N, E, WASD, ESC) |
 | Preferenze persistenti | 3 (muted, tts, nightMode) via localStorage `bossHotelPrefs@v1` |
 | Tempo di sviluppo | ~3 sessioni |
@@ -417,7 +417,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 |---|---|---|---|---|---|
 | 1 | ~~**Effetto shake/movimento cabina durante il viaggio**~~ — ✅ **Implementato in Polish Pack v1.1 (#1)** | Alto | Basso | 🔴 | 5 nuovi state fields, envelope a campana, decay `×0.85` |
 | 2 | **Musica di sottofondo contestuale** — jazz morbido in lobby, classica all'attico, allarme silenzia tutto | Alto | Medio | 🔴 | Backlog §9.1. WebAudio: loop oscillator + filtri low-pass. ~80 righe |
-| 3 | **Effetto sonoro di movimento cabina** — loop "whoosh/wind" modulato in pitch con la velocità (più acuto al centro della corsa, più grave ai capi) | Alto | Medio | 🔴 | Si sposa con #1 per dare il "peso" della salita |
+| 3 | ~~**Effetto sonoro di movimento cabina**~~ — ✅ **Implementato in Polish Pack v1.1 (#3)** | Alto | Medio | 🔴 | White noise + bandpass filter, envelope a campana |
 | 4 | **Indicatore direzione "passo passo"** — sul cartello del corridoio mostrare i piani che la cabina sta attraversando (es. "▲ 2·3·4·5") durante la corsa | Medio | Basso | 🟡 | Implementabile in `tickMove` dove già calcoli `floorShown`. Texture canvas già pronta |
 
 ### 11.2 Funzionalità hotel "premium" (low effort, alto effetto)

@@ -2852,6 +2852,45 @@ function playDoorSound(opening) {
   playBeep(opening ? 520 : 360, 0.18, 'triangle', 0.08);
 }
 
+// ---- Whoosh loop (Fase 10 #3): white noise modulato in pitch dalla velocità cabina ----
+let whooshNode = null, whooshGain = null, whooshFilter = null;
+function makeNoiseBuffer(ctx, dur = 1.0) {
+  const len = ctx.sampleRate * dur;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+  return buf;
+}
+function startWhoosh() {
+  if (whooshNode || state.muted || state.alarmOn) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const noise = makeNoiseBuffer(audioCtx, 1.0);
+  whooshNode = audioCtx.createBufferSource();
+  whooshNode.buffer = noise;
+  whooshNode.loop = true;
+  whooshFilter = audioCtx.createBiquadFilter();
+  whooshFilter.type = 'bandpass';
+  whooshFilter.frequency.value = 400;
+  whooshFilter.Q.value = 1.2;
+  whooshGain = audioCtx.createGain();
+  whooshGain.gain.value = 0; // parte silente, sale gradualmente in tickMove
+  whooshNode.connect(whooshFilter);
+  whooshFilter.connect(whooshGain);
+  whooshGain.connect(audioCtx.destination);
+  whooshNode.start();
+}
+function stopWhoosh() {
+  if (whooshGain) {
+    try { whooshGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); } catch(e) {}
+  }
+  // piccolo delay per evitare click, poi stop
+  setTimeout(() => {
+    if (whooshNode) { try { whooshNode.stop(); } catch(e) {} }
+    whooshNode = whooshGain = whooshFilter = null;
+  }, 80);
+}
+
 // ============================================================
 // ANNUNCI VOCALI TTS (Fase 6)
 // ============================================================
@@ -2958,6 +2997,9 @@ function actuallyStartMove() {
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
 function tickMove(dt) {
+  // whoosh loop (Fase 10 #3) — start/stop in base allo stato di movimento
+  if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
+  if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
   // decay dello shake quando la cabina è ferma
   if (!state.isMoving || movePaused) {
     state.vibrationX *= 0.85;
@@ -2970,6 +3012,12 @@ function tickMove(dt) {
   moveT = Math.min(1, moveElapsed / moveDuration);
   const t = easeInOutCubic(moveT);
   const y = (moveFrom + (moveTo - moveFrom) * t) * FLOOR_HEIGHT;
+  // whoosh: modulazione pitch + volume in base alla velocità (envelope a campana)
+  if (whooshGain && whooshFilter) {
+    const speed = Math.sin(Math.PI * moveT); // 0..1..0
+    whooshFilter.frequency.value = 300 + speed * 800;
+    whooshGain.gain.value = 0.025 * speed;
+  }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
   cabin.position.y = y;
