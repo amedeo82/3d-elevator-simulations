@@ -366,7 +366,9 @@ const state = {
   _alarmId: null,
   _lastPassengerChange: 0,
   // Polish Pack v1.3 #4: cartello "passo passo" durante il viaggio
-  _lastShownFloor: null
+  _lastShownFloor: null,
+  // Polish Pack v1.3 #6: modalità "fuori servizio"
+  outOfOrder: false
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -1480,6 +1482,30 @@ signTex.colorSpace = THREE.SRGBColorSpace;
 
 function drawFloorSign(floor) {
   const g = signCtx;
+  // Polish Pack v1.3 #6: modalità "fuori servizio" — cartello warning rosso
+  if (state.outOfOrder) {
+    g.fillStyle = '#1a0000';
+    g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#c0392b'; g.lineWidth = 5;
+    g.strokeRect(8, 8, 496, 112);
+    g.strokeStyle = '#7a2020'; g.lineWidth = 2;
+    g.strokeRect(15, 15, 482, 98);
+    g.strokeStyle = '#ff6644'; g.lineWidth = 2;
+    for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+      g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
+    }
+    g.fillStyle = '#ff3030';
+    g.shadowColor = '#ff3030'; g.shadowBlur = 14;
+    g.font = 'bold 30px Georgia, serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('FUORI SERVIZIO', 256, 50);
+    g.shadowBlur = 0;
+    g.fillStyle = '#ffaa66';
+    g.font = 'italic 17px Georgia, serif';
+    g.fillText('— MANUTENZIONE IN CORSO —', 256, 88);
+    signTex.needsUpdate = true;
+    return;
+  }
   // sfondo hotel
   g.fillStyle = '#0e0900';
   g.fillRect(0, 0, 512, 128);
@@ -1516,6 +1542,11 @@ drawFloorSign(0);
 // Mostra i piani che la cabina sta attraversando, con quello corrente evidenziato
 function drawMovingSign(fromFloor, toFloor, currentShown) {
   const g = signCtx;
+  // Polish Pack v1.3 #6: priorità assoluta al warning se fuori servizio
+  if (state.outOfOrder) {
+    drawFloorSign(state.currentFloor);
+    return;
+  }
   const up = toFloor > fromFloor;
   // stesso sfondo del cartello statico (mantiene coerenza visiva)
   g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
@@ -2643,39 +2674,61 @@ function drawModernDisplay() {
   ctx.beginPath(); ctx.moveTo(40, 105); ctx.lineTo(W - 40, 105); ctx.stroke();
 
   // ---- PIANO CORRENTE (grande) + FRECCIA DIREZIONE ----
-  const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
-  // sfondo cella
-  ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
-  ctx.fillRect(40, 125, W - 80, 180);
-  ctx.strokeStyle = '#c9a55a';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(40, 125, W - 80, 180);
-  // piano
-  ctx.fillStyle = '#ffd66b';
-  ctx.font = 'bold 130px "Courier New", monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
-  ctx.fillText(floorLabel, W/2, 215);
-  ctx.shadowBlur = 0;
-  // freccia direzione (animata)
-  let arrowChar = '·';
-  let arrowLabel = 'FERMO';
-  if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
-  else if (state.isMoving) {
-    if (state.targetFloor > state.currentFloor) { arrowChar = '▲'; arrowLabel = 'IN SALITA'; }
-    else { arrowChar = '▼'; arrowLabel = 'IN DISCESA'; }
-  } else if (state.doorsOpen) {
-    arrowLabel = 'PORTE APERTE';
+  if (state.outOfOrder) {
+    // Polish Pack v1.3 #6: overlay warning "fuori servizio" al posto del piano
+    ctx.fillStyle = 'rgba(255, 60, 40, 0.12)';
+    ctx.fillRect(40, 125, W - 80, 180);
+    ctx.strokeStyle = '#ff4040';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 125, W - 80, 180);
+    ctx.fillStyle = '#ff3030';
+    ctx.shadowColor = '#ff3030'; ctx.shadowBlur = 16;
+    ctx.font = 'bold 42px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('FUORI SERVIZIO', W/2, 195);
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = '#ffaa66';
+    ctx.fillText('Ascensore in manutenzione', W/2, 245);
+    ctx.fillStyle = '#a89060';
+    ctx.font = '13px Arial';
+    ctx.fillText('Premere O per ripristinare', W/2, 285);
   } else {
-    arrowLabel = 'IN ATTESA';
+    const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
+    // sfondo cella
+    ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
+    ctx.fillRect(40, 125, W - 80, 180);
+    ctx.strokeStyle = '#c9a55a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 125, W - 80, 180);
+    // piano
+    ctx.fillStyle = '#ffd66b';
+    ctx.font = 'bold 130px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
+    ctx.fillText(floorLabel, W/2, 215);
+    ctx.shadowBlur = 0;
+    // freccia direzione (animata)
+    let arrowChar = '·';
+    let arrowLabel = 'FERMO';
+    if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
+    else if (state.isMoving) {
+      if (state.targetFloor > state.currentFloor) { arrowChar = '▲'; arrowLabel = 'IN SALITA'; }
+      else { arrowChar = '▼'; arrowLabel = 'IN DISCESA'; }
+    } else if (state.doorsOpen) {
+      arrowLabel = 'PORTE APERTE';
+    } else {
+      arrowLabel = 'IN ATTESA';
+    }
+    ctx.font = 'bold 36px Arial';
+    ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
+    ctx.fillText(arrowChar, W/2, 285);
+    ctx.font = '13px Arial';
+    ctx.fillStyle = '#aaffb4';
+    ctx.fillText(arrowLabel, W/2, 330);
   }
-  ctx.font = 'bold 36px Arial';
-  ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
-  ctx.fillText(arrowChar, W/2, 285);
-  ctx.font = '13px Arial';
-  ctx.fillStyle = '#aaffb4';
-  ctx.fillText(arrowLabel, W/2, 330);
   // linea separatrice
   ctx.strokeStyle = '#c9a55a';
   ctx.lineWidth = 1;
@@ -2759,11 +2812,16 @@ function drawModernDisplay() {
       const isHovered = (hoveredBtn.current && hoveredBtn.current.isCell &&
                          hoveredBtn.current.userData.cellRow === r &&
                          hoveredBtn.current.userData.cellCol === c);
-      // sfondo cella
+      // Polish Pack v1.3 #6: in modalità fuori servizio tutte le celle sono disabilitate
+      // (tranne il piano corrente, evidenziato in modo neutro)
       let bg = 'rgba(255,255,255,0.04)';
       let border = '#4a4a50';
       let textColor = '#aabbcc';
-      if (isHovered && !isCurrent) {
+      if (state.outOfOrder) {
+        bg = isCurrent ? 'rgba(120, 120, 130, 0.18)' : 'rgba(80, 80, 90, 0.10)';
+        border = isCurrent ? '#6a6a70' : '#3a3a40';
+        textColor = isCurrent ? '#888888' : '#555560';
+      } else if (isHovered && !isCurrent) {
         bg = 'rgba(109, 255, 200, 0.35)';
         border = '#88ffcc';
         textColor = '#ffffff';
@@ -2774,7 +2832,7 @@ function drawModernDisplay() {
       } else if (isInQueue) {
         bg = 'rgba(255, 140, 26, 0.25)';
         border = '#ff8c1a';
-        textColor = '#ff8c1a';
+        textColor = '#ff8c5a';
       }
       ctx.fillStyle = bg;
       ctx.fillRect(x, y, cellW, cellH);
@@ -3074,6 +3132,11 @@ let movePaused = false;
 
 function requestFloor(floor) {
   if (state.alarmOn) return;
+  // Polish Pack v1.3 #6: rifiuta selezione piani in modalità "fuori servizio"
+  if (state.outOfOrder && floor !== state.currentFloor) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    return;
+  }
   floor = Math.max(0, Math.min(NUM_FLOORS - 1, floor));
   if (floor === state.currentFloor && !state.isMoving) {
     // già qui, apri le porte
@@ -3503,6 +3566,31 @@ addEventListener('keydown', e => {
     if (status) status.textContent = state.nightMode ? 'Modalità notte: ON' : 'Modalità notte: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
+  } else if (e.code === 'KeyO') {
+    // Polish Pack v1.3 #6: toggle modalità "fuori servizio"
+    state.outOfOrder = !state.outOfOrder;
+    if (state.outOfOrder) {
+      // blocca movimento e coda, chiudi porte
+      state.isMoving = false;
+      movePaused = true;
+      state.requestedFloors.clear();
+      setDoors(false);
+      if (typeof speak === 'function') speak('Ascensore fuori servizio.');
+      playBeep(440, 0.15, 'square', 0.1);
+      setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
+    } else {
+      movePaused = false;
+      if (typeof speak === 'function') speak('Ascensore ripristinato.');
+      playBeep(660, 0.12, 'sine', 0.1);
+    }
+    // aggiorna cartello corridoio + display touch
+    drawFloorSign(state.currentFloor);
+    if (typeof markDisplayDirty === 'function') markDisplayDirty();
+    const status = document.getElementById('statusText');
+    if (status) {
+      status.textContent = state.outOfOrder ? 'Fuori servizio' : 'Ascensore ripristinato';
+      setTimeout(() => updateFloorDisplay(), 1500);
+    }
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
