@@ -15,7 +15,7 @@ Documento di design e implementation log.
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
 | Polish Pack v1.1 | 🟡 4/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ⏳) |
-| Bug fix post-fasi | ✅ 5 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto) |
+| Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
 | File di progetto | `elevator.html` (~120KB, single file) |
@@ -243,6 +243,13 @@ Dopo i bug sopra, ho fatto `grep` per verificare che non ci fossero altri riferi
 - `grep "drawDisplay|drawSub|subDisplay|subCtx|subTex|subMat|subMesh"` → 0 risultati
 - `grep "^const state"` → 1 risultato
 - `grep "^const hoveredBtn"` → 1 risultato
+
+### 6.6 `addSkylineWindow`: `eZ` non definito (bug latente scopertosi ai piani 7-9)
+- **Errore**: `(index):2120 Uncaught ReferenceError: eZ is not defined at addSkylineWindow`
+- **Causa**: `addSkylineWindow(parent, x, y, z, rotY)` è definita top-level (riga 2059), fuori da `buildCorridor()`. Alla riga 2120 la funzione usava `eZ` (variabile locale di `buildCorridor`) invece del parametro `z`. Il bug era **pre-esistente** e dormiente: si manifestava solo andando ai piani 7-9 (penthouse) dove `addSkylineWindow` viene chiamata per la vetrata panoramica.
+- **Fix**: sostituito `eZ - 0.5` con `z - 0.5` (riga 2120). `z` è il parametro già ricevuto correttamente dalla chiamata (riga 1666: `addSkylineWindow(corridor, 0, 1.3, eZ - 0.01, 0)`).
+- **Verifica**: `grep "\beZ\b"` → 3 risultati, tutti dentro `buildCorridor` (scope corretto). `node --check` EXIT=0.
+- **Lezione**: il pattern "funzioni helper top-level che usano variabili di chi le chiama" è fragile. Andrebbe evitato passando i valori come parametri espliciti (come già faceva correttamente la firma della funzione).
 
 ---
 

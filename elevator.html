@@ -2117,7 +2117,7 @@ function addSkylineWindow(parent, x, y, z, rotY) {
   parent.add(glass);
   // luce soffusa dal panorama
   const light = new THREE.PointLight(0xffaa88, 0.4, 6, 1.5);
-  light.position.set(0, 1.5, eZ - 0.5);
+  light.position.set(0, 1.5, z - 0.5);
   parent.add(light);
 }
 
