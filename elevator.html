@@ -1521,8 +1521,13 @@ function disposeCorridor() {
     c.traverse(obj => {
       if (obj.geometry) obj.geometry.dispose();
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => { if (m.map && m !== signMatFront && m !== signMatBack) m.map?.dispose(); m.dispose(); });
-        else { if (obj.material.map && obj.material !== signMatFront && obj.material !== signMatBack) {} obj.material.dispose(); }
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          // preserva materiali e texture del cartello (condivisi tra ricostruzioni)
+          if (m === signMatFront || m === signMatBack) return;
+          if (m.map && m.map !== signTex) m.map.dispose();
+          m.dispose();
+        });
       }
     });
   }
