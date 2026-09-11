@@ -288,6 +288,43 @@ php -S localhost:8000
 
 ---
 
+## 📤 Push su GitHub
+
+```bash
+# 1. Crea un nuovo repo vuoto su https://github.com/new (non aggiungere README/LICENSE/.gitignore)
+
+# 2. Scarica lo zip del progetto ed estrailo
+unzip boss-hotel-elevator.zip
+cd boss-hotel-elevator
+
+# 3. Inizializza git e fai il primo commit
+git init
+git add .
+git commit -m "Initial commit: BOSS HOTEL elevator 3D simulator"
+
+# 4. Collega il repo remoto (sostituisci <user> e <repo>)
+git branch -M main
+git remote add origin https://github.com/<user>/<repo>.git
+
+# 5. Push
+git push -u origin main
+```
+
+### GitHub Pages (deploy automatico)
+
+Dopo il push:
+
+1. Vai su **Settings → Pages**
+2. Source: **Deploy from a branch**
+3. Branch: `main` / `(root)`
+4. Save
+
+Il sito sarà live in pochi minuti su `https://<user>.github.io/<repo>/`.
+
+> Nota: il file `dist/index.html` è una copia identica di `elevator.html`. Per il deploy con GitHub Pages puoi semplicemente rinominare `elevator.html` in `index.html`, oppure creare un symlink, oppure usare direttamente `elevator.html` come entry point configurando Pages.
+
+---
+
 ## 🚀 Deploy
 
 Il progetto è un singolo file statico, quindi può essere deployato ovunque:
