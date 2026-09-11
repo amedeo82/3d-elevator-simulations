@@ -252,6 +252,8 @@
     <div class="row"><span>Movimento mouse</span><span>guarda intorno</span></div>
     <div class="row"><span>Clic</span><span>premi un pulsante</span></div>
     <div class="row"><span><kbd>ESC</kbd></span><span>rilascia il mouse</span></div>
+    <div class="row"><span><kbd>E</kbd></span><span>esci / rientra cabina</span></div>
+    <div class="row"><span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>movimento nel corridoio</span></div>
     <div class="row"><span><kbd>M</kbd></span><span>toggle suono</span></div>
     <div class="row"><span><kbd>V</kbd></span><span>toggle annunci vocali</span></div>
     <div class="row"><span><kbd>N</kbd></span><span>toggle modalità notte</span></div>
@@ -293,6 +295,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 // ============================================================
 // CONFIGURAZIONE
@@ -320,6 +323,12 @@ const state = {
   nightMode: false,
   passengers: 1,
   vibration: 0,
+  // shake continuo durante il viaggio (Fase 10 #1)
+  vibrationX: 0,
+  vibrationZ: 0,
+  vibrationRoll: 0,
+  vibrationPitch: 0,
+  _movePhase: 0,
   // riferimenti popolati dopo (telecamera, allarme, ecc.)
   _camLed: null,
   _camLedSphere: null,
@@ -621,12 +630,17 @@ function makeWall(w, h, color = 0xd0d3d7, metalness = 0.85, roughness = 0.35) {
   cabin.add(m);
 }
 
-// Specchio sulla parete sinistra
+// Specchio sulla parete sinistra (Reflector — riflette davvero la cabina)
 {
-  const mirrorMat = new THREE.MeshStandardMaterial({
-    color: 0xaab0b6, roughness: 0.05, metalness: 1.0, envMapIntensity: 1.2
-  });
-  const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.4), mirrorMat);
+  const mirror = new Reflector(
+    new THREE.PlaneGeometry(0.7, 1.4),
+    {
+      clipBias: 0.003,
+      textureWidth: 512,
+      textureHeight: 512,
+      color: 0xb0b4b8
+    }
+  );
   mirror.rotation.y = Math.PI / 2;
   mirror.position.set(-CABIN.w/2 + 0.01, 1.45, -0.2);
   cabin.add(mirror);
@@ -1521,8 +1535,13 @@ function disposeCorridor() {
     c.traverse(obj => {
       if (obj.geometry) obj.geometry.dispose();
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => { if (m.map && m !== signMatFront && m !== signMatBack) m.map?.dispose(); m.dispose(); });
-        else { if (obj.material.map && obj.material !== signMatFront && obj.material !== signMatBack) {} obj.material.dispose(); }
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          // preserva materiali e texture del cartello (condivisi tra ricostruzioni)
+          if (m === signMatFront || m === signMatBack) return;
+          if (m.map && m.map !== signTex) m.map.dispose();
+          m.dispose();
+        });
       }
     });
   }
@@ -2100,7 +2119,7 @@ function addSkylineWindow(parent, x, y, z, rotY) {
   parent.add(glass);
   // luce soffusa dal panorama
   const light = new THREE.PointLight(0xffaa88, 0.4, 6, 1.5);
-  light.position.set(0, 1.5, eZ - 0.5);
+  light.position.set(0, 1.5, z - 0.5);
   parent.add(light);
 }
 
@@ -2835,6 +2854,45 @@ function playDoorSound(opening) {
   playBeep(opening ? 520 : 360, 0.18, 'triangle', 0.08);
 }
 
+// ---- Whoosh loop (Fase 10 #3): white noise modulato in pitch dalla velocità cabina ----
+let whooshNode = null, whooshGain = null, whooshFilter = null;
+function makeNoiseBuffer(ctx, dur = 1.0) {
+  const len = ctx.sampleRate * dur;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+  return buf;
+}
+function startWhoosh() {
+  if (whooshNode || state.muted || state.alarmOn) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const noise = makeNoiseBuffer(audioCtx, 1.0);
+  whooshNode = audioCtx.createBufferSource();
+  whooshNode.buffer = noise;
+  whooshNode.loop = true;
+  whooshFilter = audioCtx.createBiquadFilter();
+  whooshFilter.type = 'bandpass';
+  whooshFilter.frequency.value = 400;
+  whooshFilter.Q.value = 1.2;
+  whooshGain = audioCtx.createGain();
+  whooshGain.gain.value = 0; // parte silente, sale gradualmente in tickMove
+  whooshNode.connect(whooshFilter);
+  whooshFilter.connect(whooshGain);
+  whooshGain.connect(audioCtx.destination);
+  whooshNode.start();
+}
+function stopWhoosh() {
+  if (whooshGain) {
+    try { whooshGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); } catch(e) {}
+  }
+  // piccolo delay per evitare click, poi stop
+  setTimeout(() => {
+    if (whooshNode) { try { whooshNode.stop(); } catch(e) {} }
+    whooshNode = whooshGain = whooshFilter = null;
+  }, 80);
+}
+
 // ============================================================
 // ANNUNCI VOCALI TTS (Fase 6)
 // ============================================================
@@ -2941,14 +2999,37 @@ function actuallyStartMove() {
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
 function tickMove(dt) {
-  if (!state.isMoving || movePaused) return;
+  // whoosh loop (Fase 10 #3) — start/stop in base allo stato di movimento
+  if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
+  if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
+  // decay dello shake quando la cabina è ferma
+  if (!state.isMoving || movePaused) {
+    state.vibrationX *= 0.85;
+    state.vibrationZ *= 0.85;
+    state.vibrationRoll *= 0.85;
+    state.vibrationPitch *= 0.85;
+    return;
+  }
   moveElapsed += dt;
   moveT = Math.min(1, moveElapsed / moveDuration);
   const t = easeInOutCubic(moveT);
   const y = (moveFrom + (moveTo - moveFrom) * t) * FLOOR_HEIGHT;
+  // whoosh: modulazione pitch + volume in base alla velocità (envelope a campana)
+  if (whooshGain && whooshFilter) {
+    const speed = Math.sin(Math.PI * moveT); // 0..1..0
+    whooshFilter.frequency.value = 300 + speed * 800;
+    whooshGain.gain.value = 0.025 * speed;
+  }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
   cabin.position.y = y;
+  // shake continuo durante il viaggio (Fase 10 #1) — envelope a campana, max al centro
+  state._movePhase += dt * 4;
+  const amp = 0.0035 * Math.sin(Math.PI * moveT);
+  state.vibrationX = (Math.sin(state._movePhase * 7.3) + Math.sin(state._movePhase * 11.1)) * amp;
+  state.vibrationZ = (Math.cos(state._movePhase * 8.7) + Math.sin(state._movePhase * 13.3)) * amp;
+  state.vibrationRoll  = Math.sin(state._movePhase * 5.1) * amp * 0.6;
+  state.vibrationPitch = Math.cos(state._movePhase * 6.7) * amp * 0.6;
   // aggiorna display: piano corrente "arrotondato" durante il movimento
   const currentDisplay = moveFrom + (moveTo - moveFrom) * t;
   const floorShown = Math.round(currentDisplay);
@@ -3279,6 +3360,10 @@ document.addEventListener('pointerlockchange', () => {
 addEventListener('keydown', e => {
   if (e.code === 'KeyM') {
     state.muted = !state.muted;
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = state.muted ? 'Audio: OFF' : 'Audio: ON';
+    setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
     if (ttsEnabled) speak('Annunci vocali attivati');
@@ -3286,11 +3371,13 @@ addEventListener('keydown', e => {
     const status = document.getElementById('statusText');
     if (status) status.textContent = ttsEnabled ? 'Voce: ON' : 'Voce: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyN') {
     state.nightMode = !state.nightMode;
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.nightMode ? 'Modalità notte: ON' : 'Modalità notte: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
@@ -3413,13 +3500,18 @@ function loop(now) {
     state._camLedSphere.material.color.setHex(camK ? 0xff3030 : 0x551010);
   }
 
-  // vibrazione cabina (Fase 8)
+  // vibrazione cabina (Fase 8) — scossa one-shot al click
   if (state.vibration > 0) {
     state.vibration = Math.max(0, state.vibration - dt * 4);
     const vib = Math.sin(now * 0.05) * 0.003 * state.vibration;
     // applichiamo un piccolo offset alla posizione della cabina (solo al cabin, non al corridoio)
     cabin.position.y += vib;
   }
+  // shake continuo durante il viaggio (Fase 10 #1) — offset X/Z + roll/pitch
+  cabin.position.x = state.vibrationX;
+  cabin.position.z = state.vibrationZ;
+  cabin.rotation.z = state.vibrationRoll;
+  cabin.rotation.x = state.vibrationPitch;
 
   // variazione passeggeri randomica (Fase 8) — quando la cabina è ferma, ogni tanto cambiano
   if (!state.isMoving && state.doorsOpen && state.alarmOn === false) {
@@ -3454,6 +3546,35 @@ function loop(now) {
 // ============================================================
 // AVVIO
 // ============================================================
+
+// ---- Preferenze persistenti (localStorage) ----
+const PREFS_KEY = 'bossHotelPrefs';
+const PREFS_VERSION = 1;
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (p && p.v === PREFS_VERSION) {
+      if (typeof p.muted === 'boolean') state.muted = p.muted;
+      if (typeof p.tts === 'boolean') ttsEnabled = p.tts;
+      if (typeof p.night === 'boolean') state.nightMode = p.night;
+    }
+  } catch(e) { /* localStorage non disponibile o corrotto: ignora */ }
+}
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      v: PREFS_VERSION,
+      muted: state.muted,
+      tts: ttsEnabled,
+      night: state.nightMode,
+    }));
+  } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
+}
+
+loadPrefs();
+
 placeCameraInCabin();
 updateFloorDisplay();
 refreshHudButtons();
