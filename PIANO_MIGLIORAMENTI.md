@@ -14,7 +14,7 @@ Documento di design e implementation log.
 |---|---|
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
-| Polish Pack v1.1 | 🟡 2/5 (#17 ✅, #15 ✅, #21 ⏳, #1 ⏳, #3 ⏳) |
+| Polish Pack v1.1 | 🟡 3/5 (#17 ✅, #15 ✅, #21 ✅, #1 ⏳, #3 ⏳) |
 | Bug fix post-fasi | ✅ 5 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -188,7 +188,7 @@ Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità im
 
 - ✅ **#17 Fix dispose corridoi** — `disposeCorridor()` aveva un `if` con corpo vuoto: le texture di tutti i materiali del corridoio (esclusi i `signMat`) non venivano mai dispose(), causando memory leak a ogni cambio piano. Riscritto il ciclo per gestire materiali singoli e array, scartare esplicitamente `signTex` condivisa, e dispose() texture + materiali in modo uniforme.
 - ✅ **#15 Persistenza preferenze in localStorage** — aggiunte `loadPrefs()` / `savePrefs()` con chiave versionata `bossHotelPrefs@v1`. `muted`, `ttsEnabled`, `nightMode` ora permangono dopo il refresh. Hook chiamato nei 3 toggle handler (M, V, N). Aggiunto feedback visivo "Audio: ON/OFF" al tasto M (era assente).
-- ⏳ **#21 Specchio riflettente** — Reflector di Three.js al posto della texture statica
+- ✅ **#21 Specchio riflettente** — sostituito `MeshStandardMaterial` con `Reflector` di `three/addons/objects/Reflector.js` (riga ~622). Render target 512×512, `clipBias: 0.003`, tinta `0xb0b4b8`. Lo specchio riflette ora davvero l'interno cabina (display LED, striscia LED soffitto, pannello, passeggeri). Importmap `three/addons/` era già pronto da una predisposizione precedente.
 - ⏳ **#1 Shake cabina durante viaggio** — estendere `state.vibration` per vibrazione continua in `tickMove`
 - ⏳ **#3 Whoosh loop** — white noise modulato in pitch dalla velocità cabina
 
@@ -448,7 +448,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 |---|---|---|---|---|---|
 | 19 | **Modalità manutentore** — tasto segreto `Shift+M` mostra wireframe della cabina, statistiche FPS, draw calls, e permette di teletrasportarsi a un piano con `1`–`9` | Basso | Medio | 🟢 | Utile per debug e per utenti curiosi. Solo developer overlay |
 | 20 | **Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E" | Alto | Medio | 🟡 | Più realistico del toggle attuale. Si aggancia al sistema di collisioni FPS esistente |
-| 21 | **Specchio riflettente credibile** — sostituire la texture statica dello specchio con `Reflector` di Three.js per riflettere davvero l'interno cabina (display LED, passeggeri, passeggeri virtuali) | Molto alto | Medio | 🔴 | Impatto visivo enorme. Richiede camera helper di Three.js |
+| 21 | ~~**Specchio riflettente credibile**~~ — ✅ **Implementato in Polish Pack v1.1 (#21)** | Molto alto | Medio | 🔴 | Reflector addon, render target 512×512 |
 | 22 | **Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati | Basso | Basso | 🟢 | Onboarding migliore per nuovi utenti |
 
 ### 11.7 Priorità di implementazione (raccomandazione)

@@ -106,6 +106,9 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - Temperatura coerente con la condizione, leggermente più freddo ai piani alti
 - Cambia al 50% di probabilità ad ogni arrivo al piano
 
+### 🪞 Specchio riflettente
+- Lo specchio sulla parete sinistra usa `Reflector` di Three.js: riflette in tempo reale l'interno cabina, inclusi display touch, striscia LED soffitto, passeggeri e display laterale
+
 ### 📺 Pannello pubblicitario laterale
 - Display 16:9 sopra lo specchio
 - 5 schermate a rotazione ogni 12 secondi:

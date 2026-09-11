@@ -293,6 +293,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 // ============================================================
 // CONFIGURAZIONE
@@ -621,12 +622,17 @@ function makeWall(w, h, color = 0xd0d3d7, metalness = 0.85, roughness = 0.35) {
   cabin.add(m);
 }
 
-// Specchio sulla parete sinistra
+// Specchio sulla parete sinistra (Reflector — riflette davvero la cabina)
 {
-  const mirrorMat = new THREE.MeshStandardMaterial({
-    color: 0xaab0b6, roughness: 0.05, metalness: 1.0, envMapIntensity: 1.2
-  });
-  const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.4), mirrorMat);
+  const mirror = new Reflector(
+    new THREE.PlaneGeometry(0.7, 1.4),
+    {
+      clipBias: 0.003,
+      textureWidth: 512,
+      textureHeight: 512,
+      color: 0xb0b4b8
+    }
+  );
   mirror.rotation.y = Math.PI / 2;
   mirror.position.set(-CABIN.w/2 + 0.01, 1.45, -0.2);
   cabin.add(mirror);
