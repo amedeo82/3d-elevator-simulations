@@ -364,7 +364,9 @@ const state = {
   _camLed: null,
   _camLedSphere: null,
   _alarmId: null,
-  _lastPassengerChange: 0
+  _lastPassengerChange: 0,
+  // Polish Pack v1.3 #4: cartello "passo passo" durante il viaggio
+  _lastShownFloor: null
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -1509,6 +1511,68 @@ function drawFloorSign(floor) {
   signTex.needsUpdate = true;
 }
 drawFloorSign(0);
+
+// Polish Pack v1.3 #4 — cartello "passo passo" durante il viaggio
+// Mostra i piani che la cabina sta attraversando, con quello corrente evidenziato
+function drawMovingSign(fromFloor, toFloor, currentShown) {
+  const g = signCtx;
+  const up = toFloor > fromFloor;
+  // stesso sfondo del cartello statico (mantiene coerenza visiva)
+  g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
+  g.strokeStyle = '#d4a23a'; g.lineWidth = 5;
+  g.strokeRect(8, 8, 496, 112);
+  g.strokeStyle = '#7a5a20'; g.lineWidth = 2;
+  g.strokeRect(15, 15, 482, 98);
+  g.strokeStyle = '#f6c945'; g.lineWidth = 2;
+  for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+    g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
+  }
+  // freccia direzione (verde salita, ambra discesa) + etichetta
+  const accColor = up ? '#7fff7f' : '#ff8c5a';
+  const arrow = up ? '▲' : '▼';
+  g.fillStyle = accColor;
+  g.shadowColor = accColor; g.shadowBlur = 12;
+  g.font = 'bold 48px Georgia, serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(arrow, 48, 55);
+  g.shadowBlur = 0;
+  g.font = 'bold 14px Georgia, serif';
+  g.fillStyle = '#d4a23a';
+  g.fillText(up ? 'SALITA' : 'DISCESA', 48, 95);
+  // lista piani attraversati (separati da " · "), con quello corrente evidenziato
+  const lo = Math.min(fromFloor, toFloor);
+  const hi = Math.max(fromFloor, toFloor);
+  const cells = [];
+  for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+  g.font = 'bold 28px Georgia, serif';
+  g.textAlign = 'left';
+  let cursorX = 110;
+  cells.forEach((label, idx) => {
+    const floorNum = idx + lo;
+    const isCurrent = floorNum === currentShown;
+    if (isCurrent) {
+      g.fillStyle = accColor;
+      g.shadowColor = accColor; g.shadowBlur = 14;
+    } else {
+      g.fillStyle = '#d4a23a';
+    }
+    g.fillText(label, cursorX, 50);
+    const w = g.measureText(label).width;
+    if (idx < cells.length - 1) {
+      g.fillStyle = '#7a5a20'; g.shadowBlur = 0;
+      const sep = ' · ';
+      g.fillText(sep, cursorX + w + 2, 50);
+      cursorX += w + g.measureText(sep).width + 4;
+    }
+    g.shadowBlur = 0;
+  });
+  // sottotitolo (centrato)
+  g.fillStyle = '#d4a23a';
+  g.font = 'italic 16px Georgia, serif';
+  g.textAlign = 'center';
+  g.fillText('— IN VIAGGIO · BOSS HOTEL ELEVATOR —', 300, 95);
+  signTex.needsUpdate = true;
+}
 
 const signMatFront = new THREE.MeshBasicMaterial({ map: signTex });
 const signMatBack = new THREE.MeshBasicMaterial({ map: signTex });
@@ -3034,6 +3098,8 @@ function startMoveTo(floor) {
   moveTo = floor;
   moveT = 0;
   moveElapsed = 0;
+  // Polish Pack v1.3 #4: forza il primo update del cartello "passo passo"
+  state._lastShownFloor = null;
   const distance = Math.abs(moveTo - moveFrom);
   moveDuration = 1.6 + distance * 0.6; // più piani = più tempo
   // chiudi le porte prima di partire (se non sono già chiuse)
@@ -3088,6 +3154,11 @@ function tickMove(dt) {
   const floorShown = Math.round(currentDisplay);
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  // Polish Pack v1.3 #4: cartello "passo passo" — aggiorna solo quando cambia il piano mostrato
+  if (floorShown !== state._lastShownFloor) {
+    state._lastShownFloor = floorShown;
+    drawMovingSign(moveFrom, moveTo, floorShown);
+  }
 
   if (moveT >= 1) {
     // arrivato
