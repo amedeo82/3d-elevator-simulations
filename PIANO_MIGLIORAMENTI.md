@@ -16,12 +16,15 @@ Documento di design e implementation log.
 | Fasi implementate | ✅ 9/9 (100%) |
 | Polish Pack v1.1 | ✅ 5/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ✅) |
 | Polish Pack v1.2 | ✅ 3/3 (#10 ✅, #5 ✅, #11 ✅) |
+| Polish Pack v1.3 | 🟡 0/5 in corso (branch `feature/polish-pack-v1.3`) — #4, #6, #7, #8, #22 |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
 | File di progetto | `elevator.html` (~120KB, single file) |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
+
+**Polish Pack v1.3** (in corso): 5 quick-win selezionati dall'utente per rapporto impatto/sforzo. Scope confermato il 2026-09-11.
 
 ---
 
@@ -193,13 +196,29 @@ Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità im
 - ✅ **#1 Shake cabina durante viaggio** — aggiunti 5 nuovi campi a `state` (`vibrationX`, `vibrationZ`, `vibrationRoll`, `vibrationPitch`, `_movePhase`). In `tickMove()` calcolo oscillazioni X/Z ±3.5mm + roll/pitch ~2° con envelope a campana `sin(π·moveT)` (max al centro, nullo ai capi). Decay graduale (`×0.85`/frame) quando la cabina è ferma. Applicato al `cabin` group nel LOOP.
 - ✅ **#3 Whoosh loop** — aggiunte 3 funzioni audio (`makeNoiseBuffer`, `startWhoosh`, `stopWhoosh`) in sezione AUDIO (~riga 2856). White noise 1s in loop attraverso `BiquadFilter` bandpass; pitch 300→1100Hz modulato da `sin(π·moveT)` (envelope a campana), gain 0→0.025. Stop con `linearRampToValueAtTime(0, +0.05s)` per evitare click. Hook start/stop in cima a `tickMove()` (riga ~2998) basato su `state.isMoving && !movePaused`.
 
-### Fase 11 — Polish Pack v1.2 🟡 (in corso, branch `feature/polish-pack-v1.2`)
+### Fase 11 — Polish Pack v1.2 ✅ (merged su `main`)
 
 Tre feature UX/accessibilità a basso rischio dal backlog §11.3.
 
 - ✅ **#10 Scorciatoie tastiera 1–9/0 per piani** — aggiunto blocco nel `keydown` listener (riga ~3435) che riconosce `Digit1`–`Digit9`, `Digit0`, `Numpad1`–`Numpad9`, `Numpad0` e chiama `requestFloor(floor)`. Rispetta `state.alarmOn` (già gestito da `requestFloor`). Aggiunta riga nel pannello help HUD. Feedback visivo via `statusText` ("Chiamato piano N") con reset automatico dopo 1.5s.
 - ✅ **#5 Ding differenziato all'arrivo** — `playChime()` ora accetta parametro `kind` (`'final'` | `'intermediate'`, default `'final'`). Quando la cabina arriva a un piano e la coda è vuota → 2 ding (arrivo finale). Se ci sono altri piani in coda → 1 ding singolo a 660Hz (fermata intermedia). Modificata la chiamata in `tickMove()` riga ~3096.
 - ✅ **#11 Sottotitoli annunci vocali** — aggiunto `<div id="subtitle">` in HUD (riga 268) con CSS dedicato (pillola gialla con icona 🔊 sopra lo status). Nuova funzione `showSubtitle(text, durationMs)` con fade in/out 250ms tramite classe `.show`. Hook in `announceArrival()`, `announceAlarm()`, `announceDoorClosing()`: ogni annuncio TTS mostra il testo in caps sul HUD. Funziona anche con TTS disabilitato (fallback accessibilità).
+
+### Fase 12 — Polish Pack v1.3 🟡 (in corso, branch `feature/polish-pack-v1.3`)
+
+Cinque quick-win dal backlog §11, selezionati per rapporto impatto/sforzo. Scope approvato dall'utente il 2026-09-11.
+
+- 🟡 **#4 Indicatore direzione "passo passo" sul cartello corridoio** — da implementare. Durante la corsa il cartello lato corridoio mostrerà i piani attraversati (es. "▲ T · 1 · 2 · 3") aggiornato in tempo reale. All'arrivo tornerà al formato statico "PIANO N°". ~30 righe in `tickMove()` + nuova `drawMovingSign(floorShown)`.
+- 🟡 **#6 Modalità "Fuori servizio" (tasto `O`)** — da implementare. Toggle stato `state.outOfOrder`. Display touch mostra "FUORI SERVIZIO" rosso. `requestFloor()` rifiuta le selezioni con tono basso (220Hz square). Annuncio vocale all'attivazione/disattivazione. ~40 righe + texture cartello corridoio.
+- 🟡 **#7 Numerazione camere hotel contestuale** — da implementare. Nuova sezione nel display touch sotto al piano corrente: "Camere 401–432" per piani 4–6, "Lobby · Reception" per piano T, "Attico · Suite N0N" per piani 7–9. Visibile solo a cabina ferma. ~15 righe + nuova funzione `floorRoomRange(f)`.
+- 🟡 **#8 Orologio mondiale sul pannello pubblicitario** — da implementare. Aggiunta 6ª schermata al ciclo rotante: griglia con orari di Roma, New York, Tokyo, Londra, Sydney calcolati con `toLocaleTimeString` sui rispettivi `Intl.timeZone`. Rotazione 12s come le altre. ~30 righe + nuova `drawWorldClocks(ctx, w, h)`.
+- 🟡 **#22 Schermata "Welcome" interattiva** — da implementare. Sostituzione bottone singolo con carosello di 5 slide (Cabina 5★, Touch screen, Meteo live, Annunci vocali, 4 temi corridoio). Auto-rotazione ogni 2.5s, slide attiva evidenziata in oro. ~30 righe HTML/CSS/JS.
+
+**Acceptance comune**:
+- [ ] Nessun calo FPS percepibile (target ≥50)
+- [ ] Tasto `O` documentato nel pannello help HUD
+- [ ] TTS italiano coerente con annunci esistenti
+- [ ] Cleanup corretto risorse (texture, listener)
 
 ---
 
