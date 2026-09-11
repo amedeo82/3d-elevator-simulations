@@ -185,6 +185,49 @@
   #startscreen button:hover { transform: translateY(-2px); box-shadow: 0 10px 35px rgba(255, 214, 107, 0.45); }
   #startscreen button:active { transform: translateY(0); }
 
+  /* Polish Pack v1.3 #22 — carosello slide start screen */
+  #startscreen .slides-wrap {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #startscreen .slides-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.55;
+    color: #ffd66b;
+  }
+  #startscreen .slides {
+    display: flex;
+    gap: 14px;
+  }
+  #startscreen .slide {
+    width: 110px; height: 110px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 12px 8px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #ddd;
+    opacity: 0.4;
+    transition: opacity 0.5s, border-color 0.5s, transform 0.5s;
+  }
+  #startscreen .slide .emoji { font-size: 30px; margin-bottom: 6px; }
+  #startscreen .slide .small { opacity: 0.7; font-size: 10px; margin-top: 4px; }
+  #startscreen .slide.active {
+    opacity: 1;
+    border-color: #ffd66b;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 214, 107, 0.18);
+  }
+
   #pointerhint {
     position: absolute;
     left: 50%;
@@ -312,6 +355,38 @@
     <div>V</div><div>Attiva/disattiva annunci vocali</div>
     <div>N</div><div>Attiva/disattiva modalità notte</div>
   </div>
+  <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
+  <div class="slides-wrap">
+    <div class="slides-label">Caratteristiche</div>
+    <div id="startSlides" class="slides">
+      <div class="slide active">
+        <div class="emoji">🛗</div>
+        <div>Cabina 5★</div>
+        <div class="small">Boss Hotel Edition</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">📱</div>
+        <div>Touch screen</div>
+        <div class="small">Display 540×1100</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🌤️</div>
+        <div>Meteo live</div>
+        <div class="small">Roma in tempo reale</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🗣️</div>
+        <div>Annunci vocali</div>
+        <div class="small">Web Speech API</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🏨</div>
+        <div>4 temi corridoio</div>
+        <div class="small">Lobby · Uffici · Hotel · Attico</div>
+      </div>
+    </div>
+  </div>
+
   <button id="startBtn">Entra nell'ascensore</button>
 </div>
 
@@ -3901,7 +3976,22 @@ refreshHudButtons();
 // apri le porte per mostrare subito il corridoio
 setDoors(true);
 
+// Polish Pack v1.3 #22 — carosello slide start screen
+// Auto-rotazione ogni 2.5s, si ferma quando l'utente entra
+let startSlideIdx = 0;
+let startSlidesTimer = null;
+(function initStartSlides() {
+  const slides = document.querySelectorAll('#startSlides .slide');
+  if (!slides.length) return;
+  startSlidesTimer = setInterval(() => {
+    slides.forEach((s, i) => s.classList.toggle('active', i === startSlideIdx));
+    startSlideIdx = (startSlideIdx + 1) % slides.length;
+  }, 2500);
+})();
+
 document.getElementById('startBtn').addEventListener('click', () => {
+  // ferma il carosello
+  if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
   ensureAudio();
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
