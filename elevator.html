@@ -321,6 +321,12 @@ const state = {
   nightMode: false,
   passengers: 1,
   vibration: 0,
+  // shake continuo durante il viaggio (Fase 10 #1)
+  vibrationX: 0,
+  vibrationZ: 0,
+  vibrationRoll: 0,
+  vibrationPitch: 0,
+  _movePhase: 0,
   // riferimenti popolati dopo (telecamera, allarme, ecc.)
   _camLed: null,
   _camLedSphere: null,
@@ -2952,7 +2958,14 @@ function actuallyStartMove() {
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
 function tickMove(dt) {
-  if (!state.isMoving || movePaused) return;
+  // decay dello shake quando la cabina è ferma
+  if (!state.isMoving || movePaused) {
+    state.vibrationX *= 0.85;
+    state.vibrationZ *= 0.85;
+    state.vibrationRoll *= 0.85;
+    state.vibrationPitch *= 0.85;
+    return;
+  }
   moveElapsed += dt;
   moveT = Math.min(1, moveElapsed / moveDuration);
   const t = easeInOutCubic(moveT);
@@ -2960,6 +2973,13 @@ function tickMove(dt) {
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
   cabin.position.y = y;
+  // shake continuo durante il viaggio (Fase 10 #1) — envelope a campana, max al centro
+  state._movePhase += dt * 4;
+  const amp = 0.0035 * Math.sin(Math.PI * moveT);
+  state.vibrationX = (Math.sin(state._movePhase * 7.3) + Math.sin(state._movePhase * 11.1)) * amp;
+  state.vibrationZ = (Math.cos(state._movePhase * 8.7) + Math.sin(state._movePhase * 13.3)) * amp;
+  state.vibrationRoll  = Math.sin(state._movePhase * 5.1) * amp * 0.6;
+  state.vibrationPitch = Math.cos(state._movePhase * 6.7) * amp * 0.6;
   // aggiorna display: piano corrente "arrotondato" durante il movimento
   const currentDisplay = moveFrom + (moveTo - moveFrom) * t;
   const floorShown = Math.round(currentDisplay);
@@ -3430,13 +3450,18 @@ function loop(now) {
     state._camLedSphere.material.color.setHex(camK ? 0xff3030 : 0x551010);
   }
 
-  // vibrazione cabina (Fase 8)
+  // vibrazione cabina (Fase 8) — scossa one-shot al click
   if (state.vibration > 0) {
     state.vibration = Math.max(0, state.vibration - dt * 4);
     const vib = Math.sin(now * 0.05) * 0.003 * state.vibration;
     // applichiamo un piccolo offset alla posizione della cabina (solo al cabin, non al corridoio)
     cabin.position.y += vib;
   }
+  // shake continuo durante il viaggio (Fase 10 #1) — offset X/Z + roll/pitch
+  cabin.position.x = state.vibrationX;
+  cabin.position.z = state.vibrationZ;
+  cabin.rotation.z = state.vibrationRoll;
+  cabin.rotation.x = state.vibrationPitch;
 
   // variazione passeggeri randomica (Fase 8) — quando la cabina è ferma, ogni tanto cambiano
   if (!state.isMoving && state.doorsOpen && state.alarmOn === false) {

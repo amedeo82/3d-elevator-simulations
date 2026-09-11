@@ -14,7 +14,7 @@ Documento di design e implementation log.
 |---|---|
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
-| Polish Pack v1.1 | 🟡 3/5 (#17 ✅, #15 ✅, #21 ✅, #1 ⏳, #3 ⏳) |
+| Polish Pack v1.1 | 🟡 4/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ⏳) |
 | Bug fix post-fasi | ✅ 5 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -189,7 +189,7 @@ Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità im
 - ✅ **#17 Fix dispose corridoi** — `disposeCorridor()` aveva un `if` con corpo vuoto: le texture di tutti i materiali del corridoio (esclusi i `signMat`) non venivano mai dispose(), causando memory leak a ogni cambio piano. Riscritto il ciclo per gestire materiali singoli e array, scartare esplicitamente `signTex` condivisa, e dispose() texture + materiali in modo uniforme.
 - ✅ **#15 Persistenza preferenze in localStorage** — aggiunte `loadPrefs()` / `savePrefs()` con chiave versionata `bossHotelPrefs@v1`. `muted`, `ttsEnabled`, `nightMode` ora permangono dopo il refresh. Hook chiamato nei 3 toggle handler (M, V, N). Aggiunto feedback visivo "Audio: ON/OFF" al tasto M (era assente).
 - ✅ **#21 Specchio riflettente** — sostituito `MeshStandardMaterial` con `Reflector` di `three/addons/objects/Reflector.js` (riga ~622). Render target 512×512, `clipBias: 0.003`, tinta `0xb0b4b8`. Lo specchio riflette ora davvero l'interno cabina (display LED, striscia LED soffitto, pannello, passeggeri). Importmap `three/addons/` era già pronto da una predisposizione precedente.
-- ⏳ **#1 Shake cabina durante viaggio** — estendere `state.vibration` per vibrazione continua in `tickMove`
+- ✅ **#1 Shake cabina durante viaggio** — aggiunti 5 nuovi campi a `state` (`vibrationX`, `vibrationZ`, `vibrationRoll`, `vibrationPitch`, `_movePhase`). In `tickMove()` calcolo oscillazioni X/Z ±3.5mm + roll/pitch ~2° con envelope a campana `sin(π·moveT)` (max al centro, nullo ai capi). Decay graduale (`×0.85`/frame) quando la cabina è ferma. Applicato al `cabin` group nel LOOP.
 - ⏳ **#3 Whoosh loop** — white noise modulato in pitch dalla velocità cabina
 
 ---
@@ -322,6 +322,11 @@ const state = {
   nightMode: false,       // Fase 8
   passengers: 1,          // 0-8 (Fase 8)
   vibration: 0,           // offset Y per vibrazione cabina (Fase 8)
+  vibrationX: 0,          // shake X continuo durante viaggio (Fase 10 #1)
+  vibrationZ: 0,          // shake Z continuo durante viaggio (Fase 10 #1)
+  vibrationRoll: 0,       // rollio cabina (rad)
+  vibrationPitch: 0,      // beccheggio cabina (rad)
+  _movePhase: 0,          // fase oscillazioni shake
   _camLed: null,          // riferimento PointLight telecamera
   _camLedSphere: null,    // riferimento sfera LED telecamera
   _alarmId: null,         // interval ID sirena allarme
@@ -403,7 +408,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 
 | # | Idea | Impatto | Sforzo | Prio | Note |
 |---|---|---|---|---|---|
-| 1 | **Effetto shake/movimento cabina durante il viaggio** — micro-oscillazioni X/Z (±2–4mm) + leggero roll/pitch randomico in `tickMove` | Alto | Basso | 🔴 | Backlog §9.1. Da fondere con `state.vibration` già esistente (oggi attivo solo on-click) |
+| 1 | ~~**Effetto shake/movimento cabina durante il viaggio**~~ — ✅ **Implementato in Polish Pack v1.1 (#1)** | Alto | Basso | 🔴 | 5 nuovi state fields, envelope a campana, decay `×0.85` |
 | 2 | **Musica di sottofondo contestuale** — jazz morbido in lobby, classica all'attico, allarme silenzia tutto | Alto | Medio | 🔴 | Backlog §9.1. WebAudio: loop oscillator + filtri low-pass. ~80 righe |
 | 3 | **Effetto sonoro di movimento cabina** — loop "whoosh/wind" modulato in pitch con la velocità (più acuto al centro della corsa, più grave ai capi) | Alto | Medio | 🔴 | Si sposa con #1 per dare il "peso" della salita |
 | 4 | **Indicatore direzione "passo passo"** — sul cartello del corridoio mostrare i piani che la cabina sta attraversando (es. "▲ 2·3·4·5") durante la corsa | Medio | Basso | 🟡 | Implementabile in `tickMove` dove già calcoli `floorShown`. Texture canvas già pronta |
