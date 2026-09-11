@@ -113,12 +113,13 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 
 ### 📺 Pannello pubblicitario laterale
 - Display 16:9 sopra lo specchio
-- 5 schermate a rotazione ogni 12 secondi:
+- **6 schermate** a rotazione ogni 12 secondi:
   1. **Orologio analogico animato** in tempo reale
   2. Meteo esteso con previsioni
   3. "BENVENUTI al Boss Hotel" (storia)
   4. Menù del giorno del Ristorante "La Terrazza"
   5. Offerte Boss Spa & Wellness
+  6. **Orologio mondiale** — orari live di Roma, New York, Tokyo, Londra, Sydney
 
 ### 🌙 Modalità notte
 - Tasto **N** per luci soffuse e atmosfera più intima
@@ -141,6 +142,30 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - Luci rosse pulsanti, sirena alternata a due toni
 - Cabina bloccata, porte chiuse, annuncio vocale
 - Tasto STOP (giallo) per fermare immediatamente la cabina
+
+### 🛑 Modalità "Fuori servizio"
+- Tasto **O** per mettere l'ascensore in stato di manutenzione
+- Display touch: overlay rosso "FUORI SERVIZIO" + "Premere O per ripristinare"
+- Cartello corridoio: warning rosso con "MANUTENZIONE IN CORSO"
+- Tutti i tasti piani disabilitati (selezione rifiutata con tono basso 220Hz)
+- Movimento bloccato, porte chiuse, coda svuotata
+- Annuncio vocale italiano all'attivazione/disattivazione
+- Tasto `O` di nuovo per ripristinare (beep ascendente 660Hz)
+
+### 🚏 Indicatore direzione "passo passo"
+- Durante la corsa, il cartello lato corridoio mostra i piani che la cabina sta attraversando (es. "▲ T · 1 · 2 · 3")
+- Freccia verde in salita / ambra in discesa + piano corrente evidenziato
+- All'arrivo, torna al formato statico "PIANO N°"
+
+### 🏨 Numerazione camere contestuale
+- Quando la cabina è ferma ai piani 4–6, il display touch mostra "Camere 401–432", "Camere 501–532", "Camere 601–632"
+- Al piano T mostra "Lobby · Reception", ai piani 1–3 "Uffici N° piano", ai piani 7–9 "Attico · Suite N0N"
+
+### 👋 Schermata Welcome interattiva
+- Carosello di 5 slide che ruota ogni 2.5 secondi sulla start screen
+- Evidenzia le feature principali: Cabina 5★, Touch screen, Meteo live, Annunci vocali, 4 temi corridoio
+- Slide attiva con bordo dorato e leggero sollevamento
+- Si ferma automaticamente al click su "Entra nell'ascensore"
 
 ---
 
@@ -170,6 +195,7 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 | Toggle annunci vocali | `V` |
 | Toggle modalità notte | `N` |
 | **Chiama un piano** | `1`–`9` / `0` (anche tastierino numerico) |
+| **Fuori servizio** | `O` (toggle manutenzione) |
 
 ### Flusso tipico
 1. Click su "Entra nell'ascensore" → il mouse viene "catturato" (pointer lock)

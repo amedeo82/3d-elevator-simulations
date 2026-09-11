@@ -33,35 +33,30 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 ---
 
-**Polish Pack v1.3**: 🟡 **0/5 in corso su branch `feature/polish-pack-v1.3`** (creato 2026-09-11)
+**Polish Pack v1.3**: ✅ **5/5 completato su branch `feature/polish-pack-v1.3`** (da mergiare)
 
 5 quick-win selezionati per rapporto impatto/sforzo dal backlog §11.
 
-| # | Funzionalità | Gruppo | Stato | Effort | Note |
+| # | Funzionalità | Gruppo | Stato | Commit | Note |
 |---|---|---|---|---|---|
-| #4 | Indicatore direzione "passo passo" sul cartello corridoio | §11.1 Core | 🟡 | ~30 righe | `drawMovingSign(floorShown)` + hook in `tickMove()` |
-| #6 | Modalità "Fuori servizio" (tasto `O`) | §11.2 Premium | 🟡 | ~40 righe + texture | `state.outOfOrder`, display rosso, annuncio vocale |
-| #7 | Numerazione camere hotel contestuale | §11.2 Premium | 🟡 | ~15 righe | `floorRoomRange(f)` + sezione nel display |
-| #8 | Orologio mondiale sul pannello pubblicitario | §11.2 Premium | 🟡 | ~30 righe | 6ª schermata rotante con `toLocaleTimeString` |
-| #22 | Schermata "Welcome" interattiva | §11.6 Nuove | 🟡 | ~30 righe HTML/CSS/JS | Carosello 5 slide, auto-rotate 2.5s |
+| #4 | Indicatore direzione "passo passo" sul cartello corridoio | §11.1 Core | ✅ | `356bf5b` | `drawMovingSign()` + hook in `tickMove()` con guard `_lastShownFloor` |
+| #6 | Modalità "Fuori servizio" (tasto `O`) | §11.2 Premium | ✅ | `3a968f1` | `state.outOfOrder`, display/cartello rossi, beep rifiuto, annuncio vocale |
+| #7 | Numerazione camere hotel contestuale | §11.2 Premium | ✅ | `f3f79bb` | `floorRoomRange(f)` — visibile a cabina ferma |
+| #8 | Orologio mondiale sul pannello pubblicitario | §11.2 Premium | ✅ | `ac29bbd` | 6ª schermata rotante, `toLocaleTimeString` per 5 città |
+| #22 | Schermata "Welcome" interattiva | §11.6 Nuove | ✅ | `fb8576a` | Carosello 5 slide, auto-rotate 2.5s, stop su startBtn |
 
-**Totale Polish Pack v1.3** (a completamento): 5 feature, ~145 righe + HTML/CSS, 1 file (`elevator.html` + docs).
-
-**Decisioni**:
-- **Deploy**: sync `dist/index.html` solo a fine feature (come v1.1 / v1.2)
-- **Commit**: 1 commit per feature + commit di chiusura `Polish Pack v1.3 completato`
-- **Acceptance comune**: nessun calo FPS, tasto `O` documentato in help HUD, cleanup risorse
+**Totale Polish Pack v1.3**: 5 feature, 1 file principale + sync dist, ~330 righe in `elevator.html` (5 commit feature + 1 sync dist + 1 docs).
 
 ## Indice per gruppo
 
 | Gruppo | File | # Features | Implementate |
 |---|---|---|---|
-| §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 2/4 (#1 ✅, #3 ✅) — **#4 in corso** |
-| §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 1/4 (#5 ✅) — **#6, #7, #8 in corso** |
+| §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 3/4 (#1 ✅, #3 ✅, #4 ✅) |
+| §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 4/4 (#5 ✅, #6 ✅, #7 ✅, #8 ✅) |
 | §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 2/4 (#10 ✅, #11 ✅) |
 | §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 1/3 (#15 ✅) |
 | §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) |
-| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 1/4 (#21 ✅) — **#22 in corso** |
+| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 2/4 (#21 ✅, #22 ✅) |
 
 **Totale backlog residuo post-v1.3**: 12/22 funzionalità non ancora implementate.
 
@@ -82,11 +77,9 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 - #16 — Service Worker offline-first + PWA (richiede multi-file → decisione D2)
 - #18 — Texture atlas / caching canvas offscreen
 
-### §11.6 Nuove (3)
+### §11.6 Nuove (2)
 - #19 — Modalità manutentore (`Shift+M`)
 - #20 — Sistema di prenotazione cabina dal corridoio
-
-**Backlog §11.6** dopo v1.3: 2 residue (era 3, con #22 completato).
 
 ## Prossimi candidati (post-v1.3)
 
