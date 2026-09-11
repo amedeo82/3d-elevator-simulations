@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.0 — Implementation Complete** · Aggiornato 2026-09-11
+**Versione 1.1 — Implementation Complete + Backlog Esteso** · Aggiornato 2026-09-11
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -381,3 +381,92 @@ Possibili miglioramenti non implementati (backlog):
 ---
 
 **Stato finale: 100% completo, 0 bug noti, deployato e funzionante** ✅
+
+---
+
+## 11. Estensione backlog (post-2026-09-11)
+
+Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attuabili nel rispetto dei vincoli di progetto (singolo file HTML, no npm, Three.js via CDN). Le idee sono raggruppate per categoria e marcate con priorità: 🔴 alta, 🟡 media, 🟢 bassa.
+
+### 11.1 Funzionalità "core" mancanti
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 1 | **Effetto shake/movimento cabina durante il viaggio** — micro-oscillazioni X/Z (±2–4mm) + leggero roll/pitch randomico in `tickMove` | Alto | Basso | 🔴 | Backlog §9.1. Da fondere con `state.vibration` già esistente (oggi attivo solo on-click) |
+| 2 | **Musica di sottofondo contestuale** — jazz morbido in lobby, classica all'attico, allarme silenzia tutto | Alto | Medio | 🔴 | Backlog §9.1. WebAudio: loop oscillator + filtri low-pass. ~80 righe |
+| 3 | **Effetto sonoro di movimento cabina** — loop "whoosh/wind" modulato in pitch con la velocità (più acuto al centro della corsa, più grave ai capi) | Alto | Medio | 🔴 | Si sposa con #1 per dare il "peso" della salita |
+| 4 | **Indicatore direzione "passo passo"** — sul cartello del corridoio mostrare i piani che la cabina sta attraversando (es. "▲ 2·3·4·5") durante la corsa | Medio | Basso | 🟡 | Implementabile in `tickMove` dove già calcoli `floorShown`. Texture canvas già pronta |
+
+### 11.2 Funzionalità hotel "premium" (low effort, alto effetto)
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 5 | **Suono "ding" differenziato all'arrivo + apertura porte** — `playChime()` esiste ma è uguale per ogni direzione. Distinguere: 1 ding per fermata intermedia, 2 ding per arrivo finale | Medio | Basso | 🟡 | Estensione minima di Fase 6 |
+| 6 | **Modalità "Fuori servizio" / "Manutenzione"** — tasto `O` (Out-of-order) oscura il display, mostra "FUORI SERVIZIO" sul cartello del corridoio, disabilita la selezione piani | Medio | Basso | 🟡 | Easter-egg credibile, utile anche per debug |
+| 7 | **Numerazione camere hotel contestuale** — i piani 4–6 hanno già porte numerate ma il numero è decorativo. Mostrare sul display quando si è fermi (es. "Camere 401–432") | Basso | Basso | 🟢 | Si lega al tema "corridoio hotel" |
+| 8 | **Orologio mondiale sul pannello pubblicitario** — affiancare all'orologio analogico di Roma una piccola griglia con orari di NY, Tokyo, Londra | Basso | Basso | 🟢 | Estensione naturale di Fase 2. Tema "hotel internazionale" |
+
+### 11.3 UX / accessibilità
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 9 | **Comando vocale (speech-to-text)** — "Piano cinque" chiama il piano 5 via `SpeechRecognition` API | Alto | Medio | 🟡 | Si sposa con l'esistente TTS (Fase 6). ~40 righe |
+| 10 | **Scorciatoie tastiera 1–9 per piani** — quando si è in cabina o nel corridoio, premere i tasti `1`..`9`/`0` chiama direttamente quel piano | Medio | Basso | 🟡 | L'utente medio non sa che si può cliccare il display touch |
+| 11 | **Sottotitoli per annunci vocali** — striscia HUD che replica il testo pronunciato, per chi non sente l'audio o ha TTS rotto | Medio | Basso | 🟡 | Si aggancia a `speak()` aggiungendo side-effect DOM |
+| 12 | **Lingua selezionabile (IT/EN)** — display touch, cartelli corridoio, menu del ristorante e annunci TTS | Alto | Alto | 🟢 | Backlog §9.2. Richiede refactor di tutte le stringhe hardcoded in un dict `STRINGS[lang]` |
+
+### 11.4 Robustezza e qualità
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 13 | **Verifica accessibilità tastiera nel corridoio** — controllare se `WASD` è correttamente disattivato quando si è nella cabina (potrebbe creare drift di posizione della camera) | Medio | Basso | 🟡 | Da testare in playtest |
+| 14 | **Logica passeggeri coerente** — i "passeggeri" cambiano ma senza coerenza (possono scendere da 8 a 0 durante la notte). Aggiungere logica: "scendono quando le porte sono aperte al lobby/ufficio, salgono ai piani alti" | Basso | Medio | 🟢 | Estensione di Fase 8 |
+| 15 | **Persistenza preferenze in localStorage** — salvare `muted`, `ttsEnabled`, `nightMode` così rimangono al refresh | Medio | Basso | 🟡 | 5 righe di codice + init in avvio |
+
+### 11.5 Tecnico / performance
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 16 | **Service Worker offline-first + PWA installabile** — l'app è già single-file e statica, perfetta per PWA. Richiede un file `sw.js` + `manifest.json` | Alto | Medio | 🟡 | Backlog §9.2. Aggiunge 2 file ma abilita installazione mobile |
+| 17 | **Verifica `dispose()` dei corridoi ricostruiti** — controllare che geometrie, materiali e texture dei corridoi vecchi siano effettivamente dispose()d in `buildCorridor()` per evitare memory leak durante le 10+ ricostruzioni | Alto | Basso | 🔴 | Bug latente potenziale, da verificare |
+| 18 | **Texture atlas / caching canvas offscreen per il display touch** — oggi ridisegni l'intero canvas a ogni frame sporco. Cachare le sezioni statiche (cornice, header) in canvas offscreen e redraw solo le sezioni dinamiche | Medio | Medio | 🟢 | Backlog §9.2 |
+
+### 11.6 Idee nuove (non presenti nel backlog originale)
+
+| # | Idea | Impatto | Sforzo | Prio | Note |
+|---|---|---|---|---|---|
+| 19 | **Modalità manutentore** — tasto segreto `Shift+M` mostra wireframe della cabina, statistiche FPS, draw calls, e permette di teletrasportarsi a un piano con `1`–`9` | Basso | Medio | 🟢 | Utile per debug e per utenti curiosi. Solo developer overlay |
+| 20 | **Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E" | Alto | Medio | 🟡 | Più realistico del toggle attuale. Si aggancia al sistema di collisioni FPS esistente |
+| 21 | **Specchio riflettente credibile** — sostituire la texture statica dello specchio con `Reflector` di Three.js per riflettere davvero l'interno cabina (display LED, passeggeri, passeggeri virtuali) | Molto alto | Medio | 🔴 | Impatto visivo enorme. Richiede camera helper di Three.js |
+| 22 | **Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati | Basso | Basso | 🟢 | Onboarding migliore per nuovi utenti |
+
+### 11.7 Priorità di implementazione (raccomandazione)
+
+Se si decide di procedere, l'ordine ottimale per rapporto impatto/sforzo è:
+
+1. **#21 Specchio riflettente** — impatto visivo immediato, ~30 righe
+2. **#3 Whoosh loop** — impatto uditivo enorme, ~40 righe
+3. **#1 Shake cabina** — già parzialmente implementato in Fase 8 (solo on-click), manca in viaggio. ~20 righe in `tickMove`
+4. **#17 Verifica dispose corridoi** — bug latente, da verificare e fixare. 0 rischi, alto valore
+5. **#20 Prenotazione automatica dal corridoio** — gameplay feel completamente nuovo, ~60 righe
+6. **#15 Persistenza localStorage** — UX polish, 5 righe
+7. **#10 Scorciatoie tastiera 1–9** — power-user feature, 10 righe
+
+### 11.8 Decisioni richieste (per procedere)
+
+| # | Decisione | Default proposto |
+|---|---|---|
+| D1 | Quale sottoinsieme implementare? | Suggeriti #1, #3, #15, #17, #21 per un "Polish Pack v1.1" |
+| D2 | Mantenere singolo file o aggiungere `sw.js` + `manifest.json` per PWA? | Singolo file (conservativo) |
+| D3 | Aprire una nuova fase documentale (Fase 10) o procedere come "bug-fix/miglioramenti minori"? | Nuova fase documentale |
+| D4 | Aggiornare `dist/index.html` ad ogni modifica o solo a release consolidate? | Solo a release |
+
+### 11.9 Note di compatibilità
+
+- Tutte le idee sono compatibili con i vincoli §8.1 (singolo file HTML, Three.js CDN, WebGL only)
+- L'unica eccezione è **#16 (PWA)** che richiede 2 file esterni e quindi esce dal pattern single-file
+- **#12 (i18n)** è l'unica che richiede un refactor strutturale significativo di tutte le stringhe del codice
+
+---
+
+**Stato finale: 100% completo, 0 bug noti, deployato e funzionante, backlog esteso pronto per decisione** ✅🆕
