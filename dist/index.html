@@ -107,6 +107,32 @@
   #status.moving .dot { background: #ffd66b; box-shadow: 0 0 10px #ffd66b; }
   @keyframes pulse { from {opacity: 0.4;} to {opacity: 1;} }
 
+  /* Sottotitoli annunci vocali (Polish Pack v1.2 #11) */
+  #subtitle {
+    position: absolute;
+    left: 50%;
+    bottom: 70px;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.78);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffd66b;
+    letter-spacing: 0.3px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    max-width: 70%;
+    text-align: center;
+  }
+  #subtitle.show { opacity: 1; }
+  #subtitle::before {
+    content: '🔊 ';
+    margin-right: 4px;
+  }
+
   /* Start screen */
   #startscreen {
     position: fixed;
@@ -254,6 +280,7 @@
     <div class="row"><span><kbd>ESC</kbd></span><span>rilascia il mouse</span></div>
     <div class="row"><span><kbd>E</kbd></span><span>esci / rientra cabina</span></div>
     <div class="row"><span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>movimento nel corridoio</span></div>
+    <div class="row"><span><kbd>1</kbd>–<kbd>9</kbd> · <kbd>0</kbd></span><span>chiama un piano</span></div>
     <div class="row"><span><kbd>M</kbd></span><span>toggle suono</span></div>
     <div class="row"><span><kbd>V</kbd></span><span>toggle annunci vocali</span></div>
     <div class="row"><span><kbd>N</kbd></span><span>toggle modalità notte</span></div>
@@ -262,6 +289,7 @@
     <div class="dot"></div>
     <div id="statusText">In attesa</div>
   </div>
+  <div id="subtitle"></div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText">Dentro la cabina</span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;">↗ Esci dalla cabina</button>
   <button id="hud-reenter-btn" class="hud-action" style="display:none;">↙ Rientra in cabina</button>
@@ -269,17 +297,20 @@
 </div>
 
 <div id="startscreen">
-  <h1>Simulatore <b>Ascensore 3D</b></h1>
-  <p>Stai per entrare nella cabina di un ascensore realistico. Seleziona un piano dal pannello,
-     apri/chiudi le porte e, in caso di necessità, attiva la chiamata di emergenza. Muovi la visuale
-     con il mouse come in un gioco in prima persona.</p>
+  <h1>Boss Hotel · <b>Ascensore 3D</b></h1>
+  <p>Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch,
+     apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessità,
+     attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.</p>
   <div class="keys">
     <div>Mouse</div><div>Ruota la visuale</div>
     <div>Click</div><div>Premi i pulsanti del pannello</div>
-    <div>W A S D</div><div>Movimento nel corridoio</div>
+    <div>ESC</div><div>Rilascia il mouse</div>
     <div>E</div><div>Esci / Rientra dalla cabina</div>
-    <div>ESC</div><div>Esce dal controllo mouse</div>
+    <div>W A S D</div><div>Movimento nel corridoio</div>
+    <div>1 – 9 · 0</div><div>Chiama un piano (anche tastierino)</div>
     <div>M</div><div>Attiva/disattiva audio</div>
+    <div>V</div><div>Attiva/disattiva annunci vocali</div>
+    <div>N</div><div>Attiva/disattiva modalità notte</div>
   </div>
   <button id="startBtn">Entra nell'ascensore</button>
 </div>
@@ -2832,10 +2863,15 @@ function playBeep(freq = 800, dur = 0.08, type = 'sine', vol = 0.15) {
   o.connect(g); g.connect(audioCtx.destination);
   o.start(); o.stop(audioCtx.currentTime + dur);
 }
-function playChime() {
+function playChime(kind = 'final') {
   if (state.muted || !audioCtx) return;
-  playBeep(660, 0.15, 'sine', 0.12);
-  setTimeout(() => playBeep(880, 0.2, 'sine', 0.12), 100);
+  // Polish Pack v1.2 #5: 1 ding per fermata intermedia, 2 ding per arrivo finale
+  if (kind === 'intermediate') {
+    playBeep(660, 0.18, 'sine', 0.10);
+  } else {
+    playBeep(660, 0.15, 'sine', 0.12);
+    setTimeout(() => playBeep(880, 0.2, 'sine', 0.12), 100);
+  }
 }
 function playAlarm() {
   if (state.muted || !audioCtx) return;
@@ -2927,6 +2963,17 @@ function speak(text, opts = {}) {
   } catch (e) { /* ignore */ }
 }
 
+// Polish Pack v1.2 #11: sottotitoli per annunci vocali su HUD
+let _subtitleTimer = null;
+function showSubtitle(text, durationMs = 3000) {
+  const el = document.getElementById('subtitle');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  if (_subtitleTimer) clearTimeout(_subtitleTimer);
+  _subtitleTimer = setTimeout(() => el.classList.remove('show'), durationMs);
+}
+
 function floorNameIT(f) {
   if (f === 0) return 'piano terra';
   const names = ['', 'primo', 'secondo', 'terzo', 'quarto', 'quinto', 'sesto', 'settimo', 'ottavo', 'nono'];
@@ -2934,15 +2981,21 @@ function floorNameIT(f) {
 }
 
 function announceArrival(floor) {
-  speak(`${floorNameIT(floor)}, prego`);
+  const txt = `${floorNameIT(floor)}, prego`;
+  speak(txt);
+  showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1));
 }
 
 function announceAlarm() {
-  speak('Allarme. Chiamata di soccorsi in corso. Restate calmi.');
+  const txt = 'Allarme. Chiamata di soccorsi in corso. Restate calmi.';
+  speak(txt);
+  showSubtitle(txt, 5000);
 }
 
 function announceDoorClosing() {
-  speak('Attenzione. Le porte si stanno chiudendo.');
+  const txt = 'Attenzione. Le porte si stanno chiudendo.';
+  speak(txt);
+  showSubtitle(txt, 2500);
 }
 
 // ============================================================
@@ -3042,7 +3095,8 @@ function tickMove(dt) {
     state.isMoving = false;
     lightFloorButton(moveTo, false);
     state.requestedFloors.delete(moveTo);
-    playChime();
+    // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
+    playChime(state.requestedFloors.size > 0 ? 'intermediate' : 'final');
     // annuncio vocale all'arrivo
     if (typeof announceArrival === 'function') announceArrival(moveTo);
     // rigenera meteo al piano raggiunto
@@ -3381,6 +3435,27 @@ addEventListener('keydown', e => {
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
+  } else if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' ||
+             e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
+             e.code === 'Digit7' || e.code === 'Digit8' || e.code === 'Digit9' ||
+             e.code === 'Digit0' || e.code === 'Numpad1' || e.code === 'Numpad2' ||
+             e.code === 'Numpad3' || e.code === 'Numpad4' || e.code === 'Numpad5' ||
+             e.code === 'Numpad6' || e.code === 'Numpad7' || e.code === 'Numpad8' ||
+             e.code === 'Numpad9' || e.code === 'Numpad0') {
+    // scorciatoia tastiera: 1..9 = piano N, 0 = Terra (Polish Pack v1.2 #10)
+    let floor = -1;
+    const c = e.code;
+    if (c.startsWith('Digit'))  floor = parseInt(c.slice(5), 10);
+    else if (c.startsWith('Numpad')) floor = parseInt(c.slice(6), 10);
+    if (c === 'Digit0' || c === 'Numpad0') floor = 0;
+    if (floor >= 0 && floor < NUM_FLOORS) {
+      requestFloor(floor);
+      const status = document.getElementById('statusText');
+      if (status) {
+        status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
+        setTimeout(() => updateFloorDisplay(), 1500);
+      }
+    }
   } else if (state.playerInCabin) {
     // quando siamo nella cabina i tasti WASD non servono, ma li registriamo comunque per quando usciamo
   }
