@@ -185,6 +185,49 @@
   #startscreen button:hover { transform: translateY(-2px); box-shadow: 0 10px 35px rgba(255, 214, 107, 0.45); }
   #startscreen button:active { transform: translateY(0); }
 
+  /* Polish Pack v1.3 #22 — carosello slide start screen */
+  #startscreen .slides-wrap {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #startscreen .slides-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.55;
+    color: #ffd66b;
+  }
+  #startscreen .slides {
+    display: flex;
+    gap: 14px;
+  }
+  #startscreen .slide {
+    width: 110px; height: 110px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 12px 8px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #ddd;
+    opacity: 0.4;
+    transition: opacity 0.5s, border-color 0.5s, transform 0.5s;
+  }
+  #startscreen .slide .emoji { font-size: 30px; margin-bottom: 6px; }
+  #startscreen .slide .small { opacity: 0.7; font-size: 10px; margin-top: 4px; }
+  #startscreen .slide.active {
+    opacity: 1;
+    border-color: #ffd66b;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 214, 107, 0.18);
+  }
+
   #pointerhint {
     position: absolute;
     left: 50%;
@@ -312,6 +355,38 @@
     <div>V</div><div>Attiva/disattiva annunci vocali</div>
     <div>N</div><div>Attiva/disattiva modalità notte</div>
   </div>
+  <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
+  <div class="slides-wrap">
+    <div class="slides-label">Caratteristiche</div>
+    <div id="startSlides" class="slides">
+      <div class="slide active">
+        <div class="emoji">🛗</div>
+        <div>Cabina 5★</div>
+        <div class="small">Boss Hotel Edition</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">📱</div>
+        <div>Touch screen</div>
+        <div class="small">Display 540×1100</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🌤️</div>
+        <div>Meteo live</div>
+        <div class="small">Roma in tempo reale</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🗣️</div>
+        <div>Annunci vocali</div>
+        <div class="small">Web Speech API</div>
+      </div>
+      <div class="slide">
+        <div class="emoji">🏨</div>
+        <div>4 temi corridoio</div>
+        <div class="small">Lobby · Uffici · Hotel · Attico</div>
+      </div>
+    </div>
+  </div>
+
   <button id="startBtn">Entra nell'ascensore</button>
 </div>
 
@@ -364,7 +439,11 @@ const state = {
   _camLed: null,
   _camLedSphere: null,
   _alarmId: null,
-  _lastPassengerChange: 0
+  _lastPassengerChange: 0,
+  // Polish Pack v1.3 #4: cartello "passo passo" durante il viaggio
+  _lastShownFloor: null,
+  // Polish Pack v1.3 #6: modalità "fuori servizio"
+  outOfOrder: false
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -723,7 +802,7 @@ let adScreenIdx = 0;
 let adScreenAlpha = 0;     // 0 = vecchia, 1 = nuova (per cross-fade)
 let adScreenLastChange = 0;
 const AD_SCREEN_DURATION = 12;  // secondi per schermata
-const AD_SCREENS = ['clock', 'weather', 'welcome', 'restaurant', 'spa'];
+const AD_SCREENS = ['clock', 'weather', 'welcome', 'restaurant', 'spa', 'worldclock'];
 
 function drawClockFace(ctx, w, h) {
   // sfondo sfumato
@@ -952,12 +1031,74 @@ function drawSpaScreen(ctx, w, h) {
   ctx.fillText('OFFERTA: -20% se prenoti oggi', w/2, h - 18);
 }
 
+// Polish Pack v1.3 #8 — orologio mondiale sul pannello pubblicitario
+// 6ª schermata del ciclo rotante: orari di Roma, New York, Tokyo, Londra, Sydney
+function drawWorldClock(ctx, w, h) {
+  // sfondo blu notte
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#0a1530');
+  grad.addColorStop(1, '#1a2a50');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  // titolo
+  ctx.fillStyle = '#ffd66b';
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('OROLOGIO MONDIALE', w/2, 8);
+  ctx.fillStyle = '#a89060';
+  ctx.font = '10px Arial';
+  ctx.fillText('BOSS HOTEL INTERNATIONAL', w/2, 28);
+  // linea separatrice
+  ctx.strokeStyle = '#c9a55a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40, 44); ctx.lineTo(w - 40, 44); ctx.stroke();
+  // elenco città
+  const cities = [
+    { name: 'Roma',     tz: 'Europe/Rome' },
+    { name: 'New York', tz: 'America/New_York' },
+    { name: 'Tokyo',    tz: 'Asia/Tokyo' },
+    { name: 'Londra',   tz: 'Europe/London' },
+    { name: 'Sydney',   tz: 'Australia/Sydney' }
+  ];
+  ctx.font = 'bold 16px Arial';
+  ctx.textBaseline = 'middle';
+  const now = new Date();
+  let y = 66;
+  cities.forEach(c => {
+    let timeStr = '--:--';
+    try {
+      timeStr = now.toLocaleTimeString('it-IT', {
+        timeZone: c.tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      // timezone non supportata dal browser: fallback
+      timeStr = 'N/D';
+    }
+    // nome città a sinistra
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(c.name, 50, y);
+    // orario a destra
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffd66b';
+    ctx.font = 'bold 18px "Courier New", monospace';
+    ctx.fillText(timeStr, w - 50, y);
+    ctx.font = 'bold 16px Arial';
+    y += 36;
+  });
+}
+
 const AD_DRAWERS = {
   clock: drawClockFace,
   weather: drawWeatherScreen,
   welcome: drawWelcomeScreen,
   restaurant: drawRestaurantScreen,
-  spa: drawSpaScreen
+  spa: drawSpaScreen,
+  worldclock: drawWorldClock
 };
 
 let adLastRedraw = 0;
@@ -1478,6 +1619,30 @@ signTex.colorSpace = THREE.SRGBColorSpace;
 
 function drawFloorSign(floor) {
   const g = signCtx;
+  // Polish Pack v1.3 #6: modalità "fuori servizio" — cartello warning rosso
+  if (state.outOfOrder) {
+    g.fillStyle = '#1a0000';
+    g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#c0392b'; g.lineWidth = 5;
+    g.strokeRect(8, 8, 496, 112);
+    g.strokeStyle = '#7a2020'; g.lineWidth = 2;
+    g.strokeRect(15, 15, 482, 98);
+    g.strokeStyle = '#ff6644'; g.lineWidth = 2;
+    for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+      g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
+    }
+    g.fillStyle = '#ff3030';
+    g.shadowColor = '#ff3030'; g.shadowBlur = 14;
+    g.font = 'bold 30px Georgia, serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('FUORI SERVIZIO', 256, 50);
+    g.shadowBlur = 0;
+    g.fillStyle = '#ffaa66';
+    g.font = 'italic 17px Georgia, serif';
+    g.fillText('— MANUTENZIONE IN CORSO —', 256, 88);
+    signTex.needsUpdate = true;
+    return;
+  }
   // sfondo hotel
   g.fillStyle = '#0e0900';
   g.fillRect(0, 0, 512, 128);
@@ -1509,6 +1674,73 @@ function drawFloorSign(floor) {
   signTex.needsUpdate = true;
 }
 drawFloorSign(0);
+
+// Polish Pack v1.3 #4 — cartello "passo passo" durante il viaggio
+// Mostra i piani che la cabina sta attraversando, con quello corrente evidenziato
+function drawMovingSign(fromFloor, toFloor, currentShown) {
+  const g = signCtx;
+  // Polish Pack v1.3 #6: priorità assoluta al warning se fuori servizio
+  if (state.outOfOrder) {
+    drawFloorSign(state.currentFloor);
+    return;
+  }
+  const up = toFloor > fromFloor;
+  // stesso sfondo del cartello statico (mantiene coerenza visiva)
+  g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
+  g.strokeStyle = '#d4a23a'; g.lineWidth = 5;
+  g.strokeRect(8, 8, 496, 112);
+  g.strokeStyle = '#7a5a20'; g.lineWidth = 2;
+  g.strokeRect(15, 15, 482, 98);
+  g.strokeStyle = '#f6c945'; g.lineWidth = 2;
+  for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+    g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
+  }
+  // freccia direzione (verde salita, ambra discesa) + etichetta
+  const accColor = up ? '#7fff7f' : '#ff8c5a';
+  const arrow = up ? '▲' : '▼';
+  g.fillStyle = accColor;
+  g.shadowColor = accColor; g.shadowBlur = 12;
+  g.font = 'bold 48px Georgia, serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(arrow, 48, 55);
+  g.shadowBlur = 0;
+  g.font = 'bold 14px Georgia, serif';
+  g.fillStyle = '#d4a23a';
+  g.fillText(up ? 'SALITA' : 'DISCESA', 48, 95);
+  // lista piani attraversati (separati da " · "), con quello corrente evidenziato
+  const lo = Math.min(fromFloor, toFloor);
+  const hi = Math.max(fromFloor, toFloor);
+  const cells = [];
+  for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+  g.font = 'bold 28px Georgia, serif';
+  g.textAlign = 'left';
+  let cursorX = 110;
+  cells.forEach((label, idx) => {
+    const floorNum = idx + lo;
+    const isCurrent = floorNum === currentShown;
+    if (isCurrent) {
+      g.fillStyle = accColor;
+      g.shadowColor = accColor; g.shadowBlur = 14;
+    } else {
+      g.fillStyle = '#d4a23a';
+    }
+    g.fillText(label, cursorX, 50);
+    const w = g.measureText(label).width;
+    if (idx < cells.length - 1) {
+      g.fillStyle = '#7a5a20'; g.shadowBlur = 0;
+      const sep = ' · ';
+      g.fillText(sep, cursorX + w + 2, 50);
+      cursorX += w + g.measureText(sep).width + 4;
+    }
+    g.shadowBlur = 0;
+  });
+  // sottotitolo (centrato)
+  g.fillStyle = '#d4a23a';
+  g.font = 'italic 16px Georgia, serif';
+  g.textAlign = 'center';
+  g.fillText('— IN VIAGGIO · BOSS HOTEL ELEVATOR —', 300, 95);
+  signTex.needsUpdate = true;
+}
 
 const signMatFront = new THREE.MeshBasicMaterial({ map: signTex });
 const signMatBack = new THREE.MeshBasicMaterial({ map: signTex });
@@ -2526,6 +2758,21 @@ function cancelDoorCountdown() {
   }
 }
 
+// Polish Pack v1.3 #7 — numerazione camere hotel contestuale
+// Restituisce la stringa da mostrare sul display in base al piano corrente
+function floorRoomRange(f) {
+  if (f >= 4 && f <= 6) {
+    // piano hotel: 32 camere per piano (es. 401–432, 501–532, 601–632)
+    const start = f * 100 + 1;
+    const end = start + 31;
+    return `Camere ${start}–${end}`;
+  }
+  if (f === 0) return 'Lobby · Reception';
+  if (f >= 1 && f <= 3) return `Uffici ${f}° piano`;
+  if (f >= 7) return `Attico · Suite ${f}0${f}`;
+  return '';
+}
+
 function drawModernDisplay() {
   const ctx = displayCtx;
   const W = displayCanvas.width, H = displayCanvas.height;
@@ -2579,39 +2826,70 @@ function drawModernDisplay() {
   ctx.beginPath(); ctx.moveTo(40, 105); ctx.lineTo(W - 40, 105); ctx.stroke();
 
   // ---- PIANO CORRENTE (grande) + FRECCIA DIREZIONE ----
-  const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
-  // sfondo cella
-  ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
-  ctx.fillRect(40, 125, W - 80, 180);
-  ctx.strokeStyle = '#c9a55a';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(40, 125, W - 80, 180);
-  // piano
-  ctx.fillStyle = '#ffd66b';
-  ctx.font = 'bold 130px "Courier New", monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
-  ctx.fillText(floorLabel, W/2, 215);
-  ctx.shadowBlur = 0;
-  // freccia direzione (animata)
-  let arrowChar = '·';
-  let arrowLabel = 'FERMO';
-  if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
-  else if (state.isMoving) {
-    if (state.targetFloor > state.currentFloor) { arrowChar = '▲'; arrowLabel = 'IN SALITA'; }
-    else { arrowChar = '▼'; arrowLabel = 'IN DISCESA'; }
-  } else if (state.doorsOpen) {
-    arrowLabel = 'PORTE APERTE';
+  if (state.outOfOrder) {
+    // Polish Pack v1.3 #6: overlay warning "fuori servizio" al posto del piano
+    ctx.fillStyle = 'rgba(255, 60, 40, 0.12)';
+    ctx.fillRect(40, 125, W - 80, 180);
+    ctx.strokeStyle = '#ff4040';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 125, W - 80, 180);
+    ctx.fillStyle = '#ff3030';
+    ctx.shadowColor = '#ff3030'; ctx.shadowBlur = 16;
+    ctx.font = 'bold 42px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('FUORI SERVIZIO', W/2, 195);
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = '#ffaa66';
+    ctx.fillText('Ascensore in manutenzione', W/2, 245);
+    ctx.fillStyle = '#a89060';
+    ctx.font = '13px Arial';
+    ctx.fillText('Premere O per ripristinare', W/2, 285);
   } else {
-    arrowLabel = 'IN ATTESA';
+    const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
+    // sfondo cella
+    ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
+    ctx.fillRect(40, 125, W - 80, 180);
+    ctx.strokeStyle = '#c9a55a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 125, W - 80, 180);
+    // piano
+    ctx.fillStyle = '#ffd66b';
+    ctx.font = 'bold 130px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
+    ctx.fillText(floorLabel, W/2, 215);
+    ctx.shadowBlur = 0;
+    // freccia direzione (animata)
+    let arrowChar = '·';
+    let arrowLabel = 'FERMO';
+    if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
+    else if (state.isMoving) {
+      if (state.targetFloor > state.currentFloor) { arrowChar = '▲'; arrowLabel = 'IN SALITA'; }
+      else { arrowChar = '▼'; arrowLabel = 'IN DISCESA'; }
+    } else if (state.doorsOpen) {
+      arrowLabel = 'PORTE APERTE';
+    } else {
+      arrowLabel = 'IN ATTESA';
+    }
+    ctx.font = 'bold 36px Arial';
+    ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
+    ctx.fillText(arrowChar, W/2, 285);
+    ctx.font = '13px Arial';
+    ctx.fillStyle = '#aaffb4';
+    ctx.fillText(arrowLabel, W/2, 330);
+    // Polish Pack v1.3 #7: numerazione camere hotel contestuale (solo a cabina ferma)
+    if (!state.isMoving && !state.alarmOn) {
+      const range = floorRoomRange(state.currentFloor);
+      if (range) {
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#8af';
+        ctx.fillText(range, W/2, 348);
+      }
+    }
   }
-  ctx.font = 'bold 36px Arial';
-  ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
-  ctx.fillText(arrowChar, W/2, 285);
-  ctx.font = '13px Arial';
-  ctx.fillStyle = '#aaffb4';
-  ctx.fillText(arrowLabel, W/2, 330);
   // linea separatrice
   ctx.strokeStyle = '#c9a55a';
   ctx.lineWidth = 1;
@@ -2695,11 +2973,16 @@ function drawModernDisplay() {
       const isHovered = (hoveredBtn.current && hoveredBtn.current.isCell &&
                          hoveredBtn.current.userData.cellRow === r &&
                          hoveredBtn.current.userData.cellCol === c);
-      // sfondo cella
+      // Polish Pack v1.3 #6: in modalità fuori servizio tutte le celle sono disabilitate
+      // (tranne il piano corrente, evidenziato in modo neutro)
       let bg = 'rgba(255,255,255,0.04)';
       let border = '#4a4a50';
       let textColor = '#aabbcc';
-      if (isHovered && !isCurrent) {
+      if (state.outOfOrder) {
+        bg = isCurrent ? 'rgba(120, 120, 130, 0.18)' : 'rgba(80, 80, 90, 0.10)';
+        border = isCurrent ? '#6a6a70' : '#3a3a40';
+        textColor = isCurrent ? '#888888' : '#555560';
+      } else if (isHovered && !isCurrent) {
         bg = 'rgba(109, 255, 200, 0.35)';
         border = '#88ffcc';
         textColor = '#ffffff';
@@ -2710,7 +2993,7 @@ function drawModernDisplay() {
       } else if (isInQueue) {
         bg = 'rgba(255, 140, 26, 0.25)';
         border = '#ff8c1a';
-        textColor = '#ff8c1a';
+        textColor = '#ff8c5a';
       }
       ctx.fillStyle = bg;
       ctx.fillRect(x, y, cellW, cellH);
@@ -3010,6 +3293,11 @@ let movePaused = false;
 
 function requestFloor(floor) {
   if (state.alarmOn) return;
+  // Polish Pack v1.3 #6: rifiuta selezione piani in modalità "fuori servizio"
+  if (state.outOfOrder && floor !== state.currentFloor) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    return;
+  }
   floor = Math.max(0, Math.min(NUM_FLOORS - 1, floor));
   if (floor === state.currentFloor && !state.isMoving) {
     // già qui, apri le porte
@@ -3034,6 +3322,8 @@ function startMoveTo(floor) {
   moveTo = floor;
   moveT = 0;
   moveElapsed = 0;
+  // Polish Pack v1.3 #4: forza il primo update del cartello "passo passo"
+  state._lastShownFloor = null;
   const distance = Math.abs(moveTo - moveFrom);
   moveDuration = 1.6 + distance * 0.6; // più piani = più tempo
   // chiudi le porte prima di partire (se non sono già chiuse)
@@ -3088,6 +3378,11 @@ function tickMove(dt) {
   const floorShown = Math.round(currentDisplay);
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  // Polish Pack v1.3 #4: cartello "passo passo" — aggiorna solo quando cambia il piano mostrato
+  if (floorShown !== state._lastShownFloor) {
+    state._lastShownFloor = floorShown;
+    drawMovingSign(moveFrom, moveTo, floorShown);
+  }
 
   if (moveT >= 1) {
     // arrivato
@@ -3432,6 +3727,31 @@ addEventListener('keydown', e => {
     if (status) status.textContent = state.nightMode ? 'Modalità notte: ON' : 'Modalità notte: OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
+  } else if (e.code === 'KeyO') {
+    // Polish Pack v1.3 #6: toggle modalità "fuori servizio"
+    state.outOfOrder = !state.outOfOrder;
+    if (state.outOfOrder) {
+      // blocca movimento e coda, chiudi porte
+      state.isMoving = false;
+      movePaused = true;
+      state.requestedFloors.clear();
+      setDoors(false);
+      if (typeof speak === 'function') speak('Ascensore fuori servizio.');
+      playBeep(440, 0.15, 'square', 0.1);
+      setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
+    } else {
+      movePaused = false;
+      if (typeof speak === 'function') speak('Ascensore ripristinato.');
+      playBeep(660, 0.12, 'sine', 0.1);
+    }
+    // aggiorna cartello corridoio + display touch
+    drawFloorSign(state.currentFloor);
+    if (typeof markDisplayDirty === 'function') markDisplayDirty();
+    const status = document.getElementById('statusText');
+    if (status) {
+      status.textContent = state.outOfOrder ? 'Fuori servizio' : 'Ascensore ripristinato';
+      setTimeout(() => updateFloorDisplay(), 1500);
+    }
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
@@ -3656,7 +3976,22 @@ refreshHudButtons();
 // apri le porte per mostrare subito il corridoio
 setDoors(true);
 
+// Polish Pack v1.3 #22 — carosello slide start screen
+// Auto-rotazione ogni 2.5s, si ferma quando l'utente entra
+let startSlideIdx = 0;
+let startSlidesTimer = null;
+(function initStartSlides() {
+  const slides = document.querySelectorAll('#startSlides .slide');
+  if (!slides.length) return;
+  startSlidesTimer = setInterval(() => {
+    slides.forEach((s, i) => s.classList.toggle('active', i === startSlideIdx));
+    startSlideIdx = (startSlideIdx + 1) % slides.length;
+  }, 2500);
+})();
+
 document.getElementById('startBtn').addEventListener('click', () => {
+  // ferma il carosello
+  if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
   ensureAudio();
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
