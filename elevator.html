@@ -727,7 +727,7 @@ let adScreenIdx = 0;
 let adScreenAlpha = 0;     // 0 = vecchia, 1 = nuova (per cross-fade)
 let adScreenLastChange = 0;
 const AD_SCREEN_DURATION = 12;  // secondi per schermata
-const AD_SCREENS = ['clock', 'weather', 'welcome', 'restaurant', 'spa'];
+const AD_SCREENS = ['clock', 'weather', 'welcome', 'restaurant', 'spa', 'worldclock'];
 
 function drawClockFace(ctx, w, h) {
   // sfondo sfumato
@@ -956,12 +956,74 @@ function drawSpaScreen(ctx, w, h) {
   ctx.fillText('OFFERTA: -20% se prenoti oggi', w/2, h - 18);
 }
 
+// Polish Pack v1.3 #8 — orologio mondiale sul pannello pubblicitario
+// 6ª schermata del ciclo rotante: orari di Roma, New York, Tokyo, Londra, Sydney
+function drawWorldClock(ctx, w, h) {
+  // sfondo blu notte
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#0a1530');
+  grad.addColorStop(1, '#1a2a50');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  // titolo
+  ctx.fillStyle = '#ffd66b';
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('OROLOGIO MONDIALE', w/2, 8);
+  ctx.fillStyle = '#a89060';
+  ctx.font = '10px Arial';
+  ctx.fillText('BOSS HOTEL INTERNATIONAL', w/2, 28);
+  // linea separatrice
+  ctx.strokeStyle = '#c9a55a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40, 44); ctx.lineTo(w - 40, 44); ctx.stroke();
+  // elenco città
+  const cities = [
+    { name: 'Roma',     tz: 'Europe/Rome' },
+    { name: 'New York', tz: 'America/New_York' },
+    { name: 'Tokyo',    tz: 'Asia/Tokyo' },
+    { name: 'Londra',   tz: 'Europe/London' },
+    { name: 'Sydney',   tz: 'Australia/Sydney' }
+  ];
+  ctx.font = 'bold 16px Arial';
+  ctx.textBaseline = 'middle';
+  const now = new Date();
+  let y = 66;
+  cities.forEach(c => {
+    let timeStr = '--:--';
+    try {
+      timeStr = now.toLocaleTimeString('it-IT', {
+        timeZone: c.tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      // timezone non supportata dal browser: fallback
+      timeStr = 'N/D';
+    }
+    // nome città a sinistra
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(c.name, 50, y);
+    // orario a destra
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffd66b';
+    ctx.font = 'bold 18px "Courier New", monospace';
+    ctx.fillText(timeStr, w - 50, y);
+    ctx.font = 'bold 16px Arial';
+    y += 36;
+  });
+}
+
 const AD_DRAWERS = {
   clock: drawClockFace,
   weather: drawWeatherScreen,
   welcome: drawWelcomeScreen,
   restaurant: drawRestaurantScreen,
-  spa: drawSpaScreen
+  spa: drawSpaScreen,
+  worldclock: drawWorldClock
 };
 
 let adLastRedraw = 0;
