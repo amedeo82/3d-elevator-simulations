@@ -15,6 +15,7 @@ Documento di design e implementation log.
 | Decisioni approvate | ✅ 7/7 |
 | Fasi implementate | ✅ 9/9 (100%) |
 | Polish Pack v1.1 | ✅ 5/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ✅) |
+| Polish Pack v1.2 | ✅ 3/3 (#10 ✅, #5 ✅, #11 ✅) |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -191,6 +192,14 @@ Miglioramenti a basso rischio tratti dal backlog §11, in ordine di priorità im
 - ✅ **#21 Specchio riflettente** — sostituito `MeshStandardMaterial` con `Reflector` di `three/addons/objects/Reflector.js` (riga ~622). Render target 512×512, `clipBias: 0.003`, tinta `0xb0b4b8`. Lo specchio riflette ora davvero l'interno cabina (display LED, striscia LED soffitto, pannello, passeggeri). Importmap `three/addons/` era già pronto da una predisposizione precedente.
 - ✅ **#1 Shake cabina durante viaggio** — aggiunti 5 nuovi campi a `state` (`vibrationX`, `vibrationZ`, `vibrationRoll`, `vibrationPitch`, `_movePhase`). In `tickMove()` calcolo oscillazioni X/Z ±3.5mm + roll/pitch ~2° con envelope a campana `sin(π·moveT)` (max al centro, nullo ai capi). Decay graduale (`×0.85`/frame) quando la cabina è ferma. Applicato al `cabin` group nel LOOP.
 - ✅ **#3 Whoosh loop** — aggiunte 3 funzioni audio (`makeNoiseBuffer`, `startWhoosh`, `stopWhoosh`) in sezione AUDIO (~riga 2856). White noise 1s in loop attraverso `BiquadFilter` bandpass; pitch 300→1100Hz modulato da `sin(π·moveT)` (envelope a campana), gain 0→0.025. Stop con `linearRampToValueAtTime(0, +0.05s)` per evitare click. Hook start/stop in cima a `tickMove()` (riga ~2998) basato su `state.isMoving && !movePaused`.
+
+### Fase 11 — Polish Pack v1.2 🟡 (in corso, branch `feature/polish-pack-v1.2`)
+
+Tre feature UX/accessibilità a basso rischio dal backlog §11.3.
+
+- ✅ **#10 Scorciatoie tastiera 1–9/0 per piani** — aggiunto blocco nel `keydown` listener (riga ~3435) che riconosce `Digit1`–`Digit9`, `Digit0`, `Numpad1`–`Numpad9`, `Numpad0` e chiama `requestFloor(floor)`. Rispetta `state.alarmOn` (già gestito da `requestFloor`). Aggiunta riga nel pannello help HUD. Feedback visivo via `statusText` ("Chiamato piano N") con reset automatico dopo 1.5s.
+- ✅ **#5 Ding differenziato all'arrivo** — `playChime()` ora accetta parametro `kind` (`'final'` | `'intermediate'`, default `'final'`). Quando la cabina arriva a un piano e la coda è vuota → 2 ding (arrivo finale). Se ci sono altri piani in coda → 1 ding singolo a 660Hz (fermata intermedia). Modificata la chiamata in `tickMove()` riga ~3096.
+- ✅ **#11 Sottotitoli annunci vocali** — aggiunto `<div id="subtitle">` in HUD (riga 268) con CSS dedicato (pillola gialla con icona 🔊 sopra lo status). Nuova funzione `showSubtitle(text, durationMs)` con fade in/out 250ms tramite classe `.show`. Hook in `announceArrival()`, `announceAlarm()`, `announceDoorClosing()`: ogni annuncio TTS mostra il testo in caps sul HUD. Funziona anche con TTS disabilitato (fallback accessibilità).
 
 ---
 

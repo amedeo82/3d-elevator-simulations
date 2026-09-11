@@ -19,6 +19,18 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 **Totale Polish Pack**: 8 commit, +172/-18 righe in 3 file (`elevator.html`, `README.md`, `PIANO_MIGLIORAMENTI.md`).
 
+---
+
+**Polish Pack v1.2**: 🟡 **3/3 completato su branch `feature/polish-pack-v1.2`** (da mergiare)
+
+| # | Funzionalità | Gruppo | Stato | Note |
+|---|---|---|---|---|
+| #10 | Scorciatoie tastiera 1–9/0 per piani | §11.3 UX | ✅ | Digit + Numpad, `requestFloor()`, feedback `statusText` |
+| #5 | Ding differenziato all'arrivo | §11.2 Premium | ✅ | `playChime(kind)` — 1 intermedio / 2 finale |
+| #11 | Sottotitoli annunci vocali su HUD | §11.3 UX | ✅ | `<div id="subtitle">` + `showSubtitle()` |
+
+**Totale Polish Pack v1.2**: 3 feature, ~50 righe in 1 file (`elevator.html` + 2 docs).
+
 ## Indice per gruppo
 
 | Gruppo | File | # Features | Implementate |
@@ -38,16 +50,13 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 - #2 — Musica di sottofondo contestuale (jazz/classica per piano)
 - #4 — Indicatore direzione "passo passo" sul cartello corridoio
 
-### §11.2 Hotel premium (4)
-- #5 — Suono "ding" differenziato all'arrivo
+### §11.2 Hotel premium (3)
 - #6 — Modalità "Fuori servizio" (tasto O)
 - #7 — Numerazione camere hotel contestuale
 - #8 — Orologio mondiale sul pannello pubblicitario
 
-### §11.3 UX / accessibilità (4)
+### §11.3 UX / accessibilità (2)
 - #9 — Comando vocale (speech-to-text)
-- #10 — Scorciatoie tastiera 1-9 per piani
-- #11 — Sottotitoli per annunci vocali
 - #12 — Lingua selezionabile (IT/EN)
 
 ### §11.4 Qualità (2)
