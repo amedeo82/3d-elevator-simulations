@@ -3110,26 +3110,30 @@ function cancelDoorCountdown() {
   }
 }
 
-// ---- Polish Pack v1.5 #21b audit: timer di chiusura automatica porte ----
-// Comportamento realistico di un ascensore reale: dopo che le porte sono
-// completamente aperte (post arrivo al piano), se l'utente non fa nulla
-// per N secondi, le porte si chiudono automaticamente (con countdown 3..2..1).
-// Il timer si resetta se l'utente fa qualcosa (click pulsante, chiama piano,
-// rientra cabina, ecc.).
-const DOOR_AUTO_CLOSE_MS = 6000;
+// ---- Polish Pack v1.5 #21b audit + Polish Pack v1.7: timer di chiusura automatica porte ----
+// Comportamento realistico di un ascensore reale, allineato alle normative ADA/ASME A17.1:
+// - §407.3.5 Door Delay (Car Call): porte aperte ≥3-5s dopo una chiamata dalla cabina
+// - §407.3.4 Door and Signal Timing (Hall Call): ≥5s calcolati a 1.5 ft/s
+// - Specifiche tipiche: Car Call 3-5s, Hall Call 5-8s
+// Differenziazione per piano:
+//   - Lobby (T): 8s (traffico intenso, passeggeri in entrata/uscita)
+//   - Altri piani (1-9): 5s (standard ADA car call)
+// Le porte si chiudono automaticamente dopo il dwell time **indipendentemente** dalla
+// posizione del giocatore. La prenotazione automatica (apri se ti avvicini) si applica
+// SOLO al lobby (vedi tickPlayer). Ai piani 1-9 il passeggero deve usare la pulsantiera
+// ▲/▼ esterna per richiamare la cabina. Il timer si resetta se l'utente fa qualcosa
+// (click pulsante, chiama piano, rientra cabina, ecc.).
+const DOOR_AUTO_CLOSE_MS_LOBBY = 8000;
+const DOOR_AUTO_CLOSE_MS_FLOOR = 5000;
 let doorAutoCloseTimer = null;
-function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
+function scheduleAutoClose() {
   cancelAutoClose();
+  const ms = state.currentFloor === 0 ? DOOR_AUTO_CLOSE_MS_LOBBY : DOOR_AUTO_CLOSE_MS_FLOOR;
   doorAutoCloseTimer = setTimeout(() => {
     doorAutoCloseTimer = null;
-    // Fuori dalla cabina la chiusura è gestita dalla prenotazione automatica in tickPlayer()
-    // (apre se l'utente si avvicina, chiude silenziosamente se si allontana). L'auto-close con
-    // annuncio+countdown scatta solo quando il player è DENTRO la cabina, per evitare il bug
-    // "annuncio porte-chiudendo ma porte che restano aperte o riaprono".
     if (state.doorsOpen && state.doorsActual > 0.9
         && !state.isMoving && !state.alarmOn && !state.outOfOrder
-        && !state.maintenanceMode && !state.prenotationActive
-        && state.playerInCabin) {
+        && !state.maintenanceMode && !state.prenotationActive) {
       setDoors(false); // parte il countdown 3..2..1 + beep crescente
     }
   }, ms);
@@ -4676,33 +4680,36 @@ function tickPlayer(dt) {
     reBtn.textContent = '↙ Avvicinati per rientrare';
   }
 
-  // Polish Pack v1.4 #20: prenotazione automatica cabina dal corridoio
-  // Se il player è vicino (<1m) alle porte della cabina E fuori dalla cabina E
-  // cabina ferma E non allarme/OOO → apri le porte gentilmente (no countdown).
-  // Se si allontana dopo aver prenotato → chiudi gentilmente (no countdown, no annuncio).
-  const canPrenotate = !state.playerInCabin
-                    && !state.isMoving && !state.alarmOn && !state.outOfOrder;
-  const isNearDoors = distToDoors < 1.0 && Math.abs(yawObj.position.x) < 0.9;
-  if (canPrenotate && isNearDoors && !state.doorsOpen && state.doorsActual < 0.1) {
-    // apri le porte senza countdown né annuncio
-    state.doorsOpen = true;
-    state.doorsTarget = 1;
-    state.prenotationActive = true;
-    playDoorSound(true);
-    animateDoorsTo(1, 1.4);
-    markDisplayDirty();
-    if (typeof refreshHudButtons === 'function') refreshHudButtons();
-  } else if (state.prenotationActive && (!isNearDoors || !canPrenotate)) {
-    // chiudi gentilmente
-    if (state.doorsActual > 0.05) {
-      animateDoorsTo(0, 0.8);
-      playDoorSound(false);
+  // Polish Pack v1.4 #20 + Polish Pack v1.7: prenotazione automatica cabina SOLO al piano T (lobby).
+  // Comportamento ascensore reale: al lobby il passeggero si avvicina alle porte e queste
+  // si aprono automaticamente (è il piano principale, traffico intenso). Ai piani 1-9
+  // le porte si chiudono automaticamente dopo il dwell time standard (5s) indipendentemente
+  // dalla posizione del giocatore; per rientrare in cabina serve la pulsantiera ▲/▼ esterna.
+  if (state.currentFloor === 0) {
+    const canPrenotate = !state.playerInCabin
+                      && !state.isMoving && !state.alarmOn && !state.outOfOrder;
+    const isNearDoors = distToDoors < 1.0 && Math.abs(yawObj.position.x) < 0.9;
+    if (canPrenotate && isNearDoors && !state.doorsOpen && state.doorsActual < 0.1) {
+      // apri le porte senza countdown né annuncio
+      state.doorsOpen = true;
+      state.doorsTarget = 1;
+      state.prenotationActive = true;
+      playDoorSound(true);
+      animateDoorsTo(1, 1.4);
+      markDisplayDirty();
+      if (typeof refreshHudButtons === 'function') refreshHudButtons();
+    } else if (state.prenotationActive && (!isNearDoors || !canPrenotate)) {
+      // chiudi gentilmente
+      if (state.doorsActual > 0.05) {
+        animateDoorsTo(0, 0.8);
+        playDoorSound(false);
+      }
+      state.doorsOpen = false;
+      state.doorsTarget = 0;
+      state.prenotationActive = false;
+      markDisplayDirty();
+      if (typeof refreshHudButtons === 'function') refreshHudButtons();
     }
-    state.doorsOpen = false;
-    state.doorsTarget = 0;
-    state.prenotationActive = false;
-    markDisplayDirty();
-    if (typeof refreshHudButtons === 'function') refreshHudButtons();
   }
 }
 
