@@ -2230,6 +2230,11 @@ function buildCorridor(floor) {
     addSkylineWindow(corridor, 0, 1.3, eZ - 0.01, 0);
     // lampada da terra
     addFloorLamp(corridor, 0.95, 0, sZ + 4.5, -Math.PI/2);
+    // Porte suite attico (piani 7-9). Stile "penthouse" della addRoomDoor:
+    // varco più largo (1.2m), porta più alta (2.3m), legno pregiato scuro,
+    // targhetta "Suite NNN". Disposte in modo da non interferire con i divani.
+    addRoomDoor(corridor, -CORRIDOR_W/2 + 0.04, 0, sZ + 2.2, Math.PI/2, floor, floor * 10 + 1, 'penthouse');
+    addRoomDoor(corridor, CORRIDOR_W/2 - 0.04, 0, sZ + 8.0, -Math.PI/2, floor, floor * 10 + 2, 'penthouse');
   }
 
   // Aggiorna il cartello
@@ -2437,56 +2442,140 @@ function addDesk(parent, x, y, z, rotY) {
   g.rotation.y = rotY;
   parent.add(g);
 }
-function addRoomDoor(parent, x, y, z, rotY, floor, roomNum) {
+function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const g = new THREE.Group();
-  // telaio
-  const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 2.2, 1.0),
-    new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.4 })
+  // Sistema di coordinate LOCALI del gruppo, prima della rotazione rotY=±π/2:
+  //   asse X locale = larghezza del varco (direzione di camminata nel corridoio
+  //                   dopo la rotazione di 90°). PRIMA era 0.06, ora è 1.0.
+  //   asse Y locale = verticale (altezza)
+  //   asse Z locale = profondità perpendicolare al muro (spessore del telaio)
+  // Il bug precedente era che il "telaio" era un BoxGeometry(0.06, 2.2, 1.0):
+  // dopo rotY=±π/2 la dimensione 1.0 finiva lungo l'asse X mondiale (= larghezza
+  // del corridoio) invece che lungo Z mondiale (= direzione di camminata),
+  // dando l'impressione di "porte a 90°". Ora il varco è correttamente
+  // orientato lungo la direzione di marcia del corridoio per QUALUNQUE stile
+  // ('hotel' o 'penthouse').
+  const premium = style === 'penthouse';
+  const DOOR_W = premium ? 1.2 : 1.0;   // suite: varco più largo
+  const DOOR_H = premium ? 2.3 : 2.1;   // suite: porta più alta
+  const FRAME_T = 0.08;                  // spessore del telaio (asse Z locale)
+  const BAR = premium ? 0.1 : 0.09;      // sezione delle barrette
+  const FRAME_Z = 0.04;                  // quanto il telaio sporge dal muro verso il corridoio
+  const halfW = DOOR_W / 2;
+  const halfH = DOOR_H / 2;
+
+  // Palette colori in base allo stile
+  const frameColor   = premium ? 0x1a0e06 : 0x3a2a1a;
+  const doorColor    = premium ? 0x2a1808 : 0x5a4028;
+  const panelColor   = premium ? 0x1a0e04 : 0x4a3018;
+  const panelFrameC  = premium ? 0x0a0604 : 0x2a1a08;
+  const handleColor  = premium ? 0xb8924a : 0xc9a560;
+  const knobColor    = premium ? 0xd4ad65 : 0xe6c170;
+  const plateBg      = premium ? '#080604' : '#0e0900';
+  const plateBorder  = premium ? '#b8924a' : '#d4a23a';
+  const plateText    = premium ? '#e8c878' : '#f6c945';
+  const platePrefix  = premium ? 'Suite '  : '';
+
+  // Telaio: 4 barrette sottili che formano un rettangolo attorno al varco.
+  // In questo modo il varco è effettivamente un buco e non un blocco solido.
+  const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.45, metalness: 0.05 });
+  // architrave (in alto)
+  const topBar = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + BAR, BAR, FRAME_T), frameMat);
+  topBar.position.set(0, DOOR_H + BAR / 2, FRAME_Z);
+  g.add(topBar);
+  // soglia (in basso)
+  const botBar = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + BAR, BAR, FRAME_T), frameMat);
+  botBar.position.set(0, -BAR / 2, FRAME_Z);
+  g.add(botBar);
+  // montante sinistro
+  const leftJamb = new THREE.Mesh(new THREE.BoxGeometry(BAR, DOOR_H + BAR * 2, FRAME_T), frameMat);
+  leftJamb.position.set(-halfW - BAR / 2, halfH, FRAME_Z);
+  g.add(leftJamb);
+  // montante destro
+  const rightJamb = new THREE.Mesh(new THREE.BoxGeometry(BAR, DOOR_H + BAR * 2, FRAME_T), frameMat);
+  rightJamb.position.set(halfW + BAR / 2, halfH, FRAME_Z);
+  g.add(rightJamb);
+
+  // "buco" nel muro: piano scuro dietro la porta, simula l'apertura.
+  const opening = new THREE.Mesh(
+    new THREE.PlaneGeometry(DOOR_W, DOOR_H),
+    new THREE.MeshBasicMaterial({ color: 0x05040a })
   );
-  frame.position.set(0, 1.1, 0);
-  g.add(frame);
-  // porta
+  opening.position.set(0, halfH, FRAME_Z - FRAME_T / 2 - 0.002);
+  g.add(opening);
+
+  // anta (porta vera e propria), leggermente rientrata rispetto al telaio
   const door = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.85, 2.1),
-    new THREE.MeshStandardMaterial({ color: 0x5a4028, roughness: 0.5 })
+    new THREE.PlaneGeometry(DOOR_W - 0.04, DOOR_H - 0.02),
+    new THREE.MeshStandardMaterial({ color: doorColor, roughness: 0.55, metalness: 0.05 })
   );
-  door.position.set(0, 1.05, 0.01);
+  door.position.set(0, halfH, FRAME_Z + FRAME_T / 2 + 0.003);
   g.add(door);
-  // pannello decorativo
+
+  // pannello decorativo incassato sull'anta (zona più scura al centro)
   const panel = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.5, 0.8),
-    new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.5 })
+    new THREE.PlaneGeometry(premium ? 0.7 : 0.55, premium ? 1.15 : 0.95),
+    new THREE.MeshStandardMaterial({ color: panelColor, roughness: 0.5 })
   );
-  panel.position.set(0, 0.9, 0.02);
+  panel.position.set(0, halfH - (premium ? 0.45 : 0.35), FRAME_Z + FRAME_T / 2 + 0.006);
   g.add(panel);
-  // maniglia
-  const handle = new THREE.Mesh(
-    new THREE.SphereGeometry(0.025, 12, 8),
-    new THREE.MeshStandardMaterial({ color: 0xc9a560, roughness: 0.2, metalness: 0.95 })
+  // cornice del pannello (4 barrette sottili per dare profondità)
+  const panelFrameMat = new THREE.MeshStandardMaterial({ color: panelFrameC, roughness: 0.4 });
+  const pfW = (premium ? 0.72 : 0.57), pfH = (premium ? 1.17 : 0.97), pfB = 0.015;
+  const pfY = halfH - (premium ? 0.45 : 0.35);
+  const pfZ = FRAME_Z + FRAME_T / 2 + 0.008;
+  const pfTop = new THREE.Mesh(new THREE.BoxGeometry(pfW, pfB, 0.012), panelFrameMat);
+  pfTop.position.set(0, pfY + pfH / 2, pfZ);
+  g.add(pfTop);
+  const pfBot = new THREE.Mesh(new THREE.BoxGeometry(pfW, pfB, 0.012), panelFrameMat);
+  pfBot.position.set(0, pfY - pfH / 2, pfZ);
+  g.add(pfBot);
+  const pfLeft = new THREE.Mesh(new THREE.BoxGeometry(pfB, pfH, 0.012), panelFrameMat);
+  pfLeft.position.set(-pfW / 2, pfY, pfZ);
+  g.add(pfLeft);
+  const pfRight = new THREE.Mesh(new THREE.BoxGeometry(pfB, pfH, 0.012), panelFrameMat);
+  pfRight.position.set(pfW / 2, pfY, pfZ);
+  g.add(pfRight);
+
+  // maniglia lato corridoio (vicino al bordo destro del varco, a metà altezza)
+  const handleBase = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.12, 0.04),
+    new THREE.MeshStandardMaterial({ color: handleColor, roughness: 0.25, metalness: 0.9 })
   );
-  handle.position.set(0.32, 1.05, 0.04);
-  g.add(handle);
-  // targhetta numero camera
+  handleBase.position.set(halfW - 0.14, halfH, FRAME_Z + FRAME_T / 2 + 0.022);
+  g.add(handleBase);
+  const handleKnob = new THREE.Mesh(
+    new THREE.SphereGeometry(0.032, 16, 12),
+    new THREE.MeshStandardMaterial({ color: knobColor, roughness: 0.2, metalness: 0.95 })
+  );
+  handleKnob.position.set(halfW - 0.14, halfH, FRAME_Z + FRAME_T / 2 + 0.055);
+  g.add(handleKnob);
+
+  // targhetta SOPRA la porta (sopra l'architrave)
   const c = document.createElement('canvas');
-  c.width = 128; c.height = 64;
+  const plateCanvasW = premium ? 192 : 128;
+  const plateCanvasH = premium ? 72 : 64;
+  c.width = plateCanvasW; c.height = plateCanvasH;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#0e0900';
-  ctx.fillRect(0, 0, 128, 64);
-  ctx.strokeStyle = '#d4a23a';
+  ctx.fillStyle = plateBg;
+  ctx.fillRect(0, 0, plateCanvasW, plateCanvasH);
+  ctx.strokeStyle = plateBorder;
   ctx.lineWidth = 3;
-  ctx.strokeRect(3, 3, 122, 58);
-  ctx.fillStyle = '#f6c945';
-  ctx.font = 'bold 30px Georgia, serif';
+  ctx.strokeRect(3, 3, plateCanvasW - 6, plateCanvasH - 6);
+  ctx.fillStyle = plateText;
+  ctx.font = (premium ? 'bold 28px Georgia, serif' : 'bold 30px Georgia, serif');
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(String(roomNum), 64, 32);
+  ctx.fillText(platePrefix + String(roomNum), plateCanvasW / 2, plateCanvasH / 2);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex });
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.09), mat);
-  plate.position.set(0, 1.7, 0.03);
+  const plateW = premium ? 0.32 : 0.22;
+  const plateH = premium ? 0.13 : 0.11;
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(plateW, plateH), mat);
+  plate.position.set(0, DOOR_H + BAR + (premium ? 0.18 : 0.12), FRAME_Z + FRAME_T / 2 + 0.005);
   g.add(plate);
+
   g.position.set(x, y, z);
   g.rotation.y = rotY;
   parent.add(g);

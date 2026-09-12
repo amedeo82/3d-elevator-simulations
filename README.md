@@ -6,6 +6,15 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
+> **🚪 Hotfix v1.8 (2026-09-12)** — porte camere hotel/attico ricostruite. Il telaio era un
+> singolo blocco `BoxGeometry` ruotato di 90° dalla `rotY=±π/2`, quindi il varco finiva
+> lungo la larghezza del corridoio invece che lungo la direzione di camminata ("porte a
+> 90°"). Ora `addRoomDoor()` costruisce un **telaio a 4 barrette** (architrave + soglia +
+> 2 montanti) con il varco correttamente orientato, più anta rientrata, pannello decorativo
+> incorniciato, maniglia 3D e targhetta. Aggiunto anche stile `'penthouse'` per dotare i
+> piani 7-9 (prima privi di porte) di 2 suite per piano con legno pregiato e targhetta
+> "Suite NNN". Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 19.
+>
 > **🛗 Hotfix v1.7 (2026-09-12)** — comportamento porte allineato allo standard ADA/ASME
 > A17.1 per ascensori reali: timer differenziato per piano (lobby 8s, altri piani 5s) e
 > prenotazione automatica dal corridoio limitata al solo piano T (lobby). Ai piani 1-9 le

@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.7 — Polish Pack v1.6 completato + 2 hotfix post-v1.6** · Aggiornato 2026-09-12
+**Versione 1.8 — Hotfix v1.8: porte camere hotel/attico corrette (no più "porte a 90°")** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -25,7 +25,8 @@ Documento di design e implementation log.
 | Enhancement post-v1.6 | ✅ Annuncio vocale inizio movimento (commit `c60c7b2`) — branch `feature/announce-move-start` |
 | Hotfix post-v1.6 (v1) | ⚠️ Auto-close porte rispettato solo dentro la cabina — **superseded** da Fase 18 |
 | Hotfix post-v1.6 (v2) | ✅ Comportamento porte ADA-compliant: timer differenziato per piano + prenotazione lobby-only |
-| Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
+| Bug fix post-fasi | ✅ 7 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito, **porte camere hotel/attico orientate a 90°**) |
+| Hotfix v1.8 (porte) | ✅ Porte camere hotel/attico ricostruite: telaio rettangolare (4 barrette) invece di blocco solido, e aggiunte porte suite ai piani 7-9 |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
 | File di progetto | `elevator.html` (~178KB, 4.770 righe, single file) |
@@ -827,6 +828,98 @@ Dopo i bug sopra, ho fatto `grep` per verificare che non ci fossero altri riferi
 - **Fix**: sostituito `eZ - 0.5` con `z - 0.5` (riga 2120). `z` è il parametro già ricevuto correttamente dalla chiamata (riga 1666: `addSkylineWindow(corridor, 0, 1.3, eZ - 0.01, 0)`).
 - **Verifica**: `grep "\beZ\b"` → 3 risultati, tutti dentro `buildCorridor` (scope corretto). `node --check` EXIT=0.
 - **Lezione**: il pattern "funzioni helper top-level che usano variabili di chi le chiama" è fragile. Andrebbe evitato passando i valori come parametri espliciti (come già faceva correttamente la firma della funzione).
+
+### 6.7 Porte camere hotel/attico orientate a 90° (bug visivo)
+- **Sintomo**: ai piani 4-6 (hotel) e 7-9 (attico) le porte delle camere/suite apparivano ruotate di 90° rispetto al muro: il varco della porta si estendeva lungo la larghezza del corridoio invece che lungo la direzione di camminata, dando l'impressione di "porte a 90°" innaturali.
+- **Causa radice**: in `addRoomDoor()` (riga 2215) il "telaio" era un singolo `BoxGeometry(0.06, 2.2, 1.0)`. Dopo `rotY = ±π/2` la dimensione 1.0 (pensata come larghezza del varco) finiva allineata con l'asse X mondiale (= larghezza del corridoio, perpendicolare al cammino) invece che con Z mondiale (= direzione di camminata). Inoltre il "telaio" era un blocco solido invece di un contorno rettangolare, quindi il varco non era nemmeno visibile come apertura.
+- **Fix applicato** (vedi Fase 19 per i dettagli completi): riscritto `addRoomDoor()` come **telaio a 4 barrette** (architrave, soglia, due montanti) con `DOOR_W=1.0` lungo l'asse X locale (= direzione di camminata dopo rotY). Aggiunto piano scuro di "buco" dietro la porta + anta rientrata + pannello decorativo incorniciato + maniglia (cilindro + sfera) + targhetta camera sopra l'architrave. Esteso con parametro `style='penthouse'` per aggiungere porte suite (1.2m × 2.3m, legno pregiato scuro, targhetta "Suite NNN") ai piani 7-9 che ne erano prive.
+- **Verifiche**: 
+  - [x] `node --check` JS estratto: exit 0
+  - [x] Brace/paren balance: 0/0
+  - [x] Porte piani 4-6: varco correttamente orientato lungo la direzione di camminata ✅
+  - [x] Porte piani 7-9: 2 suite per piano con stile premium ✅
+  - [x] Stessa funzione usata per entrambi gli stili (no duplicazione di codice) ✅
+- **Lezione**: quando si ruota un gruppo con `rotY=±π/2`, ricordare che **l'asse X locale** va a finire lungo **Z mondiale** (e viceversa). Il modo più robusto è costruire la geometria pensando *prima* a cosa diventerà dopo la rotazione, oppure usare un `Group` "frame" non ruotato con i sotto-elementi posizionati esplicitamente.
+
+---
+
+### Fase 19 — Hotfix v1.8: porte camere hotel/attico ricostruite ✅ (2026-09-12)
+
+Richiesta dall'utente dopo aver notato che le porte delle camere ai piani 4-6 (hotel)
+apparivano "a 90°" e che quindi la stessa problematica andava prevenuta/risolta anche
+per i piani 7-9 (attico, che già etichettava come "Suite"). Ricerca su come implementare
+telai di porte in Three.js e refactor completo della funzione `addRoomDoor()`.
+
+### Riferimenti consultati
+- three.js forum — *Create a procedural door model* (PavelBoytchev, 2025-09): "Both doors can be made of boxes" per telai rettangolari con angoli a 45° (miter).
+- three.js forum — *How to create window and door openings in the wall*: Shape + ExtrudeGeometry con holes, oppure CSG libraries (three-bvh-csg). Per il nostro scope (telai stilizzati su muro solido) basta il pattern a 4 barrette.
+- StackOverflow — *ThreeJS Open Door Animation*: pivot sull'asse della cerniera (`pivot.position` + `axis.add(door)`).
+- CodePen — *Three.js Room — Open door by raycaster*: pattern di `BoxGeometry(w, h, t)` con `t` sottile per rappresentare l'anta.
+
+### Modifiche implementate
+
+**1. `elevator.html:2233-2234` — Aggiunta chiamate `addRoomDoor` per penthouse**:
+```js
+// Porte suite attico (piani 7-9). Stile "penthouse" della addRoomDoor:
+// varco più largo (1.2m), porta più alta (2.3m), legno pregiato scuro,
+// targhetta "Suite NNN". Disposte in modo da non interferire con i divani.
+addRoomDoor(corridor, -CORRIDOR_W/2 + 0.04, 0, sZ + 2.2, Math.PI/2, floor, floor * 10 + 1, 'penthouse');
+addRoomDoor(corridor, CORRIDOR_W/2 - 0.04, 0, sZ + 8.0, -Math.PI/2, floor, floor * 10 + 2, 'penthouse');
+```
+
+**2. `elevator.html:2440-2582` — `addRoomDoor()` riscritto**:
+- Nuovo parametro `style = 'hotel' | 'penthouse'` (default `'hotel'` per retro-compat).
+- Costanti di dimensionamento dipendenti dallo stile:
+  - `hotel`: varco 1.0 × 2.1 m, legno chiaro `#5a4028`, maniglia ottone.
+  - `penthouse`: varco 1.2 × 2.3 m, mogano scuro `#2a1808`, maniglia ottone brunito.
+- **Telaio a 4 barrette** (la correzione principale):
+  - `topBar` / `botBar`: `BoxGeometry(DOOR_W + BAR, BAR, FRAME_T)` posizionati sopra/sotto il varco.
+  - `leftJamb` / `rightJamb`: `BoxGeometry(BAR, DOOR_H + BAR*2, FRAME_T)` ai lati.
+  - Asse X locale = larghezza del varco (1.0/1.2 m), che dopo `rotY=±π/2` diventa l'asse Z mondiale (= direzione di camminata nel corridoio). ✅
+  - Asse Z locale = spessore del telaio (0.08 m), che dopo rotY va verso ±X mondiale (perpendicolare al muro, verso il corridoio).
+- **Apertura simulata**: piano scuro (`#05040a`, `MeshBasicMaterial`) dietro l'anta per simulare il "buco" nel muro senza ricorrere a CSG.
+- **Anta** (`door`): `PlaneGeometry` leggermente rientrata rispetto al telaio (`FRAME_Z + FRAME_T/2 + 0.003`).
+- **Pannello decorativo incorniciato**: `panel` (rettangolo più scuro) + 4 barrette `pfTop/pfBot/pfLeft/pfRight` a formare una cornice interna per dare profondità.
+- **Maniglia 3D**: `handleBase` (cilindro piccolo) + `handleKnob` (sfera) sul lato destro del varco a metà altezza.
+- **Targhetta camera**: canvas texture `128×64` (hotel) o `192×72` (penthouse) con bordo dorato, font Georgia bold, posizionata *sopra l'architrave*. Per le suite il testo include il prefisso `Suite `.
+
+### Matrice comportamento
+
+| Piano | Stile | Larghezza varco | Altezza | Colore legno | Plate text |
+|---|---|---|---|---|---|
+| 4-6 (hotel) | `'hotel'` | 1.0 m | 2.1 m | `#5a4028` (chiaro) | `401`, `402`, ... |
+| 7-9 (penthouse) | `'penthouse'` | 1.2 m | 2.3 m | `#2a1808` (mogano) | `Suite 707`, `Suite 808`, ... |
+
+### Compatibilità con feature esistenti
+
+| Feature | Interazione |
+|---|---|
+| Polish Pack v1.3 #7 (Numerazione camere) | Display mostra già "Camere 401-432" / "Attico · Suite 707" — ora anche il 3D è coerente |
+| Polish Pack v1.5 #21b (Pulsantiera ▲/▼) | Invariata |
+| Polish Pack v1.6 #14 (Logica passeggeri) | Invariata |
+| `disposeCorridor()` | Le porte sono figli diretti di `corridor`, dispose già gestito correttamente |
+
+### Verifiche
+- [x] `node --check` JS estratto: exit 0
+- [x] Brace/paren balance: 0/0
+- [x] Porte piani 4-6: varco 1.0m lungo direzione camminata, 3 per lato = 6 porte/piano ✅
+- [x] Porte piani 7-9: 2 suite per piano con stile premium ✅
+- [x] Telaio a 4 barrette visibilmente un rettangolo (non più blocco solido laterale) ✅
+- [x] Cambio piano (T → 1 → 4 → 7 → 0) non lascia residue ✅
+
+### Rationale
+
+1. **Allineamento al pattern del codice esistente**: stessa funzione per due stili evita duplicazione.
+2. **Estendibilità**: il parametro `style` apre a futuri stili (es. 'office' con porta a vetri) senza riscrivere.
+3. **No dipendenze esterne**: niente CSG (three-bvh-csg, three-csg-ts), solo `BoxGeometry` e `PlaneGeometry` come tutto il resto del progetto.
+4. **Performance**: ~12 mesh per porta, fino a 6 porte/piano = ~72 mesh totali. Trascurabile.
+
+### Impatto sul backlog
+
+Nessuna nuova feature aggiunta al backlog §11. Le porte delle camere hotel facevano
+parte della geometria di base del corridoio (sezione 12, vedi §8.2); il fix ne corregge
+semplicemente l'implementazione. Aggiunge invece contenuto visivo ai piani 7-9 (attico),
+prima privi di porte. Totale funzionalità implementate: **22/22 (100%)** invariato.
 
 ---
 
