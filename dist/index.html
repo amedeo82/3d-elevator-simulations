@@ -3964,6 +3964,11 @@ function exitCabin() {
 
 function enterCabin() {
   if (state.playerInCabin) return;
+  // Fix v1.5 audit: blocca rientro in cabina durante fuori servizio (come prenotazione)
+  if (state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    return;
+  }
   // distanza dall'apertura della cabina (z vicino a CABIN.d/2 e |x| < 0.8m)
   const distZ = Math.abs(yawObj.position.z - CABIN.d/2);
   if (distZ > 1.0 || Math.abs(yawObj.position.x) > 0.9) return;
@@ -4180,12 +4185,20 @@ addEventListener('keydown', e => {
       state.isMoving = false;
       movePaused = true;
       state.requestedFloors.clear();
+      state.prenotationActive = false; // annulla prenotazione automatica
       setDoors(false);
       if (typeof speak === 'function') speak('Ascensore fuori servizio.');
       playBeep(440, 0.15, 'square', 0.1);
       setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
     } else {
       movePaused = false;
+      // Fix: al ripristino, riapri le porte gentilmente se la cabina è ferma, non in allarme
+      // e l'utente è nella cabina. Se l'utente è nel corridoio e fuori servizio era ON mentre
+      // era nel corridoio, le porte restano chiuse (lui le può aprire premendo ◄| sulla pulsantiera
+      // — che è sempre raggiungibile tornando in cabina, oppure attendendo la prenotazione).
+      if (!state.alarmOn && state.playerInCabin && !state.isMoving) {
+        setDoors(true);
+      }
       if (typeof speak === 'function') speak('Ascensore ripristinato.');
       playBeep(660, 0.12, 'sine', 0.1);
     }
