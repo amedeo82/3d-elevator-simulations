@@ -3122,9 +3122,14 @@ function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
   cancelAutoClose();
   doorAutoCloseTimer = setTimeout(() => {
     doorAutoCloseTimer = null;
+    // Fuori dalla cabina la chiusura è gestita dalla prenotazione automatica in tickPlayer()
+    // (apre se l'utente si avvicina, chiude silenziosamente se si allontana). L'auto-close con
+    // annuncio+countdown scatta solo quando il player è DENTRO la cabina, per evitare il bug
+    // "annuncio porte-chiudendo ma porte che restano aperte o riaprono".
     if (state.doorsOpen && state.doorsActual > 0.9
         && !state.isMoving && !state.alarmOn && !state.outOfOrder
-        && !state.maintenanceMode && !state.prenotationActive) {
+        && !state.maintenanceMode && !state.prenotationActive
+        && state.playerInCabin) {
       setDoors(false); // parte il countdown 3..2..1 + beep crescente
     }
   }, ms);
