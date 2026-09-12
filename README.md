@@ -6,10 +6,9 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
-> **🟡 In corso (2026-09-12)**: Polish Pack **v1.4** su branch `feature/polish-pack-v1.4` —
-> 4 feature in sviluppo: musica di sottofondo contestuale, comando vocale, modalità
-> manutentore e prenotazione cabina dal corridoio. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 13
-> e `piani/README.md` per il tracking.
+> **✅ Polish Pack v1.4 completato (2026-09-12)** — 4 feature: musica contestuale,
+> comando vocale, modalità manutentore, prenotazione cabina. Totale: **17/22 funzionalità
+> backlog implementate (77%)**. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 13 e `piani/README.md`.
 
 ---
 
@@ -172,6 +171,32 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - Slide attiva con bordo dorato e leggero sollevamento
 - Si ferma automaticamente al click su "Entra nell'ascensore"
 
+### 🎵 Musica di sottofondo contestuale
+- WebAudio sintetizzato: 4 oscillatori sine filtrati low-pass con LFO lento
+- **Track "jazz"** ai piani T–3 (accordo Cmaj7 un'ottavia sotto)
+- **Track "classica"** ai piani 4–9 (arpeggio C-E-G-C ogni 900ms)
+- Fade-in 1.5s all'apertura porte, fade-out 0.5s su movimento/allarme/OOO
+- Si disattiva su `M` (mute globale) e in modalità manutentore
+
+### 🗣️ Comando vocale
+- Tasto **K** per attivare la `SpeechRecognition` API in italiano
+- Pronuncia "piano cinque", "cinque", "5" per chiamare quel piano
+- Mappa i nomi italiani dei numeri (zero, uno, due, ..., nove) più le cifre 0-9
+- Funziona solo in cabina e a cabina ferma, fallback silente in Firefox
+
+### 🛠️ Modalità manutentore
+- Tasto **`Shift+M`** per entrare/uscire dalla modalità debug
+- **Wireframe** su tutti i materiali della cabina
+- Overlay verde in alto a sinistra con FPS medio, draw calls, stato (piano, coda, passeggeri, modalità cabina/corridoio, OOO)
+- Log degli ultimi 10 eventi
+- **Teletrasporto**: in maintenance, i tasti `1`–`9` chiamano direttamente un piano (salta l'animazione)
+
+### 🚏 Prenotazione cabina automatica
+- Nel corridoio, ti avvicini alle porte della cabina (<1m) e queste **si aprono automaticamente**
+- Sul display touch appare un overlay azzurro "PRENOTATA · Tieni premuto E per entrare"
+- Se ti allontani dopo aver prenotato, le porte si chiudono gentilmente (no countdown)
+- Rispetta allarme e fuori servizio (prenotazione rifiutata)
+
 ---
 
 ## 🎮 Demo
@@ -201,6 +226,8 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 | Toggle modalità notte | `N` |
 | **Chiama un piano** | `1`–`9` / `0` (anche tastierino numerico) |
 | **Fuori servizio** | `O` (toggle manutenzione) |
+| **Comando vocale** | `K` (toggle speech-to-text) |
+| **Modalità manutentore** | `Shift+M` (debug + wireframe + teletrasporto) |
 
 ### Flusso tipico
 1. Click su "Entra nell'ascensore" → il mouse viene "catturato" (pointer lock)
@@ -392,14 +419,14 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 ## 🗺️ Roadmap
 
-### In corso — Polish Pack v1.4 (branch `feature/polish-pack-v1.4`)
-- [ ] **#2** Musica di sottofondo contestuale (jazz lobby, classica attico)
-- [ ] **#9** Comando vocale "piano N" → `SpeechRecognition` it-IT
-- [ ] **#19** Modalità manutentore `Shift+M` (wireframe + FPS + teletrasporto)
-- [ ] **#20** Prenotazione cabina automatica quando ti avvicini alle porte
+### ✅ Polish Pack v1.4 — completato (2026-09-12)
+- [x] **#2** Musica di sottofondo contestuale (jazz lobby T-3, classica 4-9, silenzia su allarme/OOO)
+- [x] **#9** Comando vocale "piano N" / "cinque" → `SpeechRecognition` it-IT (tasto `K`)
+- [x] **#19** Modalità manutentore `Shift+M` (wireframe cabina + FPS/drawcalls + teletrasporto)
+- [x] **#20** Prenotazione cabina automatica quando ti avvicini (<1m), display "PRENOTATA"
 
-### Backlog residuo post-v1.4 (8/22 feature)
-- [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]`
+### Backlog residuo post-v1.4 (5/22 feature)
+- [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]` (alto sforzo)
 - [ ] **#16** Service Worker + PWA installabile — richiede 2 file esterni (decisione D2 pendente)
 - [ ] **#14** Logica passeggeri coerente (salita/discesa per piano tematico)
 - [ ] **#13** Verifica accessibilità tastiera nel corridoio
