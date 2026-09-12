@@ -6,6 +6,11 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
+> **🟡 In corso (2026-09-12)**: Polish Pack **v1.4** su branch `feature/polish-pack-v1.4` —
+> 4 feature in sviluppo: musica di sottofondo contestuale, comando vocale, modalità
+> manutentore e prenotazione cabina dal corridoio. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 13
+> e `piani/README.md` per il tracking.
+
 ---
 
 ## 📋 Indice
@@ -387,17 +392,29 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 ## 🗺️ Roadmap
 
-Possibili miglioramenti futuri (non implementati):
+### In corso — Polish Pack v1.4 (branch `feature/polish-pack-v1.4`)
+- [ ] **#2** Musica di sottofondo contestuale (jazz lobby, classica attico)
+- [ ] **#9** Comando vocale "piano N" → `SpeechRecognition` it-IT
+- [ ] **#19** Modalità manutentore `Shift+M` (wireframe + FPS + teletrasporto)
+- [ ] **#20** Prenotazione cabina automatica quando ti avvicini alle porte
 
+### Backlog residuo post-v1.4 (8/22 feature)
+- [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]`
+- [ ] **#16** Service Worker + PWA installabile — richiede 2 file esterni (decisione D2 pendente)
+- [ ] **#14** Logica passeggeri coerente (salita/discesa per piano tematico)
+- [ ] **#13** Verifica accessibilità tastiera nel corridoio
+- [ ] **#18** Texture atlas / caching canvas offscreen per il display touch
+
+### Backlog originale §9 (long-term)
 - [ ] Più di 10 piani (parametrico)
 - [ ] Multi-cabina (ascensori A/B)
-- [ ] Musica di sottofondo (rilassante jazz nella lobby)
-- [ ] Effetto "shake" durante il movimento per dare più "peso"
 - [ ] Modalità multiplayer (più utenti nella stessa cabina)
 - [ ] Personalizzazione hotel (nome, indirizzo, tema)
 - [ ] Visualizzazione "dietro le quinte" del vano ascensore (shaft)
 - [ ] Supporto VR (WebXR)
 - [ ] Texture HD per gli arredi (al momento sono procedurali per performance)
+
+Dettaglio completo in `PIANO_MIGLIORAMENTI.md` §11 e `piani/README.md`.
 
 ---
 
