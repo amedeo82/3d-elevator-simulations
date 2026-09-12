@@ -2957,6 +2957,30 @@ function cancelDoorCountdown() {
   }
 }
 
+// ---- Polish Pack v1.5 #21b audit: timer di chiusura automatica porte ----
+// Comportamento realistico di un ascensore reale: dopo che le porte sono
+// completamente aperte (post arrivo al piano), se l'utente non fa nulla
+// per N secondi, le porte si chiudono automaticamente (con countdown 3..2..1).
+// Il timer si resetta se l'utente fa qualcosa (click pulsante, chiama piano,
+// rientra cabina, ecc.).
+const DOOR_AUTO_CLOSE_MS = 6000;
+let doorAutoCloseTimer = null;
+function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
+  cancelAutoClose();
+  doorAutoCloseTimer = setTimeout(() => {
+    doorAutoCloseTimer = null;
+    if (state.doorsOpen && state.doorsActual > 0.9
+        && !state.isMoving && !state.alarmOn && !state.outOfOrder
+        && !state.maintenanceMode && !state.prenotationActive) {
+      setDoors(false); // parte il countdown 3..2..1 + beep crescente
+    }
+  }, ms);
+}
+function cancelAutoClose() {
+  if (doorAutoCloseTimer) { clearTimeout(doorAutoCloseTimer); doorAutoCloseTimer = null; }
+}
+}
+
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
 // Restituisce la stringa da mostrare sul display in base al piano corrente
 function floorRoomRange(f) {
@@ -3855,6 +3879,7 @@ function requestFloor(floor) {
     if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
     return;
   }
+  cancelAutoClose(); // l'utente ha appena fatto qualcosa
   floor = Math.max(0, Math.min(NUM_FLOORS - 1, floor));
   if (floor === state.currentFloor && !state.isMoving) {
     // già qui, apri le porte
@@ -3993,6 +4018,10 @@ function tickDoors(dt) {
   const openOffset = state.doorsActual * DOOR_TRAVEL;
   doorLeft.position.x = -CABIN.w/4 + 0.025 - openOffset;
   doorRight.position.x = CABIN.w/4 - 0.025 + openOffset;
+  // Polish Pack v1.5 #21b audit: schedula auto-close quando le porte sono completamente aperte
+  if (state.doorsActual >= 0.99 && state.doorsOpen && !doorAnim && !doorAutoCloseTimer) {
+    scheduleAutoClose();
+  }
 }
 
 function setDoors(open) {
@@ -4002,9 +4031,11 @@ function setDoors(open) {
   playDoorSound(open);
   if (open) {
     cancelDoorCountdown();
+    cancelAutoClose(); // l'utente ha appena aperto: timer si resettera' quando le porte sono completamente aperte
   } else {
     if (typeof announceDoorClosing === 'function') announceDoorClosing();
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
+    cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
   animateDoorsTo(open ? 1 : 0, open ? 1.2 : 1.0);
   updateFloorDisplay();
@@ -4020,6 +4051,7 @@ function toggleAlarm() {
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
     state.isMoving = false;
     movePaused = true;
+    cancelAutoClose(); // l'allarme chiude le porte manualmente, niente auto-close
     setDoors(false);
     alarmLight.intensity = 4;
     playAlarm();
@@ -4067,6 +4099,7 @@ function exitCabin() {
   if (!state.playerInCabin) return;
   if (!state.doorsOpen || state.isMoving || state.alarmOn) return;
   state.playerInCabin = false;
+  cancelAutoClose(); // l'utente esce: il timer di chiusura automatica continua (vedi tickDoors)
   state.passengers = 0;  // l'utente è uscito
   // stacca la camera dalla cabina, riposizionala nel corridoio
   cabin.remove(yawObj);
@@ -4096,6 +4129,7 @@ function enterCabin() {
   if (distZ > 1.0 || Math.abs(yawObj.position.x) > 0.9) return;
   state.playerInCabin = true;
   state.passengers = 1;  // l'utente è rientrato
+  cancelAutoClose(); // l'utente rientra: il timer di chiusura automatica continua (vedi tickDoors)
   state.prenotationActive = false; // Polish Pack v1.4 #20: esci dalla modalità prenotazione
   corridor.remove(yawObj);
   placeCameraInCabin();
@@ -4183,6 +4217,7 @@ function updateHover() {
 
 function pressButton(btn) {
   if (!btn) return;
+  cancelAutoClose(); // qualsiasi interazione resetta il timer
   // animazione "premuto"
   if (btn.isCell) {
     const cell = btn.userData.cellMesh;
