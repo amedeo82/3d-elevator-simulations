@@ -18,6 +18,7 @@ Documento di design e implementation log.
 | Polish Pack v1.2 | ✅ 3/3 (#10 ✅, #5 ✅, #11 ✅) |
 | Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — merged su `main` |
 | Polish Pack v1.4 | ✅ 4/4 (#2 ✅, #9 ✅, #19 ✅, #20 ✅) — branch `feature/polish-pack-v1.4` |
+| Polish Pack v1.4 hotfix | ✅ 1/1 (display touchscreen passo-passo) — commit `e02adca` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -27,6 +28,11 @@ Documento di design e implementation log.
 
 **Polish Pack v1.4** (completato 2026-09-12): 4 feature selezionate dall'utente dal backlog §11,
 tutte tranne #19 ad alto impatto. Implementate e committate su `feature/polish-pack-v1.4`.
+
+**Hotfix post-v1.4** (2026-09-12, commit `e02adca`): piccolo enhancement richiesto dall'utente
+per allineare il display touchscreen della cabina al comportamento "passo-passo" già presente
+nel cartello del corridoio (`drawMovingSign`, Polish Pack v1.3 #4) e nella strip DOM
+`#floor-strip`. Non aggiunge una nuova voce al backlog §11 ma migliora la coerenza UX.
 
 ---
 
@@ -306,9 +312,42 @@ una a basso impatto (#19) completano la copertura dei backlog §11.1, §11.3 e �
 - Implementate in un commit unico (`0b5c8fc`) perché le modifiche sono strettamente
   interleaved nel codice (state, audio section, keydown listener, loop). Approccio simile
   a v1.2 (un solo commit per 3 feature)
-- Backlog residuo post-v1.4: 8/22 feature. Le 8 restanti sono tutte a bassa priorità
-  o alto sforzo (#12, #16, #14, #13, #18 + bug-fix futuri)
+- Backlog residuo post-v1.4: **5/22 feature**. Le restanti sono tutte a bassa priorità
+  o alto sforzo (#12 i18n, #16 PWA, #14 logica passeggeri, #13 accessibilità tastiera,
+  #18 texture atlas)
 - D2 (single-file vs PWA) resta **pendente**: #16 richiede 2 file esterni e non è in scope v1.4
+
+### Fase 14 — Polish Pack v1.4 hotfix: display touchscreen passo-passo ✅ (2026-09-12, commit `e02adca`)
+
+Mini-enhancement richiesto dall'utente subito dopo il merge di v1.4. Non aggiunge una
+nuova voce al backlog §11 ma **migliora la coerenza UX** tra i 3 display che mostrano il piano:
+
+| Display | Prima | Dopo |
+|---|---|---|
+| Cartello corridoio (`drawMovingSign`) | Passo-passo (Polish Pack v1.3 #4) | Invariato ✅ |
+| Strip DOM HUD (`#floor-strip`) | Passo-passo (aggiornato in `tickMove`) | Invariato ✅ |
+| **Display touchscreen** (`drawModernDisplay`) | **Mostrava solo il piano di partenza per tutta la corsa, poi saltava al piano di arrivo** | **Mostra il piano attualmente attraversato + indicatore "X → Y"** |
+
+**Modifiche** (`elevator.html`, +19/-2 righe):
+1. Nuovo `state.floorShown: 0` nello state object
+2. `tickMove()` ora scrive `state.floorShown = Math.round(currentDisplay)` ogni frame
+   (stessa formula di `Math.round` usata per `drawMovingSign` — coerente)
+3. `drawModernDisplay()` usa `state.isMoving ? state.floorShown : state.currentFloor`
+   per il grande numero 130px
+4. Sotto al numero, durante il movimento, mostra "X → Y" (es. "5 → 2") per chiarezza
+5. `tickMove()` arrival + `teleportToFloor()` sincronizzano `floorShown` al piano reale
+
+**Verifiche**:
+- [x] `node --check` sul JS estratto: exit 0
+- [x] Brace/paren balance: 0/0
+- [x] Display passa per T→1→2→3→4→5 durante una salita da Terra a 5 (smooth)
+- [x] Display passa per 5→4→3→2→1→T durante una discesa da 5 a Terra
+- [x] Teletrasporto (Shift+M + tasto 1-9) mostra il piano corretto
+- [x] All'arrivo finale, il display si stabilizza sul piano raggiunto
+
+**Rationale**: il cartello del corridoio e la strip DOM mostravano già il "passo-passo"
+ma il display touchscreen (il più prominente, 130px) no. Era incongruente: l'utente vedeva
+"sul cartello esterno 1·2·3·4·5" mentre "sul display interno sempre 5 finché non si arriva".
 
 ---
 
@@ -625,6 +664,9 @@ ad alto sforzo / alta complessità architetturale (#16 PWA, #12 i18n).
 
 ---
 
-**Stato: Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) su branch `feature/polish-pack-v1.4`** ✅🟢
+**Stato: Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
 
-**Polish Pack v1.4 → 18/22 funzionalità implementate (81.8%)**. Backlog residuo: 4/22.
+**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**. Backlog residuo: 5/22
+(#12 i18n, #13, #14, #16 PWA, #18). Hotfix display passo-passo non è una nuova voce di
+backlog ma un enhancement di coerenza UX (allinea display touchscreen a cartello corridoio
+e strip DOM, già passo-passo).

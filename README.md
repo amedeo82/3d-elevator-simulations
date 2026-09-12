@@ -9,6 +9,10 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 > **✅ Polish Pack v1.4 completato (2026-09-12)** — 4 feature: musica contestuale,
 > comando vocale, modalità manutentore, prenotazione cabina. Totale: **17/22 funzionalità
 > backlog implementate (77%)**. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 13 e `piani/README.md`.
+>
+> **🔧 Hotfix post-v1.4 (2026-09-12)** — display touchscreen mostra i piani
+> attraversati durante il movimento (passo-passo) + indicatore "X → Y". Allinea il
+> display touchscreen al cartello del corridoio e alla strip HUD. Vedi §Fase 14.
 
 ---
 
@@ -64,6 +68,7 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - **Display touch 540×1100 px** in vetro nero con cornice in alluminio
 - Header: nome hotel + orologio digitale in tempo reale + data italiana
 - Sezione centrale: **piano corrente gigante (130 px)** + freccia direzione animata + stato
+- Durante il movimento: il piano mostrato è quello **attualmente attraversato** (passo-passo), non fisso sul piano di partenza. Sotto al numero appare l'indicatore "X → Y" (es. "5 → 2"). Allineato al cartello del corridoio.
 - Sezione meteo con icona animata (sole, nuvole, pioggia, neve, temporale, nebbia)
 - **Mappa edificio stilizzata** con 10 quadratini (cabina evidenziata in movimento)
 - **Griglia touch 3×4** con celle per i piani 9..1 + T (Terra)
@@ -424,6 +429,12 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 - [x] **#9** Comando vocale "piano N" / "cinque" → `SpeechRecognition` it-IT (tasto `K`)
 - [x] **#19** Modalità manutentore `Shift+M` (wireframe cabina + FPS/drawcalls + teletrasporto)
 - [x] **#20** Prenotazione cabina automatica quando ti avvicini (<1m), display "PRENOTATA"
+
+### 🔧 Hotfix post-v1.4 (2026-09-12)
+- [x] **Display touchscreen passo-passo** — durante il movimento il grande numero (130 px)
+      mostra il piano **attualmente attraversato** (non fisso sul piano di partenza),
+      con indicatore "X → Y" sotto. Allinea display touchscreen a cartello corridoio
+      e strip HUD. Commit `e02adca`.
 
 ### Backlog residuo post-v1.4 (5/22 feature)
 - [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]` (alto sforzo)

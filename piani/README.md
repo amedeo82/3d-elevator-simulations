@@ -23,9 +23,35 @@ Aperto e completato branch **`feature/polish-pack-v1.4`** con 4 feature implemen
 **Decisioni di scope**:
 - Singolo branch per tutte e 4 le feature
 - Implementate in 1 commit combinato (modifiche interleaved, simile a v1.2)
-- Backlog residuo post-v1.4: **4/22 funzionalità** (vs 12/22 pre-v1.4)
+- Backlog residuo post-v1.4: **5/22 funzionalità** (vs 12/22 pre-v1.4)
 
-**Polish Pack v1.4 → 18/22 funzionalità implementate (81.8%)**.
+**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**.
+
+---
+
+## Hotfix post-v1.4 (2026-09-12, commit `e02adca`)
+
+Enhancement richiesto subito dopo il merge di v1.4. Allinea il **display touchscreen**
+della cabina al comportamento "passo-passo" già presente in:
+
+- Cartello corridoio (`drawMovingSign`, Polish Pack v1.3 #4)
+- Strip DOM HUD (`#floor-strip`, aggiornato in `tickMove`)
+
+| Display | Prima | Dopo |
+|---|---|---|
+| Cartello corridoio | Passo-passo ✅ | Passo-passo ✅ |
+| Strip DOM HUD | Passo-passo ✅ | Passo-passo ✅ |
+| **Display touchscreen** | **Piano partenza fisso per tutta la corsa** | **Passo-passo + indicatore "X → Y"** |
+
+Non aggiunge una nuova voce al backlog §11 ma migliora la coerenza UX tra i 3 indicatori
+di piano. 4 modifiche in `elevator.html` (+19/-2 righe):
+
+1. Nuovo `state.floorShown: 0` nello state object
+2. `tickMove()` scrive `state.floorShown = Math.round(currentDisplay)` ogni frame
+3. `drawModernDisplay()` usa `state.floorShown` quando `isMoving`, altrimenti `currentFloor`
+4. Sotto al grande numero (130px) mostra "X → Y" durante il movimento
+
+`tickMove()` arrival + `teleportToFloor()` sincronizzano `floorShown` al piano reale.
 
 ---
 
