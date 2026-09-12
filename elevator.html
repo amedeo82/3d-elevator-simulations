@@ -512,7 +512,9 @@ const state = {
   maintenanceMode: false,
   _eventLog: [],                  // ultimi 10 eventi (timestamps + label)
   _fpsBuf: [],                    // buffer ultimi 60 frame per FPS medio
-  _wireframeSnapshot: null        // mappa {mesh: originalWireframe} per ripristino uscita maintenance
+  _wireframeSnapshot: null,       // mappa {mesh: originalWireframe} per ripristino uscita maintenance
+  // piano mostrato sul display touchscreen (passo-passo durante il movimento)
+  floorShown: 0
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -2937,7 +2939,10 @@ function drawModernDisplay() {
     ctx.font = '14px Arial';
     ctx.fillText('Tieni premuto E per entrare', W/2, 285);
   } else {
-    const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
+    // piano mostrato: durante il movimento è il piano che la cabina sta attraversando
+    // (aggiornato ogni frame da tickMove), a riposo è il piano attuale
+    const displayedFloor = state.isMoving ? state.floorShown : state.currentFloor;
+    const floorLabel = displayedFloor === 0 ? 'T' : String(displayedFloor);
     // sfondo cella
     ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
     ctx.fillRect(40, 125, W - 80, 180);
@@ -2952,6 +2957,14 @@ function drawModernDisplay() {
     ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
     ctx.fillText(floorLabel, W/2, 215);
     ctx.shadowBlur = 0;
+    // sotto al piano: se in movimento, mostra "Da X a Y" per chiarezza
+    if (state.isMoving) {
+      const fromLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
+      const toLabel = state.targetFloor === 0 ? 'T' : String(state.targetFloor);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#a89060';
+      ctx.fillText(`${fromLabel} → ${toLabel}`, W/2, 145);
+    }
     // freccia direzione (animata)
     let arrowChar = '·';
     let arrowLabel = 'FERMO';
@@ -3587,6 +3600,7 @@ function teleportToFloor(floor) {
   if (floor < 0 || floor >= NUM_FLOORS) return false;
   // teletrasporto diretto: cambia currentFloor + ricostruisci corridoio + chiudi/apri porte
   state.currentFloor = floor;
+  state.floorShown = floor; // sincronizza display touchscreen
   state.targetFloor = floor;
   cabin.position.y = floor * FLOOR_HEIGHT;
   corridor.position.y = cabin.position.y;
@@ -3790,6 +3804,8 @@ function tickMove(dt) {
   // aggiorna display: piano corrente "arrotondato" durante il movimento
   const currentDisplay = moveFrom + (moveTo - moveFrom) * t;
   const floorShown = Math.round(currentDisplay);
+  // aggiorna strip DOM (piccolo, già esistente) + display touchscreen della cabina
+  state.floorShown = floorShown;
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   // Polish Pack v1.3 #4: cartello "passo passo" — aggiorna solo quando cambia il piano mostrato
@@ -3801,6 +3817,7 @@ function tickMove(dt) {
   if (moveT >= 1) {
     // arrivato
     state.currentFloor = moveTo;
+    state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
     state.isMoving = false;
     lightFloorButton(moveTo, false);
     state.requestedFloors.delete(moveTo);
