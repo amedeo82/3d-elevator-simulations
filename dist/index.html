@@ -133,6 +133,53 @@
     margin-right: 4px;
   }
 
+  /* Overlay manutentore (Polish Pack v1.4 #19) */
+  #maint-overlay {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid #00ff88;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #cfffd8;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    min-width: 240px;
+    pointer-events: none;
+    z-index: 30;
+    box-shadow: 0 0 12px rgba(0,255,136,0.18);
+    display: none;
+  }
+  #maint-overlay.show { display: block; }
+  #maint-overlay .title {
+    color: #00ff88;
+    font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(0,255,136,0.3);
+    padding-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  #maint-overlay .row { display: flex; justify-content: space-between; gap: 12px; }
+  #maint-overlay .row .lbl { color: #7fc99a; }
+  #maint-overlay .row .val { color: #fff; }
+  #maint-overlay .events {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(0,255,136,0.25);
+    max-height: 100px;
+    overflow: hidden;
+    font-size: 11px;
+    color: #aaffcc;
+  }
+  #maint-overlay .hint {
+    margin-top: 6px;
+    color: #ffd66b;
+    font-size: 11px;
+  }
+
   /* Start screen */
   #startscreen {
     position: fixed;
@@ -333,6 +380,19 @@
     <div id="statusText">In attesa</div>
   </div>
   <div id="subtitle"></div>
+  <div id="maint-overlay">
+    <div class="title">🛠 MANUTENZIONE</div>
+    <div class="row"><span class="lbl">FPS:</span><span class="val" id="m-fps">--</span></div>
+    <div class="row"><span class="lbl">Draw calls:</span><span class="val" id="m-dc">--</span></div>
+    <div class="row"><span class="lbl">Piano attuale:</span><span class="val" id="m-floor">--</span></div>
+    <div class="row"><span class="lbl">Piano target:</span><span class="val" id="m-target">--</span></div>
+    <div class="row"><span class="lbl">In coda:</span><span class="val" id="m-queue">--</span></div>
+    <div class="row"><span class="lbl">Passeggeri:</span><span class="val" id="m-pax">--</span></div>
+    <div class="row"><span class="lbl">Modalità:</span><span class="val" id="m-mode">--</span></div>
+    <div class="row"><span class="lbl">Out-of-order:</span><span class="val" id="m-ooo">--</span></div>
+    <div class="events" id="m-events"></div>
+    <div class="hint">Shift+M esce · 1-9 teletrasporto</div>
+  </div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText">Dentro la cabina</span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;">↗ Esci dalla cabina</button>
   <button id="hud-reenter-btn" class="hud-action" style="display:none;">↙ Rientra in cabina</button>
@@ -443,7 +503,16 @@ const state = {
   // Polish Pack v1.3 #4: cartello "passo passo" durante il viaggio
   _lastShownFloor: null,
   // Polish Pack v1.3 #6: modalità "fuori servizio"
-  outOfOrder: false
+  outOfOrder: false,
+  // Polish Pack v1.4 #20: prenotazione automatica dal corridoio
+  prenotationActive: false,
+  // Polish Pack v1.4 #9: comando vocale
+  voiceEnabled: false,
+  // Polish Pack v1.4 #19: modalità manutentore
+  maintenanceMode: false,
+  _eventLog: [],                  // ultimi 10 eventi (timestamps + label)
+  _fpsBuf: [],                    // buffer ultimi 60 frame per FPS medio
+  _wireframeSnapshot: null        // mappa {mesh: originalWireframe} per ripristino uscita maintenance
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -2846,6 +2915,27 @@ function drawModernDisplay() {
     ctx.fillStyle = '#a89060';
     ctx.font = '13px Arial';
     ctx.fillText('Premere O per ripristinare', W/2, 285);
+  } else if (state.prenotationActive && !state.playerInCabin) {
+    // Polish Pack v1.4 #20: overlay prenotazione quando il player è nel corridoio
+    // (le porte sono aperte per lui, display invita a rientrare)
+    ctx.fillStyle = 'rgba(120, 220, 255, 0.10)';
+    ctx.fillRect(40, 125, W - 80, 180);
+    ctx.strokeStyle = '#6cdfff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 125, W - 80, 180);
+    ctx.fillStyle = '#6cdfff';
+    ctx.shadowColor = '#6cdfff'; ctx.shadowBlur = 14;
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('PRENOTATA', W/2, 200);
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = '#aaeaff';
+    ctx.fillText('Cabina pronta per te', W/2, 245);
+    ctx.fillStyle = '#a89060';
+    ctx.font = '14px Arial';
+    ctx.fillText('Tieni premuto E per entrare', W/2, 285);
   } else {
     const floorLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
     // sfondo cella
@@ -3212,6 +3302,330 @@ function stopWhoosh() {
   }, 80);
 }
 
+// ---- Musica di sottofondo contestuale (Polish Pack v1.4 #2) ----
+// Tre OscillatorNode sawtooth morbidi (un accordo perfetto) + LFO lento per "breathing",
+// filtrati con un low-pass per dare calore. Track "jazz" (T-3): accordo Cmaj7 (C-E-G-B).
+// Track "classica" (4-9): arpeggio semplice C-E-G-C con tempi diversi.
+// Volume molto basso (~0.03), rispetta state.muted, si interrompe su allarme/OOO/movimento.
+let musicNodes = null;   // {osc1, osc2, osc3, lfo, gain, lfoGain, filter, timer}
+let musicTrack = null;   // 'jazz' | 'classica' | null
+function startMusic() {
+  if (musicNodes || state.muted || state.alarmOn || state.outOfOrder) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const track = state.currentFloor <= 3 ? 'jazz' : 'classica';
+  if (musicTrack === track && musicNodes) return; // già in riproduzione del track giusto
+  stopMusic();
+  musicTrack = track;
+  // accordo perfetto (jazz = Cmaj7: C4 E4 G4 B4 = 261.63 329.63 392.00 493.88)
+  // classica = C major triad + arpeggio (C4 E4 G4 C5 = 261.63 329.63 392.00 523.25)
+  const freqs = track === 'jazz'
+    ? [130.81, 196.00, 246.94, 293.66]   // Cmaj7 un'ottava sotto per più "morbido"
+    : [261.63, 329.63, 392.00, 523.25];
+  const oscs = freqs.map(f => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    return o;
+  });
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 800;
+  filter.Q.value = 0.6;
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0; // parte silente, sale gradualmente
+  // LFO per breathing lento (0.1 Hz) — varia ±1.5dB il gain
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.1;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0.005;
+  lfo.connect(lfoGain).connect(gain.gain);
+  // per "classica" arpeggiamo: spegniamo/accendiamo le 4 note con timer
+  let timer = null;
+  if (track === 'classica') {
+    const seq = [0, 1, 2, 3, 2, 1];
+    let idx = 0;
+    // creiamo 4 gain individuali per fare l'arpeggio
+    const oscGains = oscs.map(() => {
+      const g = audioCtx.createGain();
+      g.gain.value = 0.0;
+      return g;
+    });
+    oscs.forEach((o, i) => o.connect(oscGains[i]).connect(filter));
+    timer = setInterval(() => {
+      if (!musicNodes || musicTrack !== 'classica') return;
+      const t = audioCtx.currentTime;
+      // tutti a zero
+      oscGains.forEach(g => { try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.3); } catch(e) {} });
+      // corrente a 1 (relativo al gain master)
+      const cur = oscGains[seq[idx]];
+      try { cur.gain.linearRampToValueAtTime(0.7, t + 0.05); } catch(e) {}
+      idx = (idx + 1) % seq.length;
+    }, 900);
+    musicNodes = { oscs, oscGains, filter, gain, lfo, lfoGain, timer, track };
+  } else {
+    // jazz: tutte le 4 note suonano insieme, ognuna con il proprio gain
+    const oscGains = oscs.map(() => {
+      const g = audioCtx.createGain();
+      g.gain.value = 0.15; // basso per non essere troppo forte in somma
+      return g;
+    });
+    oscs.forEach((o, i) => o.connect(oscGains[i]).connect(filter));
+    musicNodes = { oscs, oscGains, filter, gain, lfo, lfoGain, timer, track };
+  }
+  filter.connect(gain).connect(audioCtx.destination);
+  oscs.forEach(o => o.start());
+  lfo.start();
+  // fade-in 1.5s
+  try { gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5); } catch(e) {}
+}
+function stopMusic(fast = false) {
+  if (!musicNodes) return;
+  const dur = fast ? 0.1 : 0.5;
+  try {
+    musicNodes.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+    musicNodes.gain.gain.setValueAtTime(musicNodes.gain.gain.value, audioCtx.currentTime);
+    musicNodes.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + dur);
+  } catch(e) {}
+  const toStop = musicNodes;
+  musicNodes = null;
+  musicTrack = null;
+  setTimeout(() => {
+    try { toStop.oscs.forEach(o => o.stop()); toStop.lfo.stop(); } catch(e) {}
+    if (toStop.timer) clearInterval(toStop.timer);
+  }, dur * 1000 + 60);
+}
+function tickMusic() {
+  // decide se avviare/fermare/aggiornare il track in base allo stato corrente
+  const shouldPlay = !state.muted && !state.alarmOn && !state.outOfOrder
+                  && !state.isMoving && !movePaused && state.doorsActual > 0.4
+                  && !state.maintenanceMode;
+  if (shouldPlay && !musicNodes) startMusic();
+  else if (!shouldPlay && musicNodes) stopMusic(musicNodes && (state.alarmOn || state.outOfOrder));
+  // se il track non corrisponde al piano corrente, ricrea
+  if (musicNodes) {
+    const want = state.currentFloor <= 3 ? 'jazz' : 'classica';
+    if (musicNodes.track !== want) startMusic();
+  }
+}
+
+// ---- Comando vocale (Polish Pack v1.4 #9): SpeechRecognition API it-IT ----
+// Mappa "piano cinque" / "cinque" / "5" → requestFloor(5). Toggle con tasto K.
+// Fallback graceful se l'API non è disponibile (Firefox).
+const ITALIAN_NUMBERS = {
+  'terra': 0, 'zero': 0,
+  'uno': 1, 'una': 1,
+  'due': 2,
+  'tre': 3,
+  'quattro': 4,
+  'cinque': 5,
+  'sei': 6,
+  'sette': 7,
+  'otto': 8,
+  'nove': 9
+};
+let recognition = null;
+let voiceSupported = null; // null = non ancora verificato, true/false
+function checkVoiceSupport() {
+  if (voiceSupported !== null) return voiceSupported;
+  voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return voiceSupported;
+}
+function startVoice() {
+  if (!checkVoiceSupport()) {
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = 'Comando vocale non supportato in questo browser';
+    setTimeout(() => updateFloorDisplay(), 1500);
+    return;
+  }
+  if (recognition) return; // già attivo
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'it-IT';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript.trim().toLowerCase();
+      processVoiceCommand(transcript);
+    }
+  };
+  recognition.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return; // non segnalare
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = `Voce errore: ${e.error}`;
+    setTimeout(() => updateFloorDisplay(), 1500);
+  };
+  recognition.onend = () => {
+    // se l'utente vuole tenerlo attivo, riavviamo (alcuni browser chiudono dopo pause)
+    if (state.voiceEnabled) {
+      try { recognition.start(); } catch(e) {}
+    } else {
+      recognition = null;
+    }
+  };
+  try {
+    recognition.start();
+    state.voiceEnabled = true;
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = 'Voce: ON (pronuncia "piano N")';
+    setTimeout(() => updateFloorDisplay(), 2000);
+  } catch(e) {
+    recognition = null;
+    state.voiceEnabled = false;
+  }
+}
+function stopVoice() {
+  state.voiceEnabled = false;
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+  }
+}
+function processVoiceCommand(transcript) {
+  // cerca un numero italiano o una cifra nel transcript
+  let floor = -1;
+  // 1) cifra singola (es. "5" oppure "piano 5")
+  const digitMatch = transcript.match(/\b([0-9])\b/);
+  if (digitMatch) {
+    floor = parseInt(digitMatch[1], 10);
+  } else {
+    // 2) nome italiano del numero
+    for (const word of transcript.split(/\s+/)) {
+      const clean = word.replace(/[^\wàèéìòù]/gi, '');
+      if (ITALIAN_NUMBERS.hasOwnProperty(clean)) {
+        floor = ITALIAN_NUMBERS[clean];
+        break;
+      }
+    }
+  }
+  if (floor < 0 || floor >= NUM_FLOORS) {
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = `Voce: non ho capito "${transcript}"`;
+    setTimeout(() => updateFloorDisplay(), 1500);
+    return;
+  }
+  // chiama solo se siamo in cabina e fermi (per non confondere con prenotazione)
+  if (!state.playerInCabin) {
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = `Voce: "${floor}" ricevuto (devi essere in cabina)`;
+    setTimeout(() => updateFloorDisplay(), 1800);
+    return;
+  }
+  if (state.alarmOn || state.outOfOrder) return; // già gestito da requestFloor
+  requestFloor(floor);
+  const label = floor === 0 ? 'T' : String(floor);
+  const status = document.getElementById('statusText');
+  if (status) {
+    status.textContent = `Voce: "${transcript}" → piano ${label}`;
+    setTimeout(() => updateFloorDisplay(), 1800);
+  }
+}
+// cleanup su page unload
+addEventListener('beforeunload', () => {
+  if (recognition) { try { recognition.stop(); } catch(e) {} }
+  if (musicNodes) stopMusic(true);
+});
+
+// ---- Modalità manutentore (Polish Pack v1.4 #19) ----
+// Overlay debug con FPS, draw calls, stato interno, ultimi eventi.
+// Wireframe sui materiali della cabina + teletrasporto diretto con tasti 1-9.
+function logEvent(label) {
+  if (!state._eventLog) state._eventLog = [];
+  const t = new Date();
+  const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  state._eventLog.unshift(`${ts} ${label}`);
+  if (state._eventLog.length > 10) state._eventLog.length = 10;
+}
+function applyWireframe(on) {
+  // salva o ripristina lo stato wireframe dei materiali della cabina
+  if (on) {
+    if (state._wireframeSnapshot) return; // già applicato
+    const snap = [];
+    cabin.traverse(obj => {
+      if (obj.isMesh && obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (m && 'wireframe' in m) {
+            snap.push({ mat, m, was: m.wireframe });
+            m.wireframe = true;
+          }
+        });
+      }
+    });
+    state._wireframeSnapshot = snap;
+  } else {
+    if (!state._wireframeSnapshot) return;
+    state._wireframeSnapshot.forEach(({ m, was }) => { try { m.wireframe = was; } catch(e) {} });
+    state._wireframeSnapshot = null;
+  }
+}
+function toggleMaintenance() {
+  state.maintenanceMode = !state.maintenanceMode;
+  const overlay = document.getElementById('maint-overlay');
+  if (state.maintenanceMode) {
+    overlay.classList.add('show');
+    applyWireframe(true);
+    logEvent('Maint ON');
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = 'Modalità manutentore ON (Shift+M per uscire)';
+    setTimeout(() => updateFloorDisplay(), 2000);
+  } else {
+    overlay.classList.remove('show');
+    applyWireframe(false);
+    logEvent('Maint OFF');
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = 'Modalità manutentore OFF';
+    setTimeout(() => updateFloorDisplay(), 1500);
+  }
+}
+function teleportToFloor(floor) {
+  if (!state.maintenanceMode) return false;
+  if (state.isMoving) return false;
+  if (floor < 0 || floor >= NUM_FLOORS) return false;
+  // teletrasporto diretto: cambia currentFloor + ricostruisci corridoio + chiudi/apri porte
+  state.currentFloor = floor;
+  state.targetFloor = floor;
+  cabin.position.y = floor * FLOOR_HEIGHT;
+  corridor.position.y = cabin.position.y;
+  if (typeof buildCorridor === 'function') buildCorridor(floor);
+  if (typeof drawFloorSign === 'function') drawFloorSign(floor);
+  setDoors(true);
+  markDisplayDirty();
+  logEvent(`Teleport piano ${floor === 0 ? 'T' : floor}`);
+  const status = document.getElementById('statusText');
+  if (status) status.textContent = `🛠 Teletrasporto a piano ${floor === 0 ? 'T' : floor}`;
+  setTimeout(() => updateFloorDisplay(), 1500);
+  return true;
+}
+function tickMaintenance(now) {
+  if (!state.maintenanceMode) return;
+  // aggiorna buffer FPS
+  state._fpsBuf.push(now);
+  while (state._fpsBuf.length > 2 || (state._fpsBuf.length > 1 && state._fpsBuf[state._fpsBuf.length-1] - state._fpsBuf[0] > 1000)) {
+    // mantieni solo l'ultimo secondo
+    if (state._fpsBuf.length > 60) state._fpsBuf.shift();
+    else break;
+  }
+  const span = state._fpsBuf.length > 1 ? (state._fpsBuf[state._fpsBuf.length-1] - state._fpsBuf[0]) / 1000 : 1;
+  const fps = state._fpsBuf.length > 1 ? Math.round((state._fpsBuf.length - 1) / span) : 0;
+  document.getElementById('m-fps').textContent = `${fps}`;
+  // draw calls (dopo il render)
+  if (renderer.info && renderer.info.render) {
+    document.getElementById('m-dc').textContent = `${renderer.info.render.calls}`;
+  }
+  document.getElementById('m-floor').textContent = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
+  document.getElementById('m-target').textContent = state.targetFloor === 0 ? 'T' : String(state.targetFloor);
+  document.getElementById('m-queue').textContent = String(state.requestedFloors.size);
+  document.getElementById('m-pax').textContent = `${state.passengers}/8`;
+  document.getElementById('m-mode').textContent = state.playerInCabin ? 'cabina' : 'corridoio';
+  document.getElementById('m-ooo').textContent = state.outOfOrder ? 'SÌ' : 'no';
+  document.getElementById('m-events').innerHTML = (state._eventLog || [])
+    .map(e => `<div>${e}</div>`).join('');
+}
+
 // ============================================================
 // ANNUNCI VOCALI TTS (Fase 6)
 // ============================================================
@@ -3531,9 +3945,11 @@ function enterCabin() {
   if (distZ > 1.0 || Math.abs(yawObj.position.x) > 0.9) return;
   state.playerInCabin = true;
   state.passengers = 1;  // l'utente è rientrato
+  state.prenotationActive = false; // Polish Pack v1.4 #20: esci dalla modalità prenotazione
   corridor.remove(yawObj);
   placeCameraInCabin();
   refreshHudButtons();
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
   playBeep(900, 0.08, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 80);
 }
@@ -3755,6 +4171,14 @@ addEventListener('keydown', e => {
   } else if (e.code === 'KeyE') {
     if (state.playerInCabin) exitCabin();
     else enterCabin();
+  } else if (e.code === 'KeyK') {
+    // Polish Pack v1.4 #9: toggle comando vocale
+    state.voiceEnabled = !state.voiceEnabled;
+    if (state.voiceEnabled) startVoice(); else stopVoice();
+  } else if (e.code === 'KeyM' && e.shiftKey) {
+    // Polish Pack v1.4 #19: toggle modalità manutentore (Shift+M, non M solo)
+    e.preventDefault();
+    toggleMaintenance();
   } else if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' ||
              e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
              e.code === 'Digit7' || e.code === 'Digit8' || e.code === 'Digit9' ||
@@ -3769,11 +4193,25 @@ addEventListener('keydown', e => {
     else if (c.startsWith('Numpad')) floor = parseInt(c.slice(6), 10);
     if (c === 'Digit0' || c === 'Numpad0') floor = 0;
     if (floor >= 0 && floor < NUM_FLOORS) {
-      requestFloor(floor);
-      const status = document.getElementById('statusText');
-      if (status) {
-        status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
-        setTimeout(() => updateFloorDisplay(), 1500);
+      // Polish Pack v1.4 #19: in maintenance, teletrasporto diretto
+      if (state.maintenanceMode) {
+        if (teleportToFloor(floor)) {
+          // teletrasporto gestito, salta requestFloor
+        } else {
+          requestFloor(floor);
+          const status = document.getElementById('statusText');
+          if (status) {
+            status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
+            setTimeout(() => updateFloorDisplay(), 1500);
+          }
+        }
+      } else {
+        requestFloor(floor);
+        const status = document.getElementById('statusText');
+        if (status) {
+          status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
+          setTimeout(() => updateFloorDisplay(), 1500);
+        }
       }
     }
   } else if (state.playerInCabin) {
@@ -3826,6 +4264,35 @@ function tickPlayer(dt) {
   } else {
     reBtn.classList.remove('near');
     reBtn.textContent = '↙ Avvicinati per rientrare';
+  }
+
+  // Polish Pack v1.4 #20: prenotazione automatica cabina dal corridoio
+  // Se il player è vicino (<1m) alle porte della cabina E fuori dalla cabina E
+  // cabina ferma E non allarme/OOO → apri le porte gentilmente (no countdown).
+  // Se si allontana dopo aver prenotato → chiudi gentilmente (no countdown, no annuncio).
+  const canPrenotate = !state.playerInCabin
+                    && !state.isMoving && !state.alarmOn && !state.outOfOrder;
+  const isNearDoors = distToDoors < 1.0 && Math.abs(yawObj.position.x) < 0.9;
+  if (canPrenotate && isNearDoors && !state.doorsOpen && state.doorsActual < 0.1) {
+    // apri le porte senza countdown né annuncio
+    state.doorsOpen = true;
+    state.doorsTarget = 1;
+    state.prenotationActive = true;
+    playDoorSound(true);
+    animateDoorsTo(1, 1.4);
+    markDisplayDirty();
+    if (typeof refreshHudButtons === 'function') refreshHudButtons();
+  } else if (state.prenotationActive && (!isNearDoors || !canPrenotate)) {
+    // chiudi gentilmente
+    if (state.doorsActual > 0.05) {
+      animateDoorsTo(0, 0.8);
+      playDoorSound(false);
+    }
+    state.doorsOpen = false;
+    state.doorsTarget = 0;
+    state.prenotationActive = false;
+    markDisplayDirty();
+    if (typeof refreshHudButtons === 'function') refreshHudButtons();
   }
 }
 
@@ -3932,6 +4399,15 @@ function loop(now) {
 
   // display touch pulsantiera moderna
   if (typeof tickDisplay === 'function') tickDisplay(now);
+
+  // Polish Pack v1.4 #2: musica di sottofondo contestuale
+  tickMusic();
+
+  // Polish Pack v1.4 #19: aggiorna HUD manutentore (FPS, eventi, ecc.)
+  tickMaintenance(now);
+
+  // Polish Pack v1.4 #20: prenotazione cabina automatica (in tickPlayer, ma aggiorna display)
+  // (lo stato è già aggiornato dentro tickPlayer)
 
   updateHover();
   renderer.render(scene, camera);
