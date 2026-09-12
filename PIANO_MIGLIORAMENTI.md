@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.4 — Polish Pack v1.5 in corso (con #21 extra)** · Aggiornato 2026-09-12
+**Versione 1.5 — Polish Pack v1.6 in corso** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -19,8 +19,9 @@ Documento di design e implementation log.
 | Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — merged su `main` |
 | Polish Pack v1.4 | ✅ 4/4 (#2 ✅, #9 ✅, #19 ✅, #20 ✅) — branch `feature/polish-pack-v1.4` |
 | Polish Pack v1.4 hotfix | ✅ 1/1 (display touchscreen passo-passo) — commit `e02adca` |
-| Polish Pack v1.5 | 🟡 2/4 (#21b ✅, #22 ✅, #13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.5` |
-| Polish Pack v1.5 audit fix | ✅ 3 (TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio) |
+| Polish Pack v1.5 | ✅ 2/5 (#21b ✅, #22 ✅) — merged su `main` (commit `5ec79b1`); 3 pianificate originali (#13 #14 #18) confluite in v1.6 |
+| Polish Pack v1.5 audit fix | ✅ 8 (OOO parziale, Shift+M keybind, typo mat, audio context, TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio, housekeeping lista comandi) |
+| Polish Pack v1.6 | 🟡 0/3 (#13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.6` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -36,11 +37,17 @@ per allineare il display touchscreen della cabina al comportamento "passo-passo"
 nel cartello del corridoio (`drawMovingSign`, Polish Pack v1.3 #4) e nella strip DOM
 `#floor-strip`. Non aggiunge una nuova voce al backlog §11 ma migliora la coerenza UX.
 
-**Polish Pack v1.5** (in corso, aperto 2026-09-12): tre feature a basso/medio sforzo dal
-backlog residuo post-v1.4 — #13 accessibilità WASD, #14 logica passeggeri tematica,
+**Polish Pack v1.5** (completato 2026-09-12, branch `feature/polish-pack-v1.5` mergiato su
+`main` con commit `5ec79b1`): consegnato solo il sottoinsieme **"bonus audit UX"** —
+2 feature (#21b pulsantiera esterna, #22 timer auto-close porte) + 8 bug fix. Le 3 feature
+pianificate originali (#13, #14, #18) non sono state implementate in v1.5 e sono confluite
+nel **Polish Pack v1.6** (branch `feature/polish-pack-v1.6`).
+
+**Polish Pack v1.6** (in corso, aperto 2026-09-12): tre feature a basso/medio sforzo dal
+backlog residuo post-v1.5 — #13 accessibilità WASD, #14 logica passeggeri tematica,
 #18 caching canvas offscreen per il display touch. Nessuna decisione architetturale
-pendente (esclude deliberatamente #12 i18n e #16 PWA). Branch `feature/polish-pack-v1.5`.
-Target: 20/22 funzionalità implementate (90.9%).
+pendente (esclude deliberatamente #12 i18n e #16 PWA). Branch `feature/polish-pack-v1.6`.
+Target: 22/22 funzionalità implementate (100%).
 
 ---
 
@@ -359,28 +366,118 @@ ma il display touchscreen (il più prominente, 130px) no. Era incongruente: l'ut
 
 ---
 
-### Fase 15 — Polish Pack v1.5 🟡 (in corso, branch `feature/polish-pack-v1.5`)
+### Fase 15 — Polish Pack v1.5 ✅ (completato, branch `feature/polish-pack-v1.5`)
 
-**3 feature pianificate** (#13, #14, #18) selezionate dall'utente il **2026-09-12** dal
-backlog residuo post-v1.4: tutte a basso/medio sforzo, nessuna decisione architetturale
-pendente. Completa §11.4 (qualità) e §11.5 (performance).
+Branch aperto e mergiato su `main` il **2026-09-12** (commit `5ec79b1`). Ha consegnato solo
+il sottoinsieme **"bonus audit UX"** (2 feature + 8 bug fix). Le 3 feature pianificate
+originali (#13, #14, #18) **non sono state implementate in v1.5** e sono confluite nel
+**Polish Pack v1.6** (vedi §Fase 16).
 
-**+ 2 feature bonus aggiunte durante audit UX** dello stesso giorno (#21b pulsantiera
-esterna, #22 timer auto-close porte) dopo che l'utente ha segnalato "muro nero al posto
-delle porte + mancanza tasti di chiamata nel corridoio + niente timer di chiusura
-automatica".
+### Feature bonus audit UX (2, completate)
 
-**+ 4 bug fix** scoperti durante l'implementazione/gioco delle feature bonus:
-- `applyButtonAction` per `O` (OOO): porte non riaprivano al ripristino + rientro cabina
-  non bloccato durante OOO
-- `Shift+M` non attivava manutentore (matchava il ramo `KeyM` audio)
-- Typo `mat is not defined` in `applyWireframe` (crash toggle manutentore)
-- AudioContext warning spam all'avvio (`tickMusic` chiamava prima del gesto utente)
-- TDZ `buttonList` in `disposeCorridor` + `buildCorridor` (chiamato prima della init)
-- Raycast pulsanti esterni (label mesh separata dal body)
-- Porte invisibili dal corridoio (PlaneGeometry FrontSide + shaftBack nero)
+- ✅ **#21b Pulsantiera di chiamata esterna (▲/▼) nel corridoio** — placca di acciaio
+  spazzolato sulla parete sinistra del corridoio, vicino alle porte della cabina.
+  Header dorato "BOSS HOTEL" + 2 pulsanti rotondi verdi (▲ su / ▼ giù). Al Terra solo
+  ▲, all'attico solo ▼. Click chiama la cabina a quel piano (se già lì, apre le porte
+  gentilmente). Rispetta allarme/OOO (rifiuta con beep 220Hz). ⚠️ **Nota**: ▲ e ▼ sono
+  semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al
+  mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del
+  routing (richiesta al §11.8 D7).
 
-### Feature pianificate (3, in corso)
+- ✅ **#22 Chiusura automatica porte (6 secondi)** — comportamento ascensore reale.
+  Dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s parte
+  il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi
+  interazione: click pulsante (`pressButton`), chiama piano (`requestFloor`),
+  rientra/esce cabina (`enterCabin`/`exitCabin`), allarme (`toggleAlarm`),
+  chiudi esplicitamente (`setDoors(false)`). Gate di sicurezza: si chiude solo se
+  `state.doorsOpen && state.doorsActual > 0.9 && !state.isMoving && !state.alarmOn &&
+  !state.outOfOrder && !state.maintenanceMode && !state.prenotationActive`.
+
+### Audit fixes (8 bug risolti durante playtest)
+
+| Bug | Sintomo | Commit | Stato |
+|---|---|---|---|
+| OOO parzialmente rotto | Porte non si riaprivano al ripristino + rientro cabina non bloccato durante OOO | `ba0d075` | ✅ |
+| `Shift+M` non attivava manutentore | Tasto sbagliato, matchava `KeyM` audio | `ea4e9ce` | ✅ |
+| Typo `mat is not defined` | Crash toggle modalità manutentore | `c826d25` | ✅ |
+| AudioContext warning × 6 | Spam console all'avvio (`tickMusic` prima del gesto utente) | `c826d25` | ✅ |
+| TDZ `buttonList` | `disposeCorridor` + `buildCorridor` accedevano prima dell'init | `c0397d0`, `cb2cc14` | ✅ |
+| Raycast pulsanti esterni | Label ▲/▼ intercettava click → `find` non trovava button group | `ab8ebc7` | ✅ |
+| Porte invisibili dal corridoio | PlaneGeometry FrontSide + shaftBack nero davanti alle porte | `6ab62b6` | ✅ |
+| Housekeeping lista comandi | Welcome screen + in-game HUD non elencavano O/K/Shift+M | `a6cb3c1` | ✅ |
+
+### Decisioni di scope**:
+- Singolo branch per le 2 feature bonus audit + 8 bug fix
+- Implementazione in commit separati per ogni feature/bug + 1 commit finale docs
+- Esclude deliberatamente #12 (i18n) — unica feature residua post-v1.5
+
+### Commit Polish Pack v1.5** (tutti mergiati):
+| # | Commit | Descrizione |
+|---|---|---|
+| docs | `d09d629` | Apre branch + scope confermato |
+| chore | `a6cb3c1` | Lista comandi UI aggiornata |
+| fix | `ea4e9ce` | Shift+M manutentore keybind |
+| fix | `c826d25` | Typo `mat` + audio context |
+| fix | `ba0d075` | OOO ripristino porte + rientro |
+| feat | `b2587ef` | #21b pulsantiera esterna |
+| fix | `c0397d0` | TDZ buttonList (disposeCorridor) |
+| fix | `cb2cc14` | TDZ buttonList (top module) |
+| fix | `ab8ebc7` | Raycast pulsanti esterni (label ricorsivo) |
+| fix | `6ab62b6` | Porte visibili corridoio + rimosso shaftBack |
+| feat | `34232dd` | #22 timer chiusura automatica porte |
+| docs | `5d7be69` | Aggiorna documentazione post-feature |
+| merge | `5ec79b1` | Merge su `main` |
+
+### Feature pianificate originali NON implementate in v1.5** (3, confluite in v1.6)
+
+Le seguenti 3 feature erano pianificate in v1.5 ma non sono state implementate:
+#13, #14, #18. Sono state spostate nel **Polish Pack v1.6** (vedi §Fase 16):
+
+- **#13 Verifica accessibilità tastiera nel corridoio** — audit del handler `keydown`
+  e del listener `WASD` in sezione `MOVIMENTO FPS` per verificare che:
+  - Premendo `W`/`A`/`S`/`D` in cabina la camera NON si muova (guard `state.playerInCabin`)
+  - Premendo i tasti `1`–`9`/`0` nel corridoio le porte si aprano o la cabina chiami
+    il piano solo se le porte sono aperte (no chiamata con porte chiuse a destinazione
+    sbagliata)
+  - Fix di eventuali drift di posizione dopo inattività prolungata in cabina
+  Acceptance: 3 test manuali + verifica `grep` dei guard esistenti.
+
+- **#14 Logica passeggeri coerente** — sostituisce il timer random di Fase 8
+  (cambio passeggeri ogni 8s quando la cabina è ferma) con una logica condizionata al
+  piano tematico, agganciata all'apertura porte in `buildCorridor()`:
+  - Lobby (T): salgono (0–2 nuovi passeggeri)
+  - Uffici (1–3): scendono (fino a –2)
+  - Hotel (4–6): ±1 random (check-in / check-out)
+  - Attico (7–9): +1 (per lo più suite, scende poco)
+  Acceptance: clamp [0, 8], display si aggiorna immediatamente, comportamento
+  credibile dopo 5+ viaggi random Terra↔3.
+
+- **#18 Texture atlas / caching canvas offscreen per display touch** — refactor di
+  `drawModernDisplay()` in 3 layer:
+  - **Layer statico** (cornice, header con nome hotel): disegnato 1 volta, cached
+    offscreen in `displayCacheStatic`
+  - **Layer semi-statico** (meteo, mappa edificio, griglia touch): ridisegnato solo
+    su evento specifico (cambio meteo, cambio lingua)
+  - **Layer dinamico** (piano corrente 130px, freccia, stato, "X → Y"): ridisegnato
+    a ogni `markDisplayDirty('dynamic')`
+  Acceptance: visivamente identico, FPS in idle sale da ~50 a ~58 (stimato), nessun
+  glitch durante cambio meteo o movimento cabina.
+
+### Polish Pack v1.5 → 19/22 funzionalità implementate (86.4%)** (con #21b + #22).
+Le 3 pianificate originali (#13, #14, #18) sono confluite in **Polish Pack v1.6**.
+Backlog residuo post-v1.5: **3/22 funzionalità** (#12 i18n, #13, #14, #18 — v1.6 mira
+a chiudere le 3 pianificate; #12 resta fuori scope per alto sforzo).
+
+---
+
+### Fase 16 — Polish Pack v1.6 🟡 (in corso, branch `feature/polish-pack-v1.6`)
+
+**3 feature pianificate** (#13, #14, #18) confluite da v1.5 (dove erano rimaste "in corso"
+senza implementazione) selezionate dall'utente il **2026-09-12** dal backlog residuo
+post-v1.5: tutte a basso/medio sforzo, nessuna decisione architetturale pendente.
+Completa §11.4 (qualità) e §11.5 (performance).
+
+### Feature pianificate (3, da fare)
 
 - 🔄 **#13 Verifica accessibilità tastiera nel corridoio** — audit del handler `keydown`
   e del listener `WASD` in sezione `MOVIMENTO FPS` per verificare che:
@@ -412,75 +509,37 @@ automatica".
   Acceptance: visivamente identico, FPS in idle sale da ~50 a ~58 (stimato), nessun
   glitch durante cambio meteo o movimento cabina.
 
-### Feature bonus audit UX (2, completate)
-
-- ✅ **#21b Pulsantiera di chiamata esterna (▲/▼) nel corridoio** — placca di acciaio
-  spazzolato sulla parete sinistra del corridoio, vicino alle porte della cabina.
-  Header dorato "BOSS HOTEL" + 2 pulsanti rotondi verdi (▲ su / ▼ giù). Al Terra solo
-  ▲, all'attico solo ▼. Click chiama la cabina a quel piano (se già lì, apre le porte
-  gentilmente). Rispetta allarme/OOO (rifiuta con beep 220Hz). ⚠️ **Nota**: ▲ e ▼ sono
-  semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al
-  mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del
-  routing (richiesta al §11.8 D7).
-
-- ✅ **#22 Chiusura automatica porte (6 secondi)** — comportamento ascensore reale.
-  Dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s parte
-  il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi
-  interazione: click pulsante (`pressButton`), chiama piano (`requestFloor`),
-  rientra/esce cabina (`enterCabin`/`exitCabin`), allarme (`toggleAlarm`),
-  chiudi esplicitamente (`setDoors(false)`). Gate di sicurezza: si chiude solo se
-  `state.doorsOpen && state.doorsActual > 0.9 && !state.isMoving && !state.alarmOn &&
-  !state.outOfOrder && !state.maintenanceMode && !state.prenotationActive`.
-
-### Audit fixes (4 bug risolti durante playtest)
-
-| Bug | Sintomo | Commit | Stato |
-|---|---|---|---|
-| OOO parzialmente rotto | Porte non si riaprivano al ripristino + rientro cabina non bloccato durante OOO | `ba0d075` | ✅ |
-| `Shift+M` non attivava manutentore | Tasto sbagliato, matchava `KeyM` audio | `ea4e9ce` | ✅ |
-| Typo `mat is not defined` | Crash toggle modalità manutentore | `c826d25` | ✅ |
-| AudioContext warning × 6 | Spam console all'avvio (`tickMusic` prima del gesto utente) | `c826d25` | ✅ |
-| TDZ `buttonList` | `disposeCorridor` + `buildCorridor` accedevano prima dell'init | `c0397d0`, `cb2cc14` | ✅ |
-| Raycast pulsanti esterni | Label ▲/▼ intercettava click → `find` non trovava button group | `ab8ebc7` | ✅ |
-| Porte invisibili dal corridoio | PlaneGeometry FrontSide + shaftBack nero davanti alle porte | `6ab62b6` | ✅ |
-| Housekeeping lista comandi | Welcome screen + in-game HUD non elencavano O/K/Shift+M | `a6cb3c1` | ✅ |
-
-### Acceptance comune v1.5** (obiettivi):
-- [x] Nessun calo FPS percepibile (target ≥50; #21b aggiunge ~3 mesh, #22 è solo un timer)
-- [x] Rispetto vincolo singolo file HTML (tutte feature single-file)
-- [x] Nessuna dipendenza npm aggiunta
-- [x] Documentazione aggiornata (`README.md`, questo file, `piani/README.md`)
-- [x] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+### Acceptance comune v1.6** (obiettivi):
+- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a portarlo a ~58 in idle)
+- [ ] Rispetto vincolo singolo file HTML (tutte feature single-file)
+- [ ] Nessuna dipendenza npm aggiunta
+- [ ] Documentazione aggiornata (`README.md`, questo file, `piani/README.md`)
+- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
 
 ### Decisioni di scope**:
-- Singolo branch per tutte e 5 le feature (3 pianificate + 2 bonus audit)
-- Implementazione in commit separati per ogni feature + 1 commit finale docs
-- Esclude deliberatamente #12 (i18n) — unica feature residua post-v1.5
-- D2 resta pendente (non toccata da v1.5)
+- Singolo branch per tutte e 3 le feature (stessa filosofia di v1.1, v1.2, v1.3)
+- Implementazione in commit separati per ogni feature + commit finale docs
+- Esclude deliberatamente #12 (i18n) — unica feature residua post-v1.6
+- Non tocca le feature bonus di v1.5 (#21b, #22), già merged su `main`
 
-### Commit Polish Pack v1.5** (in progress, 10 commit già):
+### Commit Polish Pack v1.6** (da fare):
 | # | Commit | Descrizione |
 |---|---|---|
-| docs | `d09d629` | Apre branch + scope confermato |
-| chore | `a6cb3c1` | Lista comandi UI aggiornata |
-| fix | `ea4e9ce` | Shift+M manutentore keybind |
-| fix | `c826d25` | Typo `mat` + audio context |
-| fix | `ba0d075` | OOO ripristino porte + rientro |
-| feat | `b2587ef` | #21b pulsantiera esterna |
-| fix | `c0397d0` | TDZ buttonList (disposeCorridor) |
-| fix | `cb2cc14` | TDZ buttonList (top module) |
-| fix | `ab8ebc7` | Raycast pulsanti esterni (label ricorsivo) |
-| fix | `6ab62b6` | Porte visibili corridoio + rimosso shaftBack |
-| feat | `34232dd` | #22 timer chiusura automatica porte |
+| docs | `d09d629` (← già committato in v1.5) | Apre branch + scope confermato |
 | #13 | 🔄 da fare | Audit + fix accessibilità tastiera |
 | #14 | 🔄 da fare | Logica passeggeri coerente |
 | #18 | 🔄 da fare | Caching canvas offscreen display touch |
 | build | 🔄 da fare | Sync `dist/index.html` |
-| docs | 🔄 da fare (questo) | Finalizzazione docs |
+| docs | 🔄 da fare | Finalizzazione docs |
+| merge | 🔄 da fare | Merge su `main` |
 
-### Polish Pack v1.5 → target 22/22 funzionalità implementate (100%)** con #21b + #22.
-Backlog residuo post-v1.5: **0/22 funzionalità** (#12 i18n rimane l'unica fuori scope,
-alto sforzo ~300+ righe).
+> Nota: il commit `d09d629` (apertura branch + scope) tecnicamente appartiene a v1.5 ma
+> viene qui riportato come "documentazione iniziale" del branch logico `feature/polish-pack-v1.6`
+> quando le 3 feature saranno effettivamente implementate.
+
+### Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con completamento
+di #13, #14, #18. Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica
+fuori scope, alto sforzo ~300+ righe).
 
 ---
 
@@ -779,11 +838,11 @@ Polish Pack:
 17. ✅ **#20 Prenotazione cabina** — Polish Pack v1.4
 18. ✅ **#21b Pulsantiera di chiamata esterna** — Polish Pack v1.5 (aggiunta durante audit UX)
 19. ✅ **#22 Chiusura automatica porte (6s)** — Polish Pack v1.5 (aggiunta durante audit UX)
-20. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.5 (in corso)
-21. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.5 (in corso)
-22. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.5 (in corso)
+20. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.6 (in corso, confluito da v1.5)
+21. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.6 (in corso, confluito da v1.5)
+22. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.6 (in corso, confluito da v1.5)
 
-Dopo v1.5, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
+Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
 ### 11.8 Decisioni richieste (per procedere)
 
@@ -794,8 +853,9 @@ Dopo v1.5, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sfo
 | D3 | Aprire una nuova fase documentale (Fase 10) o procedere come "bug-fix/miglioramenti minori"? | Nuova fase documentale | ✅ Risolto — approvato (Fase 10–13, approccio Polish Pack) |
 | D4 | Aggiornare `dist/index.html` ad ogni modifica o solo a release consolidate? | Solo a release | ✅ Risolto — sync a fine feature (commit dedicato) |
 | D5 | Scope Polish Pack v1.4 | Tutti e 4 i candidati (#2, #9, #19, #20) | ✅ Risolto — approvato 2026-09-12 |
-| D6 | Scope Polish Pack v1.5 | I 3 candidati a basso/medio sforzo (#13, #14, #18) — esclusi #12 e #16 | ✅ Risolto — approvato 2026-09-12 |
+| D6 | Scope Polish Pack v1.5 | Solo bonus audit UX (#21b, #22) — 3 pianificate confluite in v1.6 | ✅ Risolto (riscrittura 2026-09-12) |
 | D7 | Logica ▲/▼ pulsantiera esterna | Attualmente identici (entrambi "chiama cabina al mio piano") — refactor a modello "intenzione di viaggio" richiesto? | 🟡 Pendente — bassa priorità |
+| D8 | Scope Polish Pack v1.6 | I 3 candidati confluiti da v1.5 (#13, #14, #18) — esclusi #12 e #16 | 🟡 Pendente — approvazione utente attesa |
 
 ### 11.9 Note di compatibilità
 
@@ -805,16 +865,23 @@ Dopo v1.5, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sfo
 
 ---
 
-**Stato: Polish Pack v1.5 in corso (2/5 — #21b ✅, #22 ✅, #13 #14 #18 🔄)** 🟡
+**Stato: Polish Pack v1.6 in corso (0/3 — #13 #14 #18 🔄)** 🟡
+Polish Pack v1.5 completato (2/2 feature bonus + 8 bug fix — #21b ✅, #22 ✅) ✅🟢
 Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
 
-**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**. Polish Pack v1.5 → target
-**22/22 (100%)** con #21b + #22. Backlog residuo post-v1.5: **0/22 funzionalità** (#12 i18n
-rimane l'unica fuori scope). Hotfix display passo-passo non è una nuova voce di backlog
-ma un enhancement di coerenza UX (allinea display touchscreen a cartello corridoio e
-strip DOM, già passo-passo).
+**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**.
+**Polish Pack v1.5 → 19/22 funzionalità implementate (86.4%)** con #21b + #22.
+**Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con #13 #14 #18.
+Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica fuori scope).
+Hotfix display passo-passo non è una nuova voce di backlog ma un enhancement di coerenza
+UX (allinea display touchscreen a cartello corridoio e strip DOM, già passo-passo).
 
-**Audit v1.5 fixes** (3 bug emersi durante playtest #21b, tutti risolti):
-- TDZ buttonList (commit `cb2cc14`) — `const buttonList = []` spostato in cima al modulo
+**Audit v1.5 fixes** (8 bug emersi durante playtest #21b/#22, tutti risolti):
+- OOO parziale (commit `ba0d075`) — porte si riaprivano al ripristino + rientro cabina bloccato
+- `Shift+M` keybind (commit `ea4e9ce`) — non matchava più `KeyM` audio
+- Typo `mat is not defined` (commit `c826d25`) — `applyWireframe` non crashava
+- AudioContext warning spam (commit `c826d25`) — `tickMusic` posticipato al gesto utente
+- TDZ buttonList (commits `c0397d0`, `cb2cc14`) — `const buttonList = []` spostato in cima
 - Raycast label ▲/▼ (commit `ab8ebc7`) — body.add(label) + recursive intersectObjects
-- Porte invisibili dal corridoio (commit `6ab62b6`) — doorMat DoubleSide + rimosso shaftBack
+- Porte invisibili corridoio (commit `6ab62b6`) — doorMat DoubleSide + rimosso shaftBack
+- Housekeeping lista comandi (commit `a6cb3c1`) — welcome screen + HUD aggiornati
