@@ -526,6 +526,11 @@ const state = {
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
 const hoveredBtn = { current: null };
 
+// Polish Pack v1.5 #21b: buttonList dichiarato in cima per evitare TDZ in
+// buildCorridor (chiamato a riga ~2588 nell'AVVIO, prima che la dichiarazione
+// originale fosse valutata). Pattern coerente con state e hoveredBtn.
+const buttonList = [];
+
 // ============================================================
 // SCENA, RENDERER, CAMERA
 // ============================================================
@@ -2653,7 +2658,6 @@ const CELL_DX = 0.072;      // differenza x tra colonne adiacenti
 const CELL_DY = -0.041;     // differenza y tra righe (negativa: riga successiva = y più basso)
 // celle in ordine: 9 8 7 / 6 5 4 / 3 2 1 / T _ _
 const floorCellMeshes = []; // mappa floor -> mesh (per lightFloorButton)
-const buttonList = []; // tutti gli elementi cliccabili (celle + tasti fisici)
 const floorButtons = [];
 
 const cellLayout = [
