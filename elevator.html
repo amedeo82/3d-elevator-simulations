@@ -3934,6 +3934,17 @@ function announceDoorClosing() {
   showSubtitle(txt, 2500);
 }
 
+// Annuncia l'inizio del movimento di salita/discesa verso il piano richiesto.
+// Chiamato in actuallyStartMove() dopo i beep di partenza. Rispetta
+// ttsEnabled e state.muted (controllo già in speak()).
+function announceMoveStart(fromFloor, toFloor) {
+  const direction = toFloor > fromFloor ? 'salita' : 'discesa';
+  const target = floorNameIT(toFloor);
+  const txt = `In ${direction} verso ${target}`;
+  speak(txt);
+  showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1), 2500);
+}
+
 // ============================================================
 // MOVIMENTO CABINA (animazione fluida tra piani)
 // ============================================================
@@ -3991,6 +4002,8 @@ function actuallyStartMove() {
   playBeep(700, 0.1, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 120);
   moveT = 0; moveElapsed = 0;
+  // annuncia l'inizio del movimento (direzione + piano target) dopo i beep
+  if (typeof announceMoveStart === 'function') announceMoveStart(moveFrom, moveTo);
   updateFloorDisplay();
 }
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }

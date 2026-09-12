@@ -22,6 +22,7 @@ Documento di design e implementation log.
 | Polish Pack v1.5 | ✅ 2/5 (#21b ✅, #22 ✅) — merged su `main` (commit `5ec79b1`); 3 pianificate originali (#13 #14 #18) confluite in v1.6 |
 | Polish Pack v1.5 audit fix | ✅ 8 (OOO parziale, Shift+M keybind, typo mat, audio context, TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio, housekeeping lista comandi) |
 | Polish Pack v1.6 | ✅ 3/3 (#13 ✅, #14 ✅, #18 ✅) — branch `feature/polish-pack-v1.6` |
+| Enhancement post-v1.6 | ✅ Annuncio vocale inizio movimento (commit `c60c7b2`) — branch `feature/announce-move-start` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -50,6 +51,13 @@ display touch. Nessuna decisione architetturale pendente (esclude deliberatament
 #12 i18n e #16 PWA). Tutte e 3 implementate. Branch mergiato su `main` con commit
 `[merge-v1.6]`. Totale: **22/22 funzionalità implementate (100%)**. Backlog
 residuo: **0/22** (#12 i18n rimane unico fuori scope per alto sforzo).
+
+**Enhancement post-v1.6** (2026-09-12, branch `feature/announce-move-start`,
+commit `c60c7b2`): aggiunto annuncio vocale "In salita/discesa verso piano N"
+all'inizio del movimento (`actuallyStartMove`). Rispetta `ttsEnabled`/`muted`.
+Hook diretto nella funzione di animazione del movimento, quindi funziona per
+qualsiasi origine della chiamata (click display, tasto 1-9, comando vocale,
+pulsantiera ▲/▼ esterna).
 
 ---
 

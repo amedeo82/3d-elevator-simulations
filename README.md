@@ -124,6 +124,7 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - All'arrivo al piano: *"Piano terzo, prego"*
 - Allarme: *"Allarme. Chiamata di soccorsi in corso. Restate calmi."*
 - Chiusura porte: *"Attenzione. Le porte si stanno chiudendo."*
+- **Inizio movimento**: *"In salita verso piano quinto"* / *"In discesa verso piano terra"*
 - **Sottotitoli su HUD** — ogni annuncio mostra anche il testo in una pillola gialla sopra lo status (accessibilità per chi non sente o ha TTS rotto)
 - **Ding differenziato** — 1 tono per fermata intermedia, 2 toni per arrivo finale
 - Toggle con tasto **V**
