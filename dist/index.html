@@ -1887,13 +1887,6 @@ function disposeCorridor() {
       }
     });
   }
-  // rimuovi i bottoni esterni dal buttonList (vengono ricreati ad ogni piano)
-  for (let i = buttonList.length - 1; i >= 0; i--) {
-    const b = buttonList[i];
-    if (b.userData && (b.userData.action === 'callUp' || b.userData.action === 'callDown')) {
-      buttonList.splice(i, 1);
-    }
-  }
 }
 
 // ---- Polish Pack v1.5 #21: pulsantiera di chiamata esterna ----
@@ -2006,6 +1999,14 @@ function addExternalCallPanel(floor) {
 
 function buildCorridor(floor) {
   disposeCorridor();
+  // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
+  // (disposeCorridor non puo accedere a buttonList perche e' dichiarato piu avanti.)
+  for (let i = buttonList.length - 1; i >= 0; i--) {
+    const b = buttonList[i];
+    if (b.userData && (b.userData.action === 'callUp' || b.userData.action === 'callDown')) {
+      buttonList.splice(i, 1);
+    }
+  }
   const themeName = getThemeForFloor(floor);
   currentThemeName = themeName;
   const theme = themeConfig[themeName];
