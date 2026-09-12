@@ -60,7 +60,7 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 - Ricevere **annunci vocali** in italiano all'arrivo al piano
 - Vedere **meteo casuale**, **orologio in tempo reale**, **mappa edificio** sul display
 
-Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza dipendenze npm.
+Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza dipendenze npm.
 
 ---
 
@@ -291,7 +291,7 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 
 ```
 .
-├── elevator.html          # File principale (~120 KB) — tutta la simulazione
+├── elevator.html          # File principale (~178 KB, ~4.770 righe) — tutta la simulazione
 ├── dist/
 │   └── index.html         # Build per il deploy (copia di elevator.html)
 ├── README.md              # Questo file

@@ -26,7 +26,7 @@ Documento di design e implementation log.
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
-| File di progetto | `elevator.html` (~162KB, single file) |
+| File di progetto | `elevator.html` (~178KB, 4.770 righe, single file) |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
@@ -626,8 +626,8 @@ Dopo i bug sopra, ho fatto `grep` per verificare che non ci fossero altri riferi
 | Metrica | Valore |
 |---|---|
 | File principale | `elevator.html` |
-| Dimensione | ~122 KB |
-| Linee di codice | ~3.500 |
+| Dimensione | ~178 KB |
+| Linee di codice | ~4.770 |
 | Sezioni di codice | 25+ numerate e commentate |
 | Tasti interattivi | 14 (10 celle piano + 4 tasti fisici) |
 | Texture dinamiche | 9 canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio) |
