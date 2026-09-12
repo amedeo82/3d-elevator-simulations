@@ -11,31 +11,31 @@ Aperto e completato branch **`feature/polish-pack-v1.4`** con 4 feature implemen
 ## Polish Pack v1.5 — IN CORSO (branch `feature/polish-pack-v1.5`)
 
 Aperto 2026-09-12. Tre feature selezionate dall'utente dal backlog residuo post-v1.4:
-tutte a basso/medio sforzo, nessuna decisione architetturale pendente. Completa il backlog
-§11.4 (qualità) e §11.5 (performance), lasciando fuori solo #12 i18n (alto sforzo) e
-#16 PWA (richiede decisione D2).
+tutte a basso/medio sforzo, nessuna decisione architetturale pendente. Più una **feature
+extra #21b (pulsantiera di chiamata esterna)** aggiunta dopo audit UX dello stesso giorno
+(utente ha segnalato mancanza tasti di chiamata nel corridoio).
 
 | # | Funzionalità | Gruppo | Stato | Note |
 |---|---|---|---|---|
+| #21b | Pulsantiera di chiamata esterna ▲/▼ | §11.6 Nuove | ✅ | Aggiunta durante audit UX: placca di acciaio sulla parete sx del corridoio, header "BOSS HOTEL", 2 pulsanti rotondi verdi ▲/▼. Click chiama la cabina a quel piano |
 | #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | 🟡 In corso | Audit WASD + tasti 1-9, guard `state.playerInCabin`, fix drift camera in cabina |
 | #14 | Logica passeggeri coerente | §11.4 Qualità | 🟡 In corso | Sostituisce random 8s con `adjustPassengersForFloor(floor)` tematico |
 | #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | 🟡 In corso | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) |
 
 **Acceptance comune v1.5** (obiettivi):
-- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a migliorare)
-- [ ] Rispetto vincolo singolo file HTML (verificato: tutte le 3 feature sono single-file)
-- [ ] Nessuna dipendenza npm aggiunta
-- [ ] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §15 + questo README)
-- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+- [x] Nessun calo FPS percepibile (target ≥50; #21b aggiunge ~3 mesh, trascurabile)
+- [x] Rispetto vincolo singolo file HTML (verificato)
+- [x] Nessuna dipendenza npm aggiunta
+- [ ] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §15 + questo README) — parziale, da finalizzare
+- [x] `node --check` JS estratto: exit 0
 
 **Decisioni di scope**:
-- Singolo branch per tutte e 3 le feature (stesso approccio di v1.4)
-- Implementazione in commit separati per ogni feature (1 commit per #13, 1 per #14, 1 per #18)
-  più 1 commit finale per sync `dist/index.html` + 1 commit per docs finali
-- Esclude deliberatamente #12 (i18n) e #16 (PWA) — richiedono decisioni architetturali separate
+- Singolo branch per tutte e 4 le feature (3 pianificate + #21b extra)
+- Implementazione in commit separati per ogni feature
+- Esclude deliberatamente #12 (i18n) — unica feature residua dopo v1.5
 
-**Polish Pack v1.5 → target 20/22 funzionalità implementate (90.9%)**.
-Backlog residuo post-v1.5: 2/22 funzionalità (#12 i18n, #16 PWA).
+**Polish Pack v1.5 → target 21/22 funzionalità implementate (95.5%)** con #21b.
+Backlog residuo post-v1.5: **1/22 funzionalità (#12 i18n)**.
 
 ---
 
@@ -142,9 +142,9 @@ di piano. 4 modifiche in `elevator.html` (+19/-2 righe):
 | §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 3/4 (#9 ✅, #10 ✅, #11 ✅) |
 | §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 1/3 (#15 ✅) |
 | §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) |
-| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 4/4 (#19 ✅, #20 ✅, #21 ✅, #22 ✅) |
+| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 5 | 5/5 (#19 ✅, #20 ✅, #21 ✅, #21b ✅, #22 ✅) |
 
-**Totale implementato**: 17/22 funzionalità (77.3%) — *vedi nota*.
+**Totale implementato**: 18/23 funzionalità (78.3%) — *vedi nota* (con #21b aggiunta durante audit v1.5).
 
 **Totale backlog residuo post-v1.4**: 4/22 funzionalità non ancora implementate
 (#12 i18n, #13 accessibilità tastiera, #14 logica passeggeri, #16 PWA, #18 texture atlas).
@@ -168,13 +168,16 @@ Apparentemente 5 voci ma #12 e #16 sono raggruppate: in realtà sono 5 backlog i
 
 ## Prossimi candidati (post-v1.5)
 
-Dopo il Polish Pack v1.5, le feature residue nel backlog sono solo 2, entrambe ad alto
-impatto ma ad alto sforzo o con decisioni architetturali pendenti:
+Dopo il Polish Pack v1.5, il backlog residuo è una sola feature, ad alto impatto ma ad
+alto sforzo:
 
 | # | Idea | Impatto | Sforzo | Note |
 |---|---|---|---|---|
 | #12 | Lingua selezionabile (IT/EN) | Alto | Alto | Refactor `STRINGS[lang]` in tutte le stringhe hardcoded (~300+ righe) |
-| #16 | Service Worker + PWA installabile | Alto | Medio | Richiede 2 file esterni (`sw.js` + `manifest.json`) — **D2 pendente** |
+
+(#16 PWA è stato scartato: il vincolo single-file HTML è fondamentale per la filosofia
+del progetto. Se in futuro si vuole installabilità, si può valutare Web App Manifest inline
+come `<link rel="manifest">` con JSON blob URL, senza file esterni.)
 
 ## Decisioni aperte residue
 

@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.3 — Polish Pack v1.5 in corso** · Aggiornato 2026-09-12
+**Versione 1.4 — Polish Pack v1.5 in corso (con #21 extra)** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -19,7 +19,7 @@ Documento di design e implementation log.
 | Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — merged su `main` |
 | Polish Pack v1.4 | ✅ 4/4 (#2 ✅, #9 ✅, #19 ✅, #20 ✅) — branch `feature/polish-pack-v1.4` |
 | Polish Pack v1.4 hotfix | ✅ 1/1 (display touchscreen passo-passo) — commit `e02adca` |
-| Polish Pack v1.5 | 🟡 0/3 (#13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.5` |
+| Polish Pack v1.5 | 🟡 1/4 (#21 ✅, #13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.5` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -691,6 +691,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 | 19 | ~~**Modalità manutentore** — tasto segreto `Shift+M` mostra wireframe della cabina, statistiche FPS, draw calls, e permette di teletrasportarsi a un piano con `1`–`9`~~ — ✅ **Implementato in Polish Pack v1.4 (#19)** | Basso | Medio | 🟢 | ✅ Overlay `#maint-overlay` con FPS, draw calls, log eventi. ~80 righe |
 | 20 | ~~**Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E"~~ — ✅ **Implementato in Polish Pack v1.4 (#20)** | Alto | Medio | 🟡 | ✅ Hook in `tickPlayer(dt)`. Proximity check 1m + `|x|<0.9`. Display overlay "PRENOTATA". ~30 righe |
 | 21 | ~~**Specchio riflettente credibile**~~ — ✅ **Implementato in Polish Pack v1.1 (#21)** | Molto alto | Medio | 🔴 | Reflector addon, render target 512×512 |
+| 21b | **Pulsantiera di chiamata esterna (▲/▼) nel corridoio** — placca di acciaio spazzolato sulla parete sinistra del corridoio, vicino alle porte della cabina, con header "BOSS HOTEL" + 2 pulsanti rotondi verdi (▲ su / ▼ giù). Al Terra solo ▲, all'attico solo ▼. Click chiama la cabina a quel piano. Aggiunta in Polish Pack v1.5 durante audit UX | Alto | Basso | 🟡 | ~110 righe in `elevator.html` (`addExternalCallPanel`, `makeCallButton`, `getCallButtonTexture`, dispose dedicato) |
 | 22 | **Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati | Basso | Basso | 🟢 | Onboarding migliore per nuovi utenti |
 
 ### 11.7 Priorità di implementazione (storico + prospettiva)
@@ -715,12 +716,12 @@ Polish Pack:
 15. ✅ **#9 Comando vocale** — Polish Pack v1.4
 16. ✅ **#19 Modalità manutentore** — Polish Pack v1.4
 17. ✅ **#20 Prenotazione cabina** — Polish Pack v1.4
-18. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.5 (in corso)
-19. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.5 (in corso)
-20. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.5 (in corso)
+18. ✅ **#21b Pulsantiera di chiamata esterna** — Polish Pack v1.5 (aggiunta durante audit UX)
+19. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.5 (in corso)
+20. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.5 (in corso)
+21. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.5 (in corso)
 
-Dopo v1.5, le feature residue nel backlog sono solo 2: #12 (i18n IT/EN, alto sforzo) e
-#16 (Service Worker + PWA, richiede decisione D2 sull'architettura multi-file).
+Dopo v1.5, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
 ### 11.8 Decisioni richieste (per procedere)
 
@@ -741,10 +742,10 @@ Dopo v1.5, le feature residue nel backlog sono solo 2: #12 (i18n IT/EN, alto sfo
 
 ---
 
-**Stato: Polish Pack v1.5 in corso (0/3 — #13 #14 #18)** 🟡
+**Stato: Polish Pack v1.5 in corso (1/4 — #21b ✅, #13 #14 #18 🔄)** 🟡
 Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
 
 **Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**. Polish Pack v1.5 → target
-**20/22 (90.9%)**. Backlog residuo post-v1.5: 2/22 (#12 i18n, #16 PWA). Hotfix display
+**21/22 (95.5%)** con #21b. Backlog residuo post-v1.5: **1/22 (#12 i18n)**. Hotfix display
 passo-passo non è una nuova voce di backlog ma un enhancement di coerenza UX (allinea
 display touchscreen a cartello corridoio e strip DOM, già passo-passo).
