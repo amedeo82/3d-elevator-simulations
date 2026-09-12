@@ -1602,7 +1602,8 @@ cabin.add(doorLeft);
 cabin.add(doorRight);
 
 const doorMat = new THREE.MeshStandardMaterial({
-  color: 0xb0b4ba, roughness: 0.25, metalness: 0.95, envMapIntensity: 1.1
+  color: 0xb0b4ba, roughness: 0.25, metalness: 0.95, envMapIntensity: 1.1,
+  side: THREE.DoubleSide // Fix v1.5 #21b audit: visibili anche dall'esterno (corridoio)
 });
 const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
 
@@ -1613,7 +1614,7 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   // piccola rientranza per look realistico
   const inset = new THREE.Mesh(
     new THREE.PlaneGeometry(CABIN.w/2 - 0.4, 1.8),
-    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0 })
+    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0, side: THREE.DoubleSide })
   );
   inset.position.z = 0.001;
   doorLeft.add(m, inset);
@@ -1626,7 +1627,7 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   m.castShadow = true; m.receiveShadow = true;
   const inset = new THREE.Mesh(
     new THREE.PlaneGeometry(CABIN.w/2 - 0.4, 1.8),
-    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0 })
+    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0, side: THREE.DoubleSide })
   );
   inset.position.z = 0.001;
   doorRight.add(m, inset);
@@ -1634,13 +1635,11 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   doorRight.rotation.y = Math.PI;
 }
 
-// fessura tra le porte (mostra il vano ascensore)
-const shaftBack = new THREE.Mesh(
-  new THREE.PlaneGeometry(CABIN.w, CABIN.h),
-  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.9, metalness: 0.2 })
-);
-shaftBack.position.set(0, CABIN.h/2, CABIN.d/2 + 0.1);
-cabin.add(shaftBack);
+// fessura tra le porte: ora rimossa (era un PlaneGeometry nero 2.4x2.6m che mascherava
+// l'interno cabina, ma essendo FrontSide e posizionato davanti alle porte creava
+// un 'muro nero' visibile dal corridoio invece delle porte metalliche).
+// Con doorMat DoubleSide + ante spostate quando aperte, l'interno cabina e' visibile
+// direttamente attraverso l'apertura.
 
 // Indicatore di direzione sopra le porte
 const dirIndicator = new THREE.Mesh(
