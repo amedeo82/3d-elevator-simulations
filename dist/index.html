@@ -4146,12 +4146,17 @@ document.addEventListener('pointerlockchange', () => {
 // MOVIMENTO FPS (corridoio) e LISTENERS TASTIERA
 // ============================================================
 addEventListener('keydown', e => {
-  if (e.code === 'KeyM') {
+  if (e.code === 'KeyM' && !e.shiftKey) {
     state.muted = !state.muted;
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.muted ? 'Audio: OFF' : 'Audio: ON';
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
+  } else if (e.code === 'KeyM' && e.shiftKey) {
+    // Polish Pack v1.4 #19: toggle modalità manutentore (Shift+M, non M solo)
+    // Deve essere prima del ramo KeyV/N/O/etc perche KeyM matcha qualsiasi combinazione
+    e.preventDefault();
+    toggleMaintenance();
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
     if (ttsEnabled) speak('Annunci vocali attivati');
@@ -4198,10 +4203,6 @@ addEventListener('keydown', e => {
     // Polish Pack v1.4 #9: toggle comando vocale
     state.voiceEnabled = !state.voiceEnabled;
     if (state.voiceEnabled) startVoice(); else stopVoice();
-  } else if (e.code === 'KeyM' && e.shiftKey) {
-    // Polish Pack v1.4 #19: toggle modalità manutentore (Shift+M, non M solo)
-    e.preventDefault();
-    toggleMaintenance();
   } else if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' ||
              e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
              e.code === 'Digit7' || e.code === 'Digit8' || e.code === 'Digit9' ||
