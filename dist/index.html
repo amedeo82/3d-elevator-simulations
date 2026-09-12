@@ -3239,6 +3239,7 @@ function lightFloorButton(floor, on = true) {
 // AUDIO (sintetizzato con WebAudio)
 // ============================================================
 let audioCtx = null;
+let audioReady = false; // true dopo il primo gesto utente (click startBtn o interazione canvas)
 function ensureAudio() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
@@ -3292,7 +3293,7 @@ function makeNoiseBuffer(ctx, dur = 1.0) {
   return buf;
 }
 function startWhoosh() {
-  if (whooshNode || state.muted || state.alarmOn) return;
+  if (whooshNode || state.muted || state.alarmOn || !audioReady) return;
   ensureAudio();
   if (!audioCtx) return;
   const noise = makeNoiseBuffer(audioCtx, 1.0);
@@ -3329,7 +3330,7 @@ function stopWhoosh() {
 let musicNodes = null;   // {osc1, osc2, osc3, lfo, gain, lfoGain, filter, timer}
 let musicTrack = null;   // 'jazz' | 'classica' | null
 function startMusic() {
-  if (musicNodes || state.muted || state.alarmOn || state.outOfOrder) return;
+  if (musicNodes || state.muted || state.alarmOn || state.outOfOrder || !audioReady) return;
   ensureAudio();
   if (!audioCtx) return;
   const track = state.currentFloor <= 3 ? 'jazz' : 'classica';
@@ -3568,7 +3569,7 @@ function applyWireframe(on) {
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         mats.forEach(m => {
           if (m && 'wireframe' in m) {
-            snap.push({ mat, m, was: m.wireframe });
+            snap.push({ m, was: m.wireframe });
             m.wireframe = true;
           }
         });
@@ -4493,6 +4494,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
   // ferma il carosello
   if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
   ensureAudio();
+  audioReady = true; // sblocca AudioContext dopo il primo gesto utente
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
