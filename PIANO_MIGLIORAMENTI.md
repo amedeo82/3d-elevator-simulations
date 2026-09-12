@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.2 — Polish Pack v1.4 completato** · Aggiornato 2026-09-12
+**Versione 1.3 — Polish Pack v1.5 in corso** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -19,6 +19,7 @@ Documento di design e implementation log.
 | Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — merged su `main` |
 | Polish Pack v1.4 | ✅ 4/4 (#2 ✅, #9 ✅, #19 ✅, #20 ✅) — branch `feature/polish-pack-v1.4` |
 | Polish Pack v1.4 hotfix | ✅ 1/1 (display touchscreen passo-passo) — commit `e02adca` |
+| Polish Pack v1.5 | 🟡 0/3 (#13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.5` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -33,6 +34,12 @@ tutte tranne #19 ad alto impatto. Implementate e committate su `feature/polish-p
 per allineare il display touchscreen della cabina al comportamento "passo-passo" già presente
 nel cartello del corridoio (`drawMovingSign`, Polish Pack v1.3 #4) e nella strip DOM
 `#floor-strip`. Non aggiunge una nuova voce al backlog §11 ma migliora la coerenza UX.
+
+**Polish Pack v1.5** (in corso, aperto 2026-09-12): tre feature a basso/medio sforzo dal
+backlog residuo post-v1.4 — #13 accessibilità WASD, #14 logica passeggeri tematica,
+#18 caching canvas offscreen per il display touch. Nessuna decisione architetturale
+pendente (esclude deliberatamente #12 i18n e #16 PWA). Branch `feature/polish-pack-v1.5`.
+Target: 20/22 funzionalità implementate (90.9%).
 
 ---
 
@@ -351,6 +358,72 @@ ma il display touchscreen (il più prominente, 130px) no. Era incongruente: l'ut
 
 ---
 
+### Fase 15 — Polish Pack v1.5 🟡 (in corso, branch `feature/polish-pack-v1.5`)
+
+Tre feature selezionate dall'utente il **2026-09-12** dal backlog residuo post-v1.4:
+tutte a basso/medio sforzo, nessuna decisione architetturale pendente. Completa
+§11.4 (qualità) e §11.5 (performance), lasciando fuori solo #12 i18n (alto sforzo)
+e #16 PWA (richiede decisione D2).
+
+- 🔄 **#13 Verifica accessibilità tastiera nel corridoio** — audit del handler `keydown`
+  e del listener `WASD` in sezione `MOVIMENTO FPS` per verificare che:
+  - Premendo `W`/`A`/`S`/`D` in cabina la camera NON si muova (guard `state.playerInCabin`)
+  - Premendo i tasti `1`–`9`/`0` nel corridoio le porte si aprano o la cabina chiami
+    il piano solo se le porte sono aperte (no chiamata con porte chiuse a destinazione
+    sbagliata)
+  - Fix di eventuali drift di posizione dopo inattività prolungata in cabina
+  Acceptance: 3 test manuali + verifica `grep` dei guard esistenti.
+
+- 🔄 **#14 Logica passeggeri coerente** — sostituisce il timer random di Fase 8
+  (cambio passeggeri ogni 8s quando la cabina è ferma) con una logica condizionata al
+  piano tematico, agganciata all'apertura porte in `buildCorridor()`:
+  - Lobby (T): salgono (0–2 nuovi passeggeri)
+  - Uffici (1–3): scendono (fino a –2)
+  - Hotel (4–6): ±1 random (check-in / check-out)
+  - Attico (7–9): +1 (per lo più suite, scende poco)
+  Acceptance: clamp [0, 8], display si aggiorna immediatamente, comportamento
+  credibile dopo 5+ viaggi random Terra↔3.
+
+- 🔄 **#18 Texture atlas / caching canvas offscreen per display touch** — refactor di
+  `drawModernDisplay()` in 3 layer:
+  - **Layer statico** (cornice, header con nome hotel): disegnato 1 volta, cached
+    offscreen in `displayCacheStatic`
+  - **Layer semi-statico** (meteo, mappa edificio, griglia touch): ridisegnato solo
+    su evento specifico (cambio meteo, cambio lingua)
+  - **Layer dinamico** (piano corrente 130px, freccia, stato, "X → Y"): ridisegnato
+    a ogni `markDisplayDirty('dynamic')`
+  Acceptance: visivamente identico, FPS in idle sale da ~50 a ~58 (stimato), nessun
+  glitch durante cambio meteo o movimento cabina.
+
+**Acceptance comune v1.5** (obiettivi):
+- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a migliorare)
+- [ ] Rispetto vincolo singolo file HTML (verificato: tutte e 3 le feature single-file)
+- [ ] Nessuna dipendenza npm aggiunta
+- [ ] Documentazione aggiornata (`README.md`, questo file, `piani/README.md`)
+- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+
+**Decisioni di scope**:
+- Singolo branch per tutte e 3 le feature (stesso approccio di v1.4)
+- Implementazione in commit separati: 1 commit per #13, 1 per #14, 1 per #18
+  + 1 commit finale per sync `dist/index.html` + 1 commit per docs finali
+- Esclude deliberatamente #12 (i18n) e #16 (PWA) — richiedono decisioni separate
+- D2 resta pendente (non toccata da v1.5)
+
+**Commit Polish Pack v1.5** (in progress):
+| # | Commit | Descrizione |
+|---|---|---|
+| docs | (questo commit) | Apre branch + scope confermato |
+| #13 | 🔄 da fare | Audit + fix accessibilità tastiera |
+| #14 | 🔄 da fare | Logica passeggeri coerente |
+| #18 | 🔄 da fare | Caching canvas offscreen display touch |
+| build | 🔄 da fare | Sync `dist/index.html` |
+| docs | 🔄 da fare | Finalizzazione docs |
+
+**Polish Pack v1.5 → target 20/22 funzionalità implementate (90.9%)**.
+Backlog residuo post-v1.5: 2/22 (#12 i18n, #16 PWA).
+
+---
+
 ## 5. Scostamenti dal piano
 
 ### 5.1 Modifiche al brand
@@ -642,9 +715,12 @@ Polish Pack:
 15. ✅ **#9 Comando vocale** — Polish Pack v1.4
 16. ✅ **#19 Modalità manutentore** — Polish Pack v1.4
 17. ✅ **#20 Prenotazione cabina** — Polish Pack v1.4
+18. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.5 (in corso)
+19. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.5 (in corso)
+20. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.5 (in corso)
 
-Dopo v1.4, le feature residue nel backlog sono tutte a bassa priorità (#12, #14, #13, #18) o
-ad alto sforzo / alta complessità architetturale (#16 PWA, #12 i18n).
+Dopo v1.5, le feature residue nel backlog sono solo 2: #12 (i18n IT/EN, alto sforzo) e
+#16 (Service Worker + PWA, richiede decisione D2 sull'architettura multi-file).
 
 ### 11.8 Decisioni richieste (per procedere)
 
@@ -655,6 +731,7 @@ ad alto sforzo / alta complessità architetturale (#16 PWA, #12 i18n).
 | D3 | Aprire una nuova fase documentale (Fase 10) o procedere come "bug-fix/miglioramenti minori"? | Nuova fase documentale | ✅ Risolto — approvato (Fase 10–13, approccio Polish Pack) |
 | D4 | Aggiornare `dist/index.html` ad ogni modifica o solo a release consolidate? | Solo a release | ✅ Risolto — sync a fine feature (commit dedicato) |
 | D5 | Scope Polish Pack v1.4 | Tutti e 4 i candidati (#2, #9, #19, #20) | ✅ Risolto — approvato 2026-09-12 |
+| D6 | Scope Polish Pack v1.5 | I 3 candidati a basso/medio sforzo (#13, #14, #18) — esclusi #12 e #16 | ✅ Risolto — approvato 2026-09-12 |
 
 ### 11.9 Note di compatibilità
 
@@ -664,9 +741,10 @@ ad alto sforzo / alta complessità architetturale (#16 PWA, #12 i18n).
 
 ---
 
-**Stato: Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
+**Stato: Polish Pack v1.5 in corso (0/3 — #13 #14 #18)** 🟡
+Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
 
-**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**. Backlog residuo: 5/22
-(#12 i18n, #13, #14, #16 PWA, #18). Hotfix display passo-passo non è una nuova voce di
-backlog ma un enhancement di coerenza UX (allinea display touchscreen a cartello corridoio
-e strip DOM, già passo-passo).
+**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**. Polish Pack v1.5 → target
+**20/22 (90.9%)**. Backlog residuo post-v1.5: 2/22 (#12 i18n, #16 PWA). Hotfix display
+passo-passo non è una nuova voce di backlog ma un enhancement di coerenza UX (allinea
+display touchscreen a cartello corridoio e strip DOM, già passo-passo).

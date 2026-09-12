@@ -6,6 +6,39 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 Aperto e completato branch **`feature/polish-pack-v1.4`** con 4 feature implementate dal backlog §11.
 
+---
+
+## Polish Pack v1.5 — IN CORSO (branch `feature/polish-pack-v1.5`)
+
+Aperto 2026-09-12. Tre feature selezionate dall'utente dal backlog residuo post-v1.4:
+tutte a basso/medio sforzo, nessuna decisione architetturale pendente. Completa il backlog
+§11.4 (qualità) e §11.5 (performance), lasciando fuori solo #12 i18n (alto sforzo) e
+#16 PWA (richiede decisione D2).
+
+| # | Funzionalità | Gruppo | Stato | Note |
+|---|---|---|---|---|
+| #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | 🟡 In corso | Audit WASD + tasti 1-9, guard `state.playerInCabin`, fix drift camera in cabina |
+| #14 | Logica passeggeri coerente | §11.4 Qualità | 🟡 In corso | Sostituisce random 8s con `adjustPassengersForFloor(floor)` tematico |
+| #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | 🟡 In corso | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) |
+
+**Acceptance comune v1.5** (obiettivi):
+- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a migliorare)
+- [ ] Rispetto vincolo singolo file HTML (verificato: tutte le 3 feature sono single-file)
+- [ ] Nessuna dipendenza npm aggiunta
+- [ ] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §15 + questo README)
+- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+
+**Decisioni di scope**:
+- Singolo branch per tutte e 3 le feature (stesso approccio di v1.4)
+- Implementazione in commit separati per ogni feature (1 commit per #13, 1 per #14, 1 per #18)
+  più 1 commit finale per sync `dist/index.html` + 1 commit per docs finali
+- Esclude deliberatamente #12 (i18n) e #16 (PWA) — richiedono decisioni architetturali separate
+
+**Polish Pack v1.5 → target 20/22 funzionalità implementate (90.9%)**.
+Backlog residuo post-v1.5: 2/22 funzionalità (#12 i18n, #16 PWA).
+
+---
+
 | # | Funzionalità | Gruppo | Stato | Commit | Note |
 |---|---|---|---|---|---|
 | #2 | Musica di sottofondo contestuale | §11.1 Core | ✅ | `0b5c8fc` | WebAudio: 4 oscillator sine + low-pass + LFO. Jazz T-3 (Cmaj7), classica 4-9 (arpeggio C-E-G-C) |
@@ -133,18 +166,15 @@ Apparentemente 5 voci ma #12 e #16 sono raggruppate: in realtà sono 5 backlog i
 - #16 — Service Worker offline-first + PWA (richiede multi-file → decisione D2)
 - #18 — Texture atlas / caching canvas offscreen
 
-## Prossimi candidati (post-v1.4)
+## Prossimi candidati (post-v1.5)
 
-Dopo il Polish Pack v1.4, le feature residue nel backlog sono tutte a bassa priorità o ad
-alto sforzo. Le priorità candidate per Polish Pack v1.5 o successivi:
+Dopo il Polish Pack v1.5, le feature residue nel backlog sono solo 2, entrambe ad alto
+impatto ma ad alto sforzo o con decisioni architetturali pendenti:
 
 | # | Idea | Impatto | Sforzo | Note |
 |---|---|---|---|---|
-| #12 | Lingua selezionabile (IT/EN) | Alto | Alto | Refactor `STRINGS[lang]` in tutte le stringhe hardcoded |
-| #16 | Service Worker + PWA installabile | Alto | Medio | Richiede 2 file esterni (`sw.js` + `manifest.json`) — D2 pendente |
-| #14 | Logica passeggeri coerente | Basso | Medio | Estensione di Fase 8 — coerenza salita/discesa ai piani tematici |
-| #13 | Verifica accessibilità tastiera nel corridoio | Medio | Basso | Test in playtest per drift camera WASD |
-| #18 | Texture atlas / caching canvas offscreen | Medio | Medio | Performance del display touch |
+| #12 | Lingua selezionabile (IT/EN) | Alto | Alto | Refactor `STRINGS[lang]` in tutte le stringhe hardcoded (~300+ righe) |
+| #16 | Service Worker + PWA installabile | Alto | Medio | Richiede 2 file esterni (`sw.js` + `manifest.json`) — **D2 pendente** |
 
 ## Decisioni aperte residue
 

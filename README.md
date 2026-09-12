@@ -6,6 +6,11 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
+> **🟡 Polish Pack v1.5 in corso (2026-09-12)** — 3 feature: accessibilità tastiera
+> corridoio, logica passeggeri coerente, caching canvas offscreen per il display touch.
+> Branch `feature/polish-pack-v1.5`. Target: **20/22 funzionalità implementate (91%)**.
+> Vedi `PIANO_MIGLIORAMENTI.md` §Fase 15 e `piani/README.md`.
+>
 > **✅ Polish Pack v1.4 completato (2026-09-12)** — 4 feature: musica contestuale,
 > comando vocale, modalità manutentore, prenotazione cabina. Totale: **17/22 funzionalità
 > backlog implementate (77%)**. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 13 e `piani/README.md`.
@@ -424,6 +429,11 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 ## 🗺️ Roadmap
 
+### 🟡 Polish Pack v1.5 — in corso (branch `feature/polish-pack-v1.5`)
+- [ ] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, guard `playerInCabin`)
+- [ ] **#14** Logica passeggeri coerente (sostituisce random 8s con `adjustPassengersForFloor` tematico)
+- [ ] **#18** Texture atlas / caching canvas offscreen per il display touch (3 layer)
+
 ### ✅ Polish Pack v1.4 — completato (2026-09-12)
 - [x] **#2** Musica di sottofondo contestuale (jazz lobby T-3, classica 4-9, silenzia su allarme/OOO)
 - [x] **#9** Comando vocale "piano N" / "cinque" → `SpeechRecognition` it-IT (tasto `K`)
@@ -436,12 +446,9 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
       con indicatore "X → Y" sotto. Allinea display touchscreen a cartello corridoio
       e strip HUD. Commit `e02adca`.
 
-### Backlog residuo post-v1.4 (5/22 feature)
+### Backlog residuo post-v1.5 (2/22 feature)
 - [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]` (alto sforzo)
 - [ ] **#16** Service Worker + PWA installabile — richiede 2 file esterni (decisione D2 pendente)
-- [ ] **#14** Logica passeggeri coerente (salita/discesa per piano tematico)
-- [ ] **#13** Verifica accessibilità tastiera nel corridoio
-- [ ] **#18** Texture atlas / caching canvas offscreen per il display touch
 
 ### Backlog originale §9 (long-term)
 - [ ] Più di 10 piani (parametrico)
