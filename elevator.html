@@ -1940,15 +1940,13 @@ function makeCallButton(direction, x, y, z) {
     map: getCallButtonTexture(direction), transparent: true, depthWrite: false
   });
   const label = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), labelMat);
-  label.position.set(0.013, 0, 0); // 13mm davanti al corpo
+  label.position.set(0.013, 0, 0); // 13mm davanti al corpo (LOCALE)
   label.rotation.y = -Math.PI / 2; // guarda verso +x (centro corridoio)
-  group.add(label);
-  // led stato (piccolo disco sotto il pulsante, si accende quando cabina in arrivo)
-  // non implementato qui per semplicità — il feedback è il beep + animazione porte
+  body.add(label); // <-- fix v1.5: parenta label al body per raycast ricorsivo
   group.position.set(x, y, z);
   group.userData.action = direction === 'up' ? 'callUp' : 'callDown';
   group.userData.isCallButton = true;
-  group.userData.buttonTop = body; // per compatibilità con getButtonAtPointer
+  group.userData.buttonTop = body; // per compatibilità con getButtonAtPointer/pressButton
   return group;
 }
 function addExternalCallPanel(floor) {
@@ -4125,13 +4123,18 @@ function getButtonAtPointer() {
       meshes.push(b.userData.buttonTop);
     }
   }
-  const hits = raycaster.intersectObjects(meshes, false);
+  // Fix v1.5 #21b: usa raycast RICORSIVO per intercettare anche i figli del buttonTop
+  // (per i bottoni esterni il label ▲/▼ e' figlio del body tramite body.add(label))
+  const hits = raycaster.intersectObjects(meshes, true);
   if (hits.length === 0) return null;
   const m = hits[0].object;
-  // trova il button group
+  // trova il button group (controlla anche se m e' figlio del buttonTop)
   return buttonList.find(b => {
     if (b.isCell) return b.userData.cellMesh === m;
-    return b.userData.buttonTop === m;
+    if (b.userData.buttonTop === m) return true;
+    // per i bottoni esterni: m potrebbe essere il label (figlio del body)
+    if (b.userData.buttonTop && b.userData.buttonTop.children && b.userData.buttonTop.children.indexOf(m) !== -1) return true;
+    return false;
   });
 }
 
