@@ -229,7 +229,12 @@ cabin.add(mirrorFrame);
 
 ---
 
-## #22 — Schermata "Welcome" interattiva 🟢
+## #22b — Schermata "Welcome" interattiva 🟢
+
+> **Nota 2026-09-12**: rinumerata da `#22` a `#22b` perché il numero `#22` è stato
+> riassegnato in Polish Pack v1.5 a "Chiusura automatica porte (6 secondi)".
+> Il backlog effettivo del progetto è quindi 22 voci + 2 bonus audit UX (`#21b`, `#22b`)
+> = **24 entry implementate**.
 
 **Obiettivo**: la start screen mostra un carosello di feature con icone + testi.
 

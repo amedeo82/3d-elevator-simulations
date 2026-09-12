@@ -245,7 +245,7 @@ Cinque quick-win dal backlog §11, selezionati per rapporto impatto/sforzo. Scop
 - ✅ **#6 Modalità "Fuori servizio" (tasto `O`)** — aggiunto `state.outOfOrder`. Nuovo handler `KeyO` nel `keydown` listener che: ferma movimento (`movePaused=true`), chiude porte, svuota coda, suona 2 beep discendenti (440→220Hz square). Display touch sostituisce il piano con "FUORI SERVIZIO" rosso + "Ascensore in manutenzione" + "Premere O per ripristinare". Griglia piani renderizzata grigia/disabilitata. Cartello corridoio diventa warning rosso. `requestFloor()` rifiuta le selezioni con tono basso 220Hz. Annuncio vocale italiano all'attivazione/disattivazione. Beep ascendente 660Hz al ripristino. Disattivazione → `movePaused=false`, display torna normale. Priorità OOO anche in `drawMovingSign` (se outOfOrder, delega a `drawFloorSign`).
 - ✅ **#7 Numerazione camere hotel contestuale** — nuova `floorRoomRange(f)`: ritorna `Camere N01–N32` per piani 4–6 (32 camere per piano), `Lobby · Reception` per T, `Uffici N° piano` per 1–3, `Attico · Suite N0N` per 7–9. Rendering condizionato a `!state.isMoving && !state.alarmOn` (visibile solo a cabina ferma). Disabilitato implicitamente quando outOfOrder (la sezione "fuori servizio" prende il posto).
 - ✅ **#8 Orologio mondiale sul pannello pubblicitario** — aggiunta 6ª schermata `'worldclock'` all'array `AD_SCREENS`. Nuova `drawWorldClock(ctx, w, h)` con sfondo blu notte e tabella: Roma (Europe/Rome), New York (America/New_York), Tokyo (Asia/Tokyo), Londra (Europe/London), Sydney (Australia/Sydney). Orari calcolati con `now.toLocaleTimeString('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false })`. Fallback "N/D" graceful se timezone non supportata. Rotazione 12s come le altre schermate.
-- ✅ **#22 Schermata "Welcome" interattiva** — aggiunto carosello 5 slide sulla start screen: 🛗 Cabina 5★, 📱 Touch screen, 🌤️ Meteo live, 🗣️ Annunci vocali, 🏨 4 temi corridoio. CSS dedicato (`.slide` + `.slide.active` con bordo dorato + leggero lift). Auto-rotazione 2.5s via `setInterval`; `clearInterval` al click su `startBtn`. Wrappato in `initStartSlides()` IIFE per non rompere se l'HTML non ha le slide.
+- ✅ **#22b Schermata "Welcome" interattiva** — aggiunto carosello 5 slide sulla start screen: 🛗 Cabina 5★, 📱 Touch screen, 🌤️ Meteo live, 🗣️ Annunci vocali, 🏨 4 temi corridoio. CSS dedicato (`.slide` + `.slide.active` con bordo dorato + leggero lift). Auto-rotazione 2.5s via `setInterval`; `clearInterval` al click su `startBtn`. Wrappato in `initStartSlides()` IIFE per non rompere se l'HTML non ha le slide. **Nota**: rinumerata da `#22` a `#22b` (2026-09-12) per evitare collisione con `#22` "Chiusura automatica porte" aggiunto in Polish Pack v1.5.
 
 **Acceptance comune**:
 - [x] Nessun calo FPS percepibile (target ≥50)
@@ -261,7 +261,7 @@ Cinque quick-win dal backlog §11, selezionati per rapporto impatto/sforzo. Scop
 | #6 | `3a968f1` | Modalità fuori servizio |
 | #7 | `f3f79bb` | Numerazione camere hotel |
 | #8 | `ac29bbd` | Orologio mondiale |
-| #22 | `fb8576a` | Welcome carosello |
+| #22b | `fb8576a` | Welcome carosello |
 | build | `bcacdfb` | Sync `dist/index.html` |
 
 ### Fase 13 — Polish Pack v1.4 ✅ (completato, branch `feature/polish-pack-v1.4`)
@@ -831,7 +831,8 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 | 21 | ~~**Specchio riflettente credibile**~~ — ✅ **Implementato in Polish Pack v1.1 (#21)** | Molto alto | Medio | 🔴 | Reflector addon, render target 512×512 |
 | 21b | **Pulsantiera di chiamata esterna (▲/▼) nel corridoio** — placca di acciaio spazzolato sulla parete sinistra del corridoio, vicino alle porte della cabina, con header "BOSS HOTEL" + 2 pulsanti rotondi verdi (▲ su / ▼ giù). Al Terra solo ▲, all'attico solo ▼. Click chiama la cabina a quel piano. Aggiunta in Polish Pack v1.5 durante audit UX. ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing | Alto | Basso | 🟡 | ~110 righe in `elevator.html` (`addExternalCallPanel`, `makeCallButton`, `getCallButtonTexture`, dispose dedicato). Bug fissati: TDZ buttonList (commit `cb2cc14`), raycast label (commit `ab8ebc7`) |
 | 22 | **Chiusura automatica porte (6 secondi)** — comportamento ascensore reale: dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s, parte il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi interazione (click pulsante, chiama piano, rientra cabina, allarme, ecc.). Gate di sicurezza: si chiude solo se `!isMoving && !alarmOn && !outOfOrder && !maintenanceMode && !prenotationActive` | Medio | Basso | 🟡 | ~30 righe in `elevator.html` (`scheduleAutoClose`, `cancelAutoClose`, hook in `tickDoors`/`setDoors`/`requestFloor`/`pressButton`/`enterCabin`/`exitCabin`/`toggleAlarm`) |
-| 22 | **Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati | Basso | Basso | 🟢 | Onboarding migliore per nuovi utenti |
+| 22 | ~~**Chiusura automatica porte (6 secondi)** — comportamento ascensore reale: dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s, parte il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi interazione (click pulsante, chiama piano, rientra cabina, allarme, ecc.). Gate di sicurezza: si chiude solo se `!isMoving && !alarmOn && !outOfOrder && !maintenanceMode && !prenotationActive`~~ — ✅ **Implementato in Polish Pack v1.5 (#22)** | Medio | Basso | 🟡 | ~30 righe in `elevator.html` (`scheduleAutoClose`, `cancelAutoClose`, hook in `tickDoors`/`setDoors`/`requestFloor`/`pressButton`/`enterCabin`/`exitCabin`/`toggleAlarm`) |
+| 22b | ~~**Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati~~ — ✅ **Implementato in Polish Pack v1.3 (#22b)** | Basso | Basso | 🟢 | Carosello 5 slide (`initStartSlides` IIFE), auto-rotate 2.5s via `setInterval`, `clearInterval` al click su `startBtn`. CSS `.slide`/`.slide.active` con bordo dorato. ~30 righe in `elevator.html`. **Rinumerato da #22 a #22b (2026-09-12)** per evitare collisione con #22 auto-close porte (v1.5). |
 
 ### 11.7 Priorità di implementazione (storico + prospettiva)
 
@@ -850,7 +851,7 @@ Polish Pack:
 10. ✅ **#6 Fuori servizio** — Polish Pack v1.3
 11. ✅ **#7 Numerazione camere** — Polish Pack v1.3
 12. ✅ **#8 Orologio mondiale** — Polish Pack v1.3
-13. ✅ **#22 Welcome carosello** — Polish Pack v1.3
+13. ✅ **#22b Welcome carosello** — Polish Pack v1.3 (rinumerato da #22 a #22b il 2026-09-12 per collisione con auto-close porte v1.5)
 14. ✅ **#2 Musica di sottofondo** — Polish Pack v1.4
 15. ✅ **#9 Comando vocale** — Polish Pack v1.4
 16. ✅ **#19 Modalità manutentore** — Polish Pack v1.4
