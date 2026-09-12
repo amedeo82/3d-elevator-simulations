@@ -2,6 +2,31 @@
 
 Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAMENTI.md` §11.
 
+## Aggiornamento 2026-09-12
+
+Aperto branch **`feature/polish-pack-v1.4`** con scope confermato dall'utente: 4 feature
+selezionate dal backlog §11 (candidati post-v1.3), ordinate per impatto/sforzo.
+
+| # | Funzionalità | Gruppo | Stato | Branch | Note |
+|---|---|---|---|---|---|
+| #2 | Musica di sottofondo contestuale | §11.1 Core | 🟡 in corso | `feature/polish-pack-v1.4` | WebAudio loop, jazz lobby / classica attico, silenzia su allarme |
+| #20 | Prenotazione cabina dal corridoio | §11.6 Nuove | 🟡 in corso | `feature/polish-pack-v1.4` | Proximity check (<1m) → porte si aprono, display "PRENOTATA" |
+| #9 | Comando vocale (speech-to-text) | §11.3 UX | 🟡 in corso | `feature/polish-pack-v1.4` | `SpeechRecognition` API it-IT, mapping "piano N" → `requestFloor(N)` |
+| #19 | Modalità manutentore (`Shift+M`) | §11.6 Nuove | 🟡 in corso | `feature/polish-pack-v1.4` | Wireframe overlay + FPS/drawcalls + teletrasporto `1`–`9` |
+
+**Acceptance comune v1.4**:
+- [ ] Nessun calo FPS percepibile (target ≥50)
+- [ ] Rispetto vincolo singolo file HTML
+- [ ] Nessuna dipendenza npm aggiunta (WebAudio, Web Speech API native)
+- [ ] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §11 + questo README)
+
+**Decisioni di scope**:
+- Singolo branch per tutte e 4 le feature (un commit per feature + commit di sync docs)
+- Approccio speculare a v1.3: un Polish Pack = un branch
+- Backlog residuo post-v1.4 stimato: 8/22 funzionalità (vs 12/22 attuali)
+
+---
+
 ## Stato implementazione
 
 **Polish Pack v1.1**: ✅ **5/5 completato** (merged su `main` e pushato su `origin/main`)
@@ -58,7 +83,10 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 | §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) |
 | §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 2/4 (#21 ✅, #22 ✅) |
 
-**Totale backlog residuo post-v1.3**: 12/22 funzionalità non ancora implementate.
+**Totale backlog residuo post-v1.3 (pre-v1.4)**: 12/22 funzionalità non ancora implementate.
+
+**Polish Pack v1.4** (in corso su `feature/polish-pack-v1.4`) mira a chiudere 4 di queste 12:
+#2 (Core), #9 (UX), #19 e #20 (Nuove). Backlog residuo post-v1.4 stimato: 8/22.
 
 ## Funzionalità non implementate (backlog residuo post-v1.3)
 
@@ -81,14 +109,20 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 - #19 — Modalità manutentore (`Shift+M`)
 - #20 — Sistema di prenotazione cabina dal corridoio
 
-## Prossimi candidati (post-v1.3)
+## Prossimi candidati (post-v1.4)
+
+Dopo il Polish Pack v1.4, le feature ad alto impatto ancora nel backlog sono poche. Le priorità
+candidate per Polish Pack v1.5 o successivi:
 
 | # | Idea | Impatto | Sforzo | Note |
 |---|---|---|---|---|
-| #2 | Musica di sottofondo contestuale | Alto | Medio | Backlog §11.1. WebAudio oscillator loop |
-| #20 | Prenotazione automatica dal corridoio | Alto | Medio | Backlog §11.6. Proximity check nel loop FPS |
-| #9 | Comando vocale | Alto | Medio | Backlog §11.3. SpeechRecognition API |
-| #19 | Modalità manutentore | Basso | Medio | Backlog §11.6. Overlay debug, `Shift+M` |
+| #12 | Lingua selezionabile (IT/EN) | Alto | Alto | Refactor `STRINGS[lang]` in tutte le stringhe hardcoded |
+| #16 | Service Worker + PWA installabile | Alto | Medio | Richiede 2 file esterni (`sw.js` + `manifest.json`) — D2 pendente |
+| #14 | Logica passeggeri coerente | Basso | Medio | Estensione di Fase 8 — coerenza salita/discesa ai piani tematici |
+| #13 | Verifica accessibilità tastiera nel corridoio | Medio | Basso | Test in playtest per drift camera WASD |
+
+Nota: #2, #9, #19, #20 sono stati **promossi** da "Prossimi candidati" allo scope di Polish Pack v1.4
+e sono ora tracciati nella sezione "Aggiornamento 2026-09-12" in cima a questo README.
 
 ## Decisioni aperte residue
 

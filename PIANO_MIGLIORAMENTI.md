@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.1 — Implementation Complete + Backlog Esteso** · Aggiornato 2026-09-11
+**Versione 1.2 — Polish Pack v1.3 merged + v1.4 in corso** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -16,7 +16,8 @@ Documento di design e implementation log.
 | Fasi implementate | ✅ 9/9 (100%) |
 | Polish Pack v1.1 | ✅ 5/5 (#17 ✅, #15 ✅, #21 ✅, #1 ✅, #3 ✅) |
 | Polish Pack v1.2 | ✅ 3/3 (#10 ✅, #5 ✅, #11 ✅) |
-| Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — branch `feature/polish-pack-v1.3` |
+| Polish Pack v1.3 | ✅ 5/5 (#4 ✅, #6 ✅, #7 ✅, #8 ✅, #22 ✅) — merged su `main` |
+| Polish Pack v1.4 | 🟡 0/4 (#2, #9, #19, #20 — in corso) — branch `feature/polish-pack-v1.4` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -24,7 +25,8 @@ Documento di design e implementation log.
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
-**Polish Pack v1.3** (in corso): 5 quick-win selezionati dall'utente per rapporto impatto/sforzo. Scope confermato il 2026-09-11.
+**Polish Pack v1.4** (in corso dal 2026-09-12): 4 feature selezionate dall'utente dal backlog §11,
+tutte tranne #19 ad alto impatto. Scope confermato il 2026-09-12.
 
 ---
 
@@ -230,6 +232,76 @@ Cinque quick-win dal backlog §11, selezionati per rapporto impatto/sforzo. Scop
 | #8 | `ac29bbd` | Orologio mondiale |
 | #22 | `fb8576a` | Welcome carosello |
 | build | `bcacdfb` | Sync `dist/index.html` |
+
+### Fase 13 — Polish Pack v1.4 🟡 (in corso, branch `feature/polish-pack-v1.4`)
+
+Quattro feature selezionate dall'utente il **2026-09-12** dal backlog §11, tutte le 4 voci
+della tabella "Prossimi candidati" del `piani/README.md`. Tre ad alto impatto (#2, #9, #20) e
+una a basso impatto (#19) completano la copertura dei backlog §11.1, §11.3 e §11.6.
+
+**Scope approvato**:
+- 🟡 **#2 Musica di sottofondo contestuale** — WebAudio: un `OscillatorNode` (sawtooth morbido)
+  modulato in frequenza da `state.currentFloor`, filtrato con `BiquadFilter` low-pass per dare
+  calore. Loop attivo solo a cabina ferma e fuori da allarme/OOO. Track "jazz" ai piani T–3
+  (frequenze più basse, ~110–220 Hz + accordo perfetto), track "classica" ai piani 4–9 (arpeggi
+  semplici a ~261–392 Hz). Volume fade-in 1s all'apertura porte, fade-out 0.5s su movimento /
+  allarme / OOO. Hook nel loop (sezione 26). Rispetta `state.muted` (Fase 10 #15).
+- 🟡 **#20 Prenotazione cabina dal corridoio** — quando `!state.playerInCabin`, ogni frame
+  calcola la distanza 2D dal player (corridor) alle porte della cabina. Se distanza < 1m:
+  - Cambia `state.doorsTarget` da 0 a 1 (apertura porte automatica)
+  - Mostra "PRENOTATA · TIENI PREMUTO E" sul display touch della cabina (visibile dall'esterno
+    grazie all'angolazione o via specchio / pannello pubblicitario laterale)
+  - Quando il player si allontana (>1.5m) e le porte erano state aperte dalla prenotazione,
+    chiudi lentamente (no countdown, chiusura "gentile")
+  - Stato dedicato `state.prenotationActive` per distinguerla da richieste esplicite
+  - Rispetta `state.alarmOn` e `state.outOfOrder` (prenotazione rifiutata)
+- 🟡 **#9 Comando vocale (speech-to-text)** — `webkitSpeechRecognition` (o `SpeechRecognition`)
+  con `lang='it-IT'`, `continuous=true`, `interimResults=false`. Trigger automatico al primo
+  click dell'utente (policy browser richiede gesto utente). Quando il player è in cabina e la
+  cabina è ferma: parsing del transcript con regex case-insensitive
+  `/\b(piano\s+)?(terra|zero|uno|due|tre|quattro|cinque|sei|sette|otto|nove|[0-9])\b/i`, mappa
+  al numero e chiama `requestFloor(n)`. Feedback via `statusText` ("Voce: piano cinque → 5")
+  e `showSubtitle()` per accessibilità. Toggle con tasto `K` (K=voce). Cleanup con
+  `recognition.stop()` su `beforeunload`. Fallback graceful se API non disponibile (Chrome
+  desktop e Edge ok; Firefox no).
+- 🟡 **#19 Modalità manutentore (`Shift+M`)** — nuovo `state.maintenanceMode`. Overlay
+  semitrasparente in alto a sinistra con:
+  - `material.wireframe = true` per tutti i mesh della cabina
+  - FPS counter (media ultimi 60 frame)
+  - Draw calls stimato (`renderer.info.render.calls`)
+  - `state.currentFloor`, `state.targetFloor`, `state.requestedFloors.size`, `state.passengers`
+  - Lista eventi recenti (ultimi 10: `requestFloor`, `announceArrival`, `alarm`, ecc.)
+  - Teletrasporto: in maintenance, i tasti `1`–`9` chiamano direttamente il piano senza
+    spostamento (salta animazione movimento)
+  - Toggle con `Shift+M` (non `M` da solo per non confondere con mute). Esce con `Shift+M`
+    di nuovo o con `ESC`. Visibile solo a cabina ferma per non confondere l'utente finale.
+
+**Acceptance comune v1.4**:
+- [ ] Nessun calo FPS percepibile (target ≥50, anche con musica + overlay manutentore attivi)
+- [ ] Rispetto vincolo singolo file HTML (verificato: nessuna feature richiede file esterni)
+- [ ] Web Speech API solo in browser che la supportano (Chrome, Edge, Safari); fallback
+      silente in Firefox senza rompere UX
+- [ ] Modalità manutentore non accessibile all'utente finale "per sbaglio" (richiede Shift)
+- [ ] Musica rispetta `state.muted` e si interrompe su allarme / OOO
+- [ ] Prenotazione non interferisce con richieste esplicite da pulsantiera / tastiera
+- [ ] Cleanup risorse (AudioContext.close, recognition.stop) corretto
+
+**Struttura commit prevista**:
+| # | Tipo | Descrizione |
+|---|---|---|
+| docs | commit iniziale | Questo file + `piani/README.md` aggiornati |
+| #2 | feature | Musica contestuale |
+| #9 | feature | Comando vocale |
+| #19 | feature | Modalità manutentore |
+| #20 | feature | Prenotazione cabina |
+| build | sync | `dist/index.html` allineato con `elevator.html` |
+| docs | finalizzazione | `piani/README.md` + questo file con stato ✅ |
+
+**Decisioni di scope**:
+- Tutte e 4 le feature in un unico branch (approccio speculare a v1.1 e v1.3)
+- Backlog residuo post-v1.4 stimato: 8/22 feature (vs 12/22 attuali). Le 8 restanti sono
+  tutte a bassa priorità o alto sforzo (#12, #16, #14, #13, #18 + bug-fix futuri)
+- D2 (single-file vs PWA) resta **pendente**: #16 richiede 2 file esterni e non è in scope v1.4
 
 ---
 
@@ -455,7 +527,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 | # | Idea | Impatto | Sforzo | Prio | Note |
 |---|---|---|---|---|---|
 | 1 | ~~**Effetto shake/movimento cabina durante il viaggio**~~ — ✅ **Implementato in Polish Pack v1.1 (#1)** | Alto | Basso | 🔴 | 5 nuovi state fields, envelope a campana, decay `×0.85` |
-| 2 | **Musica di sottofondo contestuale** — jazz morbido in lobby, classica all'attico, allarme silenzia tutto | Alto | Medio | 🔴 | Backlog §9.1. WebAudio: loop oscillator + filtri low-pass. ~80 righe |
+| 2 | **Musica di sottofondo contestuale** — jazz morbido in lobby, classica all'attico, allarme silenzia tutto | Alto | Medio | 🔴 | 🟡 **In corso — Polish Pack v1.4**. Backlog §9.1. WebAudio: loop oscillator + filtri low-pass. ~80 righe |
 | 3 | ~~**Effetto sonoro di movimento cabina**~~ — ✅ **Implementato in Polish Pack v1.1 (#3)** | Alto | Medio | 🔴 | White noise + bandpass filter, envelope a campana |
 | 4 | **Indicatore direzione "passo passo"** — sul cartello del corridoio mostrare i piani che la cabina sta attraversando (es. "▲ 2·3·4·5") durante la corsa | Medio | Basso | 🟡 | Implementabile in `tickMove` dove già calcoli `floorShown`. Texture canvas già pronta |
 
@@ -472,7 +544,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 
 | # | Idea | Impatto | Sforzo | Prio | Note |
 |---|---|---|---|---|---|
-| 9 | **Comando vocale (speech-to-text)** — "Piano cinque" chiama il piano 5 via `SpeechRecognition` API | Alto | Medio | 🟡 | Si sposa con l'esistente TTS (Fase 6). ~40 righe |
+| 9 | **Comando vocale (speech-to-text)** — "Piano cinque" chiama il piano 5 via `SpeechRecognition` API | Alto | Medio | 🟡 | 🟡 **In corso — Polish Pack v1.4**. Si sposa con l'esistente TTS (Fase 6). ~40 righe |
 | 10 | **Scorciatoie tastiera 1–9 per piani** — quando si è in cabina o nel corridoio, premere i tasti `1`..`9`/`0` chiama direttamente quel piano | Medio | Basso | 🟡 | L'utente medio non sa che si può cliccare il display touch |
 | 11 | **Sottotitoli per annunci vocali** — striscia HUD che replica il testo pronunciato, per chi non sente l'audio o ha TTS rotto | Medio | Basso | 🟡 | Si aggancia a `speak()` aggiungendo side-effect DOM |
 | 12 | **Lingua selezionabile (IT/EN)** — display touch, cartelli corridoio, menu del ristorante e annunci TTS | Alto | Alto | 🟢 | Backlog §9.2. Richiede refactor di tutte le stringhe hardcoded in un dict `STRINGS[lang]` |
@@ -497,31 +569,46 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 
 | # | Idea | Impatto | Sforzo | Prio | Note |
 |---|---|---|---|---|---|
-| 19 | **Modalità manutentore** — tasto segreto `Shift+M` mostra wireframe della cabina, statistiche FPS, draw calls, e permette di teletrasportarsi a un piano con `1`–`9` | Basso | Medio | 🟢 | Utile per debug e per utenti curiosi. Solo developer overlay |
-| 20 | **Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E" | Alto | Medio | 🟡 | Più realistico del toggle attuale. Si aggancia al sistema di collisioni FPS esistente |
+| 19 | **Modalità manutentore** — tasto segreto `Shift+M` mostra wireframe della cabina, statistiche FPS, draw calls, e permette di teletrasportarsi a un piano con `1`–`9` | Basso | Medio | 🟢 | 🟡 **In corso — Polish Pack v1.4**. Utile per debug e per utenti curiosi. Solo developer overlay |
+| 20 | **Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E" | Alto | Medio | 🟡 | 🟡 **In corso — Polish Pack v1.4**. Più realistico del toggle attuale. Si aggancia al sistema di collisioni FPS esistente |
 | 21 | ~~**Specchio riflettente credibile**~~ — ✅ **Implementato in Polish Pack v1.1 (#21)** | Molto alto | Medio | 🔴 | Reflector addon, render target 512×512 |
 | 22 | **Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati | Basso | Basso | 🟢 | Onboarding migliore per nuovi utenti |
 
-### 11.7 Priorità di implementazione (raccomandazione)
+### 11.7 Priorità di implementazione (storico + prospettiva)
 
-Se si decide di procedere, l'ordine ottimale per rapporto impatto/sforzo è:
+L'ordine ottimale storico per rapporto impatto/sforzo, riflettendo l'effettiva sequenza dei
+Polish Pack:
 
-1. **#21 Specchio riflettente** — impatto visivo immediato, ~30 righe
-2. **#3 Whoosh loop** — impatto uditivo enorme, ~40 righe
-3. **#1 Shake cabina** — già parzialmente implementato in Fase 8 (solo on-click), manca in viaggio. ~20 righe in `tickMove`
-4. **#17 Verifica dispose corridoi** — bug latente, da verificare e fixare. 0 rischi, alto valore
-5. **#20 Prenotazione automatica dal corridoio** — gameplay feel completamente nuovo, ~60 righe
-6. **#15 Persistenza localStorage** — UX polish, 5 righe
-7. **#10 Scorciatoie tastiera 1–9** — power-user feature, 10 righe
+1. ✅ **#21 Specchio riflettente** — Polish Pack v1.1
+2. ✅ **#3 Whoosh loop** — Polish Pack v1.1
+3. ✅ **#1 Shake cabina** — Polish Pack v1.1
+4. ✅ **#17 Verifica dispose corridoi** — Polish Pack v1.1 (era un bug latente)
+5. ✅ **#15 Persistenza localStorage** — Polish Pack v1.1
+6. ✅ **#10 Scorciatoie tastiera 1–9** — Polish Pack v1.2
+7. ✅ **#5 Ding differenziato** — Polish Pack v1.2
+8. ✅ **#11 Sottotitoli TTS** — Polish Pack v1.2
+9. ✅ **#4 Indicatore passo passo** — Polish Pack v1.3
+10. ✅ **#6 Fuori servizio** — Polish Pack v1.3
+11. ✅ **#7 Numerazione camere** — Polish Pack v1.3
+12. ✅ **#8 Orologio mondiale** — Polish Pack v1.3
+13. ✅ **#22 Welcome carosello** — Polish Pack v1.3
+14. 🟡 **#2 Musica di sottofondo** — **Polish Pack v1.4 (in corso)**
+15. 🟡 **#9 Comando vocale** — **Polish Pack v1.4 (in corso)**
+16. 🟡 **#19 Modalità manutentore** — **Polish Pack v1.4 (in corso)**
+17. 🟡 **#20 Prenotazione cabina** — **Polish Pack v1.4 (in corso)**
+
+Dopo v1.4, le feature residue nel backlog sono tutte a bassa priorità (#12, #14, #13, #18) o
+ad alto sforzo / alta complessità architetturale (#16 PWA, #12 i18n).
 
 ### 11.8 Decisioni richieste (per procedere)
 
-| # | Decisione | Default proposto |
-|---|---|---|
-| D1 | Quale sottoinsieme implementare? | Suggeriti #1, #3, #15, #17, #21 per un "Polish Pack v1.1" |
-| D2 | Mantenere singolo file o aggiungere `sw.js` + `manifest.json` per PWA? | Singolo file (conservativo) |
-| D3 | Aprire una nuova fase documentale (Fase 10) o procedere come "bug-fix/miglioramenti minori"? | Nuova fase documentale |
-| D4 | Aggiornare `dist/index.html` ad ogni modifica o solo a release consolidate? | Solo a release |
+| # | Decisione | Default proposto | Stato |
+|---|---|---|---|
+| D1 | Quale sottoinsieme implementare? | Suggeriti #1, #3, #15, #17, #21 per un "Polish Pack v1.1" | ✅ Risolto — approvato 2026-08-24 (Polish Pack v1.1) |
+| D2 | Mantenere singolo file o aggiungere `sw.js` + `manifest.json` per PWA? | Singolo file (conservativo) | 🟡 Pendente — blocca #16 |
+| D3 | Aprire una nuova fase documentale (Fase 10) o procedere come "bug-fix/miglioramenti minori"? | Nuova fase documentale | ✅ Risolto — approvato (Fase 10–13, approccio Polish Pack) |
+| D4 | Aggiornare `dist/index.html` ad ogni modifica o solo a release consolidate? | Solo a release | ✅ Risolto — sync a fine feature (commit dedicato) |
+| D5 | Scope Polish Pack v1.4 | Tutti e 4 i candidati (#2, #9, #19, #20) | ✅ Risolto — approvato 2026-09-12 |
 
 ### 11.9 Note di compatibilità
 
@@ -531,4 +618,4 @@ Se si decide di procedere, l'ordine ottimale per rapporto impatto/sforzo è:
 
 ---
 
-**Stato finale: 100% completo, 0 bug noti, deployato e funzionante, backlog esteso pronto per decisione** ✅🆕
+**Stato: Polish Pack v1.3 merged (5/5) e Polish Pack v1.4 in corso (0/4 — branch `feature/polish-pack-v1.4`)** ✅🟡
