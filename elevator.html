@@ -4112,6 +4112,9 @@ function exitCabin() {
   yawObj.rotation.y = yaw;
   pitchObj.rotation.set(pitch, 0, 0);
   corridor.add(yawObj);
+  // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
+  // (es. W premuto in cabina prima di uscire → il player scatta in avanti appena fuori)
+  for (const k in keys) keys[k] = false;
   refreshHudButtons();
   playBeep(700, 0.08, 'sine', 0.1);
   setTimeout(() => playBeep(900, 0.1, 'sine', 0.1), 80);
@@ -4133,6 +4136,9 @@ function enterCabin() {
   state.prenotationActive = false; // Polish Pack v1.4 #20: esci dalla modalità prenotazione
   corridor.remove(yawObj);
   placeCameraInCabin();
+  // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
+  // (es. freccia/W premuto nel corridoio prima di rientrare → non deve influenzare la cabina)
+  for (const k in keys) keys[k] = false;
   refreshHudButtons();
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   playBeep(900, 0.08, 'sine', 0.1);
