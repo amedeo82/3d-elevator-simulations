@@ -2791,7 +2791,31 @@ exitBtn.userData.action = 'exit'; panel.add(exitBtn); buttonList.push(exitBtn);
 // RENDER DEL DISPLAY TOUCH (Fase 3)
 // ============================================================
 let displayDirty = true;
-function markDisplayDirty() { displayDirty = true; }
+function markDisplayDirty() { displayDirty = true; displaySemistaticReady = false; displayStaticReady = false; }
+function markDisplaySemistaticDirty() { displayDirty = true; displaySemistaticReady = false; }
+function markDisplayDynamicDirty() { displayDirty = true; }
+
+// Polish Pack v1.6 #18: caching canvas offscreen per il display touch.
+// 3 layer:
+//   - statico (displayStaticCanvas): cornice, glow, 3 linee separatrici, footer
+//   - semi-statico (displaySemistaticCanvas): header (nome hotel + data),
+//     meteo (icona + condizione + località, no temperatura), mappa edificio,
+//     griglia interattiva
+//   - dinamico (displayCanvas): orologio + passeggeri (header overlay),
+//     temperatura meteo, piano corrente 130px + freccia + "X → Y" + label stato,
+//     numerazione camere, countdown chiusura porte
+// Vantaggio: in idle (1 redraw/sec per l'orologio) il statico e il semi-statico
+// non vengono ridisegnati (drawImage da cache) → stimate +5-8 FPS.
+const displayStaticCanvas = document.createElement('canvas');
+displayStaticCanvas.width = displayCanvas.width;
+displayStaticCanvas.height = displayCanvas.height;
+const displayStaticCtx = displayStaticCanvas.getContext('2d');
+let displayStaticReady = false;
+const displaySemistaticCanvas = document.createElement('canvas');
+displaySemistaticCanvas.width = displayCanvas.width;
+displaySemistaticCanvas.height = displayCanvas.height;
+const displaySemistaticCtx = displaySemistaticCanvas.getContext('2d');
+let displaySemistaticReady = false;
 
 // meteo corrente (aggiornato in updateWeather)
 let currentWeather = null;
@@ -3027,11 +3051,14 @@ function floorRoomRange(f) {
   return '';
 }
 
-function drawModernDisplay() {
-  const ctx = displayCtx;
-  const W = displayCanvas.width, H = displayCanvas.height;
-  const animT = performance.now() / 1000;
+// ============================================================
+// Polish Pack v1.6 #18: 3-layer rendering con caching canvas offscreen.
+// Ogni layer è disegnato una sola volta (o su invalidazione) e copiato
+// sul canvas principale via drawImage. Vedi `drawModernDisplay()` dispatcher.
+// ============================================================
 
+function renderDisplayStaticLayer(ctx) {
+  const W = displayCanvas.width, H = displayCanvas.height;
   // sfondo vetro nero con leggera sfumatura
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, '#0a0a0e');
@@ -3039,7 +3066,6 @@ function drawModernDisplay() {
   bg.addColorStop(1, '#0a0a0e');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-
   // bordo dorato sottile (glassmorphism)
   ctx.strokeStyle = '#c9a55a';
   ctx.lineWidth = 3;
@@ -3050,8 +3076,22 @@ function drawModernDisplay() {
   glowGrad.addColorStop(1, 'rgba(255, 214, 107, 0)');
   ctx.fillStyle = glowGrad;
   ctx.fillRect(0, 0, W, H);
+  // 3 linee separatrici fisse
+  ctx.strokeStyle = '#c9a55a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40, 105); ctx.lineTo(W - 40, 105); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(40, 355); ctx.lineTo(W - 40, 355); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(40, 510); ctx.lineTo(W - 40, 510); ctx.stroke();
+  // footer
+  ctx.fillStyle = '#6a5a40';
+  ctx.font = '10px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('BOSS HOTEL ELEVATOR SYSTEM · 2026', W/2, 1080);
+}
 
-  // ---- HEADER (nome hotel + orologio + data) ----
+function renderDisplaySemistaticLayer(ctx, animT) {
+  const W = displayCanvas.width;
+  // ---- HEADER: solo titolo + data (orologio e passeggeri sono nel layer dinamico) ----
   ctx.fillStyle = '#c9a55a';
   ctx.font = 'bold 22px Georgia, serif';
   ctx.textAlign = 'center';
@@ -3060,24 +3100,129 @@ function drawModernDisplay() {
   ctx.fillText('BOSS HOTEL', W/2, 18);
   ctx.shadowBlur = 0;
   const now = new Date();
+  ctx.fillStyle = '#a89060';
+  ctx.font = '13px Arial';
+  ctx.fillText(`${GIORNI[now.getDay()]} ${now.getDate()} ${MESI[now.getMonth()]}`, W/2, 80);
+
+  // ---- METEO: icona + condizione + località (temperatura è nel layer dinamico) ----
+  if (currentWeather) {
+    drawWeatherIconBig(ctx, 110, 430, 50, currentWeather.type, animT);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#aaccff';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(currentWeather.label, 170, 455);
+    ctx.fillStyle = '#88aacc';
+    ctx.font = '12px Arial';
+    ctx.fillText('ROMA', 170, 475);
+  }
+
+  // ---- MAPPA EDIFICIO (10 quadratini, uno per piano) ----
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#a89060';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('POSIZIONE CABINA', 50, 520);
+  const mapX = 70, mapY0 = 545, mapW = 14, mapH = 14, mapGap = 3;
+  for (let f = 9; f >= 0; f--) {
+    const y = mapY0 + (9 - f) * (mapH + mapGap);
+    const isCurrent = f === state.currentFloor;
+    const isInQueue = state.requestedFloors.has(f);
+    let color = '#2a2a30';
+    if (isCurrent) {
+      color = state.isMoving ? '#ffaa00' : '#6dff7c';
+    } else if (isInQueue) {
+      color = '#ff8c1a';
+    }
+    ctx.fillStyle = color;
+    if (isCurrent) {
+      ctx.shadowColor = color; ctx.shadowBlur = 12;
+    }
+    ctx.fillRect(mapX, y, mapW, mapH);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = isCurrent ? '#fff' : '#6a6a70';
+    ctx.font = 'bold 11px Arial';
+    ctx.textBaseline = 'middle';
+    const label = f === 0 ? 'T' : String(f);
+    ctx.fillText(label, mapX + mapW + 6, y + mapH/2);
+  }
+  ctx.textBaseline = 'top';
+
+  // ---- GRIGLIA PIANI INTERATTIVA ----
+  const gridX0 = 150, gridY0 = 545;
+  const cellW = 100, cellH = 50, cellGap = 8;
+  ctx.font = 'bold 22px Arial';
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 3; c++) {
+      const floor = cellLayout[r][c];
+      if (floor < 0) continue;
+      const x = gridX0 + c * (cellW + cellGap);
+      const y = gridY0 + r * (cellH + cellGap);
+      const isCurrent = floor === state.currentFloor;
+      const isInQueue = state.requestedFloors.has(floor);
+      const isHovered = (hoveredBtn.current && hoveredBtn.current.isCell &&
+                         hoveredBtn.current.userData.cellRow === r &&
+                         hoveredBtn.current.userData.cellCol === c);
+      let bg = 'rgba(255,255,255,0.04)';
+      let border = '#4a4a50';
+      let textColor = '#aabbcc';
+      if (state.outOfOrder) {
+        bg = isCurrent ? 'rgba(120, 120, 130, 0.18)' : 'rgba(80, 80, 90, 0.10)';
+        border = isCurrent ? '#6a6a70' : '#3a3a40';
+        textColor = isCurrent ? '#888888' : '#555560';
+      } else if (isHovered && !isCurrent) {
+        bg = 'rgba(109, 255, 200, 0.35)';
+        border = '#88ffcc';
+        textColor = '#ffffff';
+      } else if (isCurrent) {
+        bg = 'rgba(109, 255, 124, 0.25)';
+        border = '#6dff7c';
+        textColor = '#6dff7c';
+      } else if (isInQueue) {
+        bg = 'rgba(255, 140, 26, 0.25)';
+        border = '#ff8c1a';
+        textColor = '#ff8c5a';
+      }
+      ctx.fillStyle = bg;
+      ctx.fillRect(x, y, cellW, cellH);
+      ctx.strokeStyle = border;
+      ctx.lineWidth = isHovered ? 2.5 : 1.5;
+      ctx.strokeRect(x, y, cellW, cellH);
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const label = floor === 0 ? 'T' : String(floor);
+      ctx.fillText(label, x + cellW/2, y + cellH/2);
+    }
+  }
+}
+
+function renderDisplayDynamicLayer(ctx, animT) {
+  const W = displayCanvas.width, H = displayCanvas.height;
+  // ---- HEADER overlay: orologio + passeggeri ----
+  const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 28px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
   ctx.fillText(`${hh}:${mm}`, W/2, 46);
-  ctx.fillStyle = '#a89060';
-  ctx.font = '13px Arial';
-  ctx.fillText(`${GIORNI[now.getDay()]} ${now.getDate()} ${MESI[now.getMonth()]}`, W/2, 80);
-  // indicatore carico passeggeri (Fase 8) in alto a destra
   ctx.fillStyle = '#aaccdd';
   ctx.font = '11px Arial';
   ctx.textAlign = 'right';
   ctx.fillText(`👤 ${state.passengers}/8`, W - 25, 80);
   ctx.textAlign = 'center';
-  // linea separatrice
-  ctx.strokeStyle = '#c9a55a';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(40, 105); ctx.lineTo(W - 40, 105); ctx.stroke();
+
+  // ---- METEO temperatura (sovrapposta all'icona del layer semistatico) ----
+  if (currentWeather) {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 40px Arial';
+    ctx.fillText(`${currentTemp}°C`, 170, 420);
+  }
 
   // ---- PIANO CORRENTE (grande) + FRECCIA DIREZIONE ----
   if (state.outOfOrder) {
@@ -3102,7 +3247,6 @@ function drawModernDisplay() {
     ctx.fillText('Premere O per ripristinare', W/2, 285);
   } else if (state.prenotationActive && !state.playerInCabin) {
     // Polish Pack v1.4 #20: overlay prenotazione quando il player è nel corridoio
-    // (le porte sono aperte per lui, display invita a rientrare)
     ctx.fillStyle = 'rgba(120, 220, 255, 0.10)';
     ctx.fillRect(40, 125, W - 80, 180);
     ctx.strokeStyle = '#6cdfff';
@@ -3122,17 +3266,13 @@ function drawModernDisplay() {
     ctx.font = '14px Arial';
     ctx.fillText('Tieni premuto E per entrare', W/2, 285);
   } else {
-    // piano mostrato: durante il movimento è il piano che la cabina sta attraversando
-    // (aggiornato ogni frame da tickMove), a riposo è il piano attuale
     const displayedFloor = state.isMoving ? state.floorShown : state.currentFloor;
     const floorLabel = displayedFloor === 0 ? 'T' : String(displayedFloor);
-    // sfondo cella
     ctx.fillStyle = 'rgba(255, 214, 107, 0.08)';
     ctx.fillRect(40, 125, W - 80, 180);
     ctx.strokeStyle = '#c9a55a';
     ctx.lineWidth = 2;
     ctx.strokeRect(40, 125, W - 80, 180);
-    // piano
     ctx.fillStyle = '#ffd66b';
     ctx.font = 'bold 130px "Courier New", monospace';
     ctx.textAlign = 'center';
@@ -3140,7 +3280,6 @@ function drawModernDisplay() {
     ctx.shadowColor = '#ffd66b'; ctx.shadowBlur = 20;
     ctx.fillText(floorLabel, W/2, 215);
     ctx.shadowBlur = 0;
-    // sotto al piano: se in movimento, mostra "Da X a Y" per chiarezza
     if (state.isMoving) {
       const fromLabel = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
       const toLabel = state.targetFloor === 0 ? 'T' : String(state.targetFloor);
@@ -3148,7 +3287,6 @@ function drawModernDisplay() {
       ctx.fillStyle = '#a89060';
       ctx.fillText(`${fromLabel} → ${toLabel}`, W/2, 145);
     }
-    // freccia direzione (animata)
     let arrowChar = '·';
     let arrowLabel = 'FERMO';
     if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
@@ -3176,131 +3314,6 @@ function drawModernDisplay() {
       }
     }
   }
-  // linea separatrice
-  ctx.strokeStyle = '#c9a55a';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(40, 355); ctx.lineTo(W - 40, 355); ctx.stroke();
-
-  // ---- METEO (Fase 4) ----
-  if (currentWeather) {
-    // icona meteo
-    drawWeatherIconBig(ctx, 110, 430, 50, currentWeather.type, animT);
-    // temperatura
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 40px Arial';
-    ctx.fillText(`${currentTemp}°C`, 170, 420);
-    // condizione
-    ctx.fillStyle = '#aaccff';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText(currentWeather.label, 170, 455);
-    // località
-    ctx.fillStyle = '#88aacc';
-    ctx.font = '12px Arial';
-    ctx.fillText('ROMA', 170, 475);
-  }
-  // linea separatrice
-  ctx.strokeStyle = '#c9a55a';
-  ctx.beginPath(); ctx.moveTo(40, 510); ctx.lineTo(W - 40, 510); ctx.stroke();
-
-  // ---- MAPPA EDIFICIO (10 quadratini, uno per piano) ----
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#a89060';
-  ctx.font = 'bold 12px Arial';
-  ctx.fillText('POSIZIONE CABINA', 50, 520);
-  // 10 quadratini in colonna (piano 9 in alto, T in basso)
-  const mapX = 70, mapY0 = 545, mapW = 14, mapH = 14, mapGap = 3;
-  for (let f = 9; f >= 0; f--) {
-    const y = mapY0 + (9 - f) * (mapH + mapGap);
-    const isCurrent = f === state.currentFloor;
-    const isInQueue = state.requestedFloors.has(f);
-    let color = '#2a2a30';
-    if (isCurrent) {
-      color = state.isMoving ? '#ffaa00' : '#6dff7c';
-    } else if (isInQueue) {
-      color = '#ff8c1a';
-    } else {
-      color = '#2a2a30';
-    }
-    ctx.fillStyle = color;
-    if (isCurrent) {
-      ctx.shadowColor = color; ctx.shadowBlur = 12;
-    }
-    ctx.fillRect(mapX, y, mapW, mapH);
-    ctx.shadowBlur = 0;
-    // numero a destra
-    ctx.fillStyle = isCurrent ? '#fff' : '#6a6a70';
-    ctx.font = 'bold 11px Arial';
-    ctx.textBaseline = 'middle';
-    const label = f === 0 ? 'T' : String(f);
-    ctx.fillText(label, mapX + mapW + 6, y + mapH/2);
-  }
-  ctx.textBaseline = 'top';
-
-  // ---- GRIGLIA PIANI INTERATTIVA ----
-  // già disegnata "sotto" il vetro (celle cliccabili), ma qui disegno la UI visibile
-  // 3 colonne × 4 righe: 9..1 + T
-  const gridX0 = 150, gridY0 = 545;
-  const cellW = 100, cellH = 50, cellGap = 8;
-  ctx.font = 'bold 22px Arial';
-  for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 3; c++) {
-      const floor = cellLayout[r][c];
-      if (floor < 0) {
-        // cella vuota, non disegnare
-        continue;
-      }
-      const x = gridX0 + c * (cellW + cellGap);
-      const y = gridY0 + r * (cellH + cellGap);
-      const isCurrent = floor === state.currentFloor;
-      const isInQueue = state.requestedFloors.has(floor);
-      const isHovered = (hoveredBtn.current && hoveredBtn.current.isCell &&
-                         hoveredBtn.current.userData.cellRow === r &&
-                         hoveredBtn.current.userData.cellCol === c);
-      // Polish Pack v1.3 #6: in modalità fuori servizio tutte le celle sono disabilitate
-      // (tranne il piano corrente, evidenziato in modo neutro)
-      let bg = 'rgba(255,255,255,0.04)';
-      let border = '#4a4a50';
-      let textColor = '#aabbcc';
-      if (state.outOfOrder) {
-        bg = isCurrent ? 'rgba(120, 120, 130, 0.18)' : 'rgba(80, 80, 90, 0.10)';
-        border = isCurrent ? '#6a6a70' : '#3a3a40';
-        textColor = isCurrent ? '#888888' : '#555560';
-      } else if (isHovered && !isCurrent) {
-        bg = 'rgba(109, 255, 200, 0.35)';
-        border = '#88ffcc';
-        textColor = '#ffffff';
-      } else if (isCurrent) {
-        bg = 'rgba(109, 255, 124, 0.25)';
-        border = '#6dff7c';
-        textColor = '#6dff7c';
-      } else if (isInQueue) {
-        bg = 'rgba(255, 140, 26, 0.25)';
-        border = '#ff8c1a';
-        textColor = '#ff8c5a';
-      }
-      ctx.fillStyle = bg;
-      ctx.fillRect(x, y, cellW, cellH);
-      ctx.strokeStyle = border;
-      ctx.lineWidth = isHovered ? 2.5 : 1.5;
-      ctx.strokeRect(x, y, cellW, cellH);
-      // testo
-      ctx.fillStyle = textColor;
-      ctx.font = 'bold 24px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const label = floor === 0 ? 'T' : String(floor);
-      ctx.fillText(label, x + cellW/2, y + cellH/2);
-    }
-  }
-  // (lo schermo termina a y = 545 + 4*58 = 777, su 1100 px)
-  // area inferiore: piccola scritta "BOSS HOTEL · 2026" centrata in basso
-  ctx.fillStyle = '#6a5a40';
-  ctx.font = '10px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('BOSS HOTEL ELEVATOR SYSTEM · 2026', W/2, 1080);
 
   // ---- COUNTDOWN CHIUSURA PORTE (Fase 7) ----
   if (doorCountdownStart > 0) {
@@ -3310,15 +3323,12 @@ function drawModernDisplay() {
     if (remaining <= 0) {
       doorCountdownStart = 0;
     } else {
-      // overlay scuro semi-trasparente al centro
       ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.fillRect(W/2 - 130, 380, 260, 140);
-      // bordo rosso lampeggiante
       const blink = Math.sin(performance.now() / 200) > 0 ? '#ff5050' : '#aa2020';
       ctx.strokeStyle = blink;
       ctx.lineWidth = 4;
       ctx.strokeRect(W/2 - 130, 380, 260, 140);
-      // numero countdown
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 100px "Courier New", monospace';
       ctx.textAlign = 'center';
@@ -3326,12 +3336,35 @@ function drawModernDisplay() {
       ctx.shadowColor = blink; ctx.shadowBlur = 20;
       ctx.fillText(String(num), W/2, 445);
       ctx.shadowBlur = 0;
-      // testo
       ctx.fillStyle = '#ffaa88';
       ctx.font = 'bold 16px Arial';
       ctx.fillText('CHIUSURA PORTE', W/2, 500);
     }
   }
+}
+
+// Dispatcher 3-layer: copia static + semistatic da cache offscreen, ridisegna
+// solo il layer dinamico sul canvas principale.
+function drawModernDisplay() {
+  const ctx = displayCtx;
+  const W = displayCanvas.width, H = displayCanvas.height;
+  const animT = performance.now() / 1000;
+
+  // 1. Layer statico: cacheato una sola volta
+  if (!displayStaticReady) {
+    renderDisplayStaticLayer(displayStaticCtx);
+    displayStaticReady = true;
+  }
+  // 2. Layer semi-statico: cacheato finché non viene richiesto un re-render
+  if (!displaySemistaticReady) {
+    renderDisplaySemistaticLayer(displaySemistaticCtx, animT);
+    displaySemistaticReady = true;
+  }
+  // 3. Composizione: clear + copia i due layer cached + ridisegna il dynamic
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(displayStaticCanvas, 0, 0);
+  ctx.drawImage(displaySemistaticCanvas, 0, 0);
+  renderDisplayDynamicLayer(ctx, animT);
 
   displayTex.needsUpdate = true;
   displayDirty = false;
@@ -3343,6 +3376,9 @@ drawModernDisplay();
 
 // render del display nel loop
 let displayRedrawTimer = 0;
+// Polish Pack v1.6 #18: timer 1s per invalidare SOLO il layer dinamico
+// (orologio + passeggeri + countdown). Statico e semi-statico restano cached.
+let _lastSecondRedraw = 0;
 function tickDisplay(now) {
   // gestione countdown chiusura porte
   if (doorCountdownStart > 0) {
@@ -3358,9 +3394,14 @@ function tickDisplay(now) {
     }
     markDisplayDirty();
   }
-  // forza redraw ogni 1s per l'orologio
-  const shouldRedrawTime = (new Date().getSeconds() % 1) === 0;
-  if (displayDirty || shouldRedrawTime) {
+  // Polish Pack v1.6 #18: ridisegna il layer dinamico 1 volta/sec SOLO
+  // per l'orologio (e i passeggeri se cambiano). Statico e semi-statico
+  // rimangono cached → in idle il guadagno è ~5-8 FPS.
+  if (now - _lastSecondRedraw >= 1000) {
+    _lastSecondRedraw = now;
+    markDisplayDynamicDirty();
+  }
+  if (displayDirty) {
     drawModernDisplay();
   }
 }
