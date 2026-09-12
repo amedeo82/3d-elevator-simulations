@@ -374,6 +374,9 @@
     <div class="row"><span><kbd>M</kbd></span><span>toggle suono</span></div>
     <div class="row"><span><kbd>V</kbd></span><span>toggle annunci vocali</span></div>
     <div class="row"><span><kbd>N</kbd></span><span>toggle modalità notte</span></div>
+    <div class="row"><span><kbd>O</kbd></span><span>fuori servizio</span></div>
+    <div class="row"><span><kbd>K</kbd></span><span>comando vocale</span></div>
+    <div class="row"><span><kbd>Shift+M</kbd></span><span>manutentore</span></div>
   </div>
   <div id="status">
     <div class="dot"></div>
@@ -414,6 +417,9 @@
     <div>M</div><div>Attiva/disattiva audio</div>
     <div>V</div><div>Attiva/disattiva annunci vocali</div>
     <div>N</div><div>Attiva/disattiva modalità notte</div>
+    <div>O</div><div>Fuori servizio (manutenzione)</div>
+    <div>K</div><div>Comando vocale (speech-to-text)</div>
+    <div>Shift+M</div><div>Modalità manutentore (debug)</div>
   </div>
   <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
   <div class="slides-wrap">
@@ -519,6 +525,11 @@ const state = {
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
 const hoveredBtn = { current: null };
+
+// Polish Pack v1.5 #21b: buttonList dichiarato in cima per evitare TDZ in
+// buildCorridor (chiamato a riga ~2588 nell'AVVIO, prima che la dichiarazione
+// originale fosse valutata). Pattern coerente con state e hoveredBtn.
+const buttonList = [];
 
 // ============================================================
 // SCENA, RENDERER, CAMERA
@@ -1591,7 +1602,8 @@ cabin.add(doorLeft);
 cabin.add(doorRight);
 
 const doorMat = new THREE.MeshStandardMaterial({
-  color: 0xb0b4ba, roughness: 0.25, metalness: 0.95, envMapIntensity: 1.1
+  color: 0xb0b4ba, roughness: 0.25, metalness: 0.95, envMapIntensity: 1.1,
+  side: THREE.DoubleSide // Fix v1.5 #21b audit: visibili anche dall'esterno (corridoio)
 });
 const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
 
@@ -1602,7 +1614,7 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   // piccola rientranza per look realistico
   const inset = new THREE.Mesh(
     new THREE.PlaneGeometry(CABIN.w/2 - 0.4, 1.8),
-    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0 })
+    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0, side: THREE.DoubleSide })
   );
   inset.position.z = 0.001;
   doorLeft.add(m, inset);
@@ -1615,7 +1627,7 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   m.castShadow = true; m.receiveShadow = true;
   const inset = new THREE.Mesh(
     new THREE.PlaneGeometry(CABIN.w/2 - 0.4, 1.8),
-    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0 })
+    new THREE.MeshStandardMaterial({ color: 0x8c9098, roughness: 0.3, metalness: 1.0, side: THREE.DoubleSide })
   );
   inset.position.z = 0.001;
   doorRight.add(m, inset);
@@ -1623,13 +1635,11 @@ const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
   doorRight.rotation.y = Math.PI;
 }
 
-// fessura tra le porte (mostra il vano ascensore)
-const shaftBack = new THREE.Mesh(
-  new THREE.PlaneGeometry(CABIN.w, CABIN.h),
-  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.9, metalness: 0.2 })
-);
-shaftBack.position.set(0, CABIN.h/2, CABIN.d/2 + 0.1);
-cabin.add(shaftBack);
+// fessura tra le porte: ora rimossa (era un PlaneGeometry nero 2.4x2.6m che mascherava
+// l'interno cabina, ma essendo FrontSide e posizionato davanti alle porte creava
+// un 'muro nero' visibile dal corridoio invece delle porte metalliche).
+// Con doorMat DoubleSide + ante spostate quando aperte, l'interno cabina e' visibile
+// direttamente attraverso l'apertura.
 
 // Indicatore di direzione sopra le porte
 const dirIndicator = new THREE.Mesh(
@@ -1873,6 +1883,8 @@ function disposeCorridor() {
         mats.forEach(m => {
           // preserva materiali e texture del cartello (condivisi tra ricostruzioni)
           if (m === signMatFront || m === signMatBack) return;
+          // preserva anche texture condivise della pulsantiera esterna (create una volta)
+          if (m.map && (m.map === callUpTex || m.map === callDownTex)) return;
           if (m.map && m.map !== signTex) m.map.dispose();
           m.dispose();
         });
@@ -1881,8 +1893,122 @@ function disposeCorridor() {
   }
 }
 
+// ---- Polish Pack v1.5 #21: pulsantiera di chiamata esterna ----
+// Una piccola placca di acciaio sulla parete sinistra del corridoio, vicino alle porte
+// della cabina, con un pulsante rotondo per direzione (▲ su / ▼ giù).
+// Al top floor solo ▼; al bottom floor (Terra) solo ▲.
+// Click → requestFloor(state.currentFloor): se la cabina è già qui apre le porte,
+// altrimenti la cabina raggiunge questo piano (coda o movimento).
+// Rispetta allarme/OOO (requestFloor rifiuta).
+let callUpTex = null;
+let callDownTex = null;
+function getCallButtonTexture(direction) {
+  if (direction === 'up' && callUpTex) return callUpTex;
+  if (direction === 'down' && callDownTex) return callDownTex;
+  const label = direction === 'up' ? '▲' : '▼';
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 96, 96);
+  ctx.fillStyle = '#0a2a0a';
+  ctx.font = 'bold 64px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, 48, 52);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  if (direction === 'up') callUpTex = tex; else callDownTex = tex;
+  return tex;
+}
+function makeCallButton(direction, x, y, z) {
+  // group usato come "button" nel buttonList (analogo a makePhysicalButton del pannello interno)
+  const group = new THREE.Group();
+  // corpo pulsante: piccolo box leggermente sporgente dalla parete
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.08, 0.025),
+    new THREE.MeshStandardMaterial({
+      color: 0x9ad99a, roughness: 0.45, metalness: 0.15,
+      emissive: 0x1a3a1a, emissiveIntensity: 0.35
+    })
+  );
+  body.position.set(0, 0, 0); // relativo al group
+  group.add(body);
+  // label ▲/▼ sul davanti del pulsante (verso il centro del corridoio, +x)
+  const labelMat = new THREE.MeshBasicMaterial({
+    map: getCallButtonTexture(direction), transparent: true, depthWrite: false
+  });
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), labelMat);
+  label.position.set(0.013, 0, 0); // 13mm davanti al corpo (LOCALE)
+  label.rotation.y = -Math.PI / 2; // guarda verso +x (centro corridoio)
+  body.add(label); // <-- fix v1.5: parenta label al body per raycast ricorsivo
+  group.position.set(x, y, z);
+  group.userData.action = direction === 'up' ? 'callUp' : 'callDown';
+  group.userData.isCallButton = true;
+  group.userData.buttonTop = body; // per compatibilità con getButtonAtPointer/pressButton
+  return group;
+}
+function addExternalCallPanel(floor) {
+  const xWall = -CORRIDOR_W / 2;     // parete sinistra
+  const plateX = xWall + 0.018;       // placca sporge 1.8cm verso il corridoio
+  const plateZ = CORRIDOR_START_Z + 0.55; // 0.55m dentro il corridoio
+  const plateY = 1.30;               // altezza comoda
+
+  // placca di sfondo in acciaio spazzolato (BoxGeometry verticale sottile)
+  const plate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.025, 0.42, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0xb8bcc0, roughness: 0.4, metalness: 0.7 })
+  );
+  plate.position.set(plateX, plateY, plateZ);
+  plate.castShadow = true;
+  plate.receiveShadow = true;
+  corridor.add(plate);
+
+  // piccolo header "BOSS HOTEL" inciso (canvas texture in alto sulla placca)
+  const headerCanvas = document.createElement('canvas');
+  headerCanvas.width = 256; headerCanvas.height = 48;
+  const hctx = headerCanvas.getContext('2d');
+  hctx.fillStyle = '#3a3d40';
+  hctx.fillRect(0, 0, 256, 48);
+  hctx.fillStyle = '#d4a23a';
+  hctx.font = 'bold 22px Georgia, serif';
+  hctx.textAlign = 'center';
+  hctx.textBaseline = 'middle';
+  hctx.fillText('BOSS HOTEL', 128, 24);
+  const headerTex = new THREE.CanvasTexture(headerCanvas);
+  headerTex.colorSpace = THREE.SRGBColorSpace;
+  const headerPlate = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.16, 0.05),
+    new THREE.MeshBasicMaterial({ map: headerTex })
+  );
+  headerPlate.position.set(plateX + 0.014, plateY + 0.18, plateZ);
+  headerPlate.rotation.y = -Math.PI / 2;
+  corridor.add(headerPlate);
+
+  // pulsante SU — solo se NON siamo al top floor
+  if (floor < NUM_FLOORS - 1) {
+    const upBtn = makeCallButton('up', plateX + 0.018, plateY + 0.05, plateZ);
+    corridor.add(upBtn);
+    buttonList.push(upBtn);
+  }
+  // pulsante GIÙ — solo se NON siamo al bottom floor
+  if (floor > 0) {
+    const downBtn = makeCallButton('down', plateX + 0.018, plateY - 0.10, plateZ);
+    corridor.add(downBtn);
+    buttonList.push(downBtn);
+  }
+}
+
 function buildCorridor(floor) {
   disposeCorridor();
+  // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
+  // (disposeCorridor non puo accedere a buttonList perche e' dichiarato piu avanti.)
+  for (let i = buttonList.length - 1; i >= 0; i--) {
+    const b = buttonList[i];
+    if (b.userData && (b.userData.action === 'callUp' || b.userData.action === 'callDown')) {
+      buttonList.splice(i, 1);
+    }
+  }
   const themeName = getThemeForFloor(floor);
   currentThemeName = themeName;
   const theme = themeConfig[themeName];
@@ -1954,6 +2080,9 @@ function buildCorridor(floor) {
     m.receiveShadow = true;
     corridor.add(m);
   }
+
+  // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
+  addExternalCallPanel(floor);
 
   // Luci soffitto corridoio
   const lampPositions = [sZ + 2.0, sZ + 4.5, sZ + 7.0, sZ + 9.5];
@@ -2526,7 +2655,6 @@ const CELL_DX = 0.072;      // differenza x tra colonne adiacenti
 const CELL_DY = -0.041;     // differenza y tra righe (negativa: riga successiva = y più basso)
 // celle in ordine: 9 8 7 / 6 5 4 / 3 2 1 / T _ _
 const floorCellMeshes = []; // mappa floor -> mesh (per lightFloorButton)
-const buttonList = []; // tutti gli elementi cliccabili (celle + tasti fisici)
 const floorButtons = [];
 
 const cellLayout = [
@@ -2827,6 +2955,30 @@ function cancelDoorCountdown() {
     doorCountdownStart = 0;
     markDisplayDirty();
   }
+}
+
+// ---- Polish Pack v1.5 #21b audit: timer di chiusura automatica porte ----
+// Comportamento realistico di un ascensore reale: dopo che le porte sono
+// completamente aperte (post arrivo al piano), se l'utente non fa nulla
+// per N secondi, le porte si chiudono automaticamente (con countdown 3..2..1).
+// Il timer si resetta se l'utente fa qualcosa (click pulsante, chiama piano,
+// rientra cabina, ecc.).
+const DOOR_AUTO_CLOSE_MS = 6000;
+let doorAutoCloseTimer = null;
+function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
+  cancelAutoClose();
+  doorAutoCloseTimer = setTimeout(() => {
+    doorAutoCloseTimer = null;
+    if (state.doorsOpen && state.doorsActual > 0.9
+        && !state.isMoving && !state.alarmOn && !state.outOfOrder
+        && !state.maintenanceMode && !state.prenotationActive) {
+      setDoors(false); // parte il countdown 3..2..1 + beep crescente
+    }
+  }, ms);
+}
+function cancelAutoClose() {
+  if (doorAutoCloseTimer) { clearTimeout(doorAutoCloseTimer); doorAutoCloseTimer = null; }
+}
 }
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -3233,6 +3385,7 @@ function lightFloorButton(floor, on = true) {
 // AUDIO (sintetizzato con WebAudio)
 // ============================================================
 let audioCtx = null;
+let audioReady = false; // true dopo il primo gesto utente (click startBtn o interazione canvas)
 function ensureAudio() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
@@ -3286,7 +3439,7 @@ function makeNoiseBuffer(ctx, dur = 1.0) {
   return buf;
 }
 function startWhoosh() {
-  if (whooshNode || state.muted || state.alarmOn) return;
+  if (whooshNode || state.muted || state.alarmOn || !audioReady) return;
   ensureAudio();
   if (!audioCtx) return;
   const noise = makeNoiseBuffer(audioCtx, 1.0);
@@ -3323,7 +3476,7 @@ function stopWhoosh() {
 let musicNodes = null;   // {osc1, osc2, osc3, lfo, gain, lfoGain, filter, timer}
 let musicTrack = null;   // 'jazz' | 'classica' | null
 function startMusic() {
-  if (musicNodes || state.muted || state.alarmOn || state.outOfOrder) return;
+  if (musicNodes || state.muted || state.alarmOn || state.outOfOrder || !audioReady) return;
   ensureAudio();
   if (!audioCtx) return;
   const track = state.currentFloor <= 3 ? 'jazz' : 'classica';
@@ -3562,7 +3715,7 @@ function applyWireframe(on) {
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         mats.forEach(m => {
           if (m && 'wireframe' in m) {
-            snap.push({ mat, m, was: m.wireframe });
+            snap.push({ m, was: m.wireframe });
             m.wireframe = true;
           }
         });
@@ -3726,6 +3879,7 @@ function requestFloor(floor) {
     if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
     return;
   }
+  cancelAutoClose(); // l'utente ha appena fatto qualcosa
   floor = Math.max(0, Math.min(NUM_FLOORS - 1, floor));
   if (floor === state.currentFloor && !state.isMoving) {
     // già qui, apri le porte
@@ -3864,6 +4018,10 @@ function tickDoors(dt) {
   const openOffset = state.doorsActual * DOOR_TRAVEL;
   doorLeft.position.x = -CABIN.w/4 + 0.025 - openOffset;
   doorRight.position.x = CABIN.w/4 - 0.025 + openOffset;
+  // Polish Pack v1.5 #21b audit: schedula auto-close quando le porte sono completamente aperte
+  if (state.doorsActual >= 0.99 && state.doorsOpen && !doorAnim && !doorAutoCloseTimer) {
+    scheduleAutoClose();
+  }
 }
 
 function setDoors(open) {
@@ -3873,9 +4031,11 @@ function setDoors(open) {
   playDoorSound(open);
   if (open) {
     cancelDoorCountdown();
+    cancelAutoClose(); // l'utente ha appena aperto: timer si resettera' quando le porte sono completamente aperte
   } else {
     if (typeof announceDoorClosing === 'function') announceDoorClosing();
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
+    cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
   animateDoorsTo(open ? 1 : 0, open ? 1.2 : 1.0);
   updateFloorDisplay();
@@ -3891,6 +4051,7 @@ function toggleAlarm() {
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
     state.isMoving = false;
     movePaused = true;
+    cancelAutoClose(); // l'allarme chiude le porte manualmente, niente auto-close
     setDoors(false);
     alarmLight.intensity = 4;
     playAlarm();
@@ -3938,6 +4099,7 @@ function exitCabin() {
   if (!state.playerInCabin) return;
   if (!state.doorsOpen || state.isMoving || state.alarmOn) return;
   state.playerInCabin = false;
+  cancelAutoClose(); // l'utente esce: il timer di chiusura automatica continua (vedi tickDoors)
   state.passengers = 0;  // l'utente è uscito
   // stacca la camera dalla cabina, riposizionala nel corridoio
   cabin.remove(yawObj);
@@ -3957,11 +4119,17 @@ function exitCabin() {
 
 function enterCabin() {
   if (state.playerInCabin) return;
+  // Fix v1.5 audit: blocca rientro in cabina durante fuori servizio (come prenotazione)
+  if (state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    return;
+  }
   // distanza dall'apertura della cabina (z vicino a CABIN.d/2 e |x| < 0.8m)
   const distZ = Math.abs(yawObj.position.z - CABIN.d/2);
   if (distZ > 1.0 || Math.abs(yawObj.position.x) > 0.9) return;
   state.playerInCabin = true;
   state.passengers = 1;  // l'utente è rientrato
+  cancelAutoClose(); // l'utente rientra: il timer di chiusura automatica continua (vedi tickDoors)
   state.prenotationActive = false; // Polish Pack v1.4 #20: esci dalla modalità prenotazione
   corridor.remove(yawObj);
   placeCameraInCabin();
@@ -3988,13 +4156,18 @@ function getButtonAtPointer() {
       meshes.push(b.userData.buttonTop);
     }
   }
-  const hits = raycaster.intersectObjects(meshes, false);
+  // Fix v1.5 #21b: usa raycast RICORSIVO per intercettare anche i figli del buttonTop
+  // (per i bottoni esterni il label ▲/▼ e' figlio del body tramite body.add(label))
+  const hits = raycaster.intersectObjects(meshes, true);
   if (hits.length === 0) return null;
   const m = hits[0].object;
-  // trova il button group
+  // trova il button group (controlla anche se m e' figlio del buttonTop)
   return buttonList.find(b => {
     if (b.isCell) return b.userData.cellMesh === m;
-    return b.userData.buttonTop === m;
+    if (b.userData.buttonTop === m) return true;
+    // per i bottoni esterni: m potrebbe essere il label (figlio del body)
+    if (b.userData.buttonTop && b.userData.buttonTop.children && b.userData.buttonTop.children.indexOf(m) !== -1) return true;
+    return false;
   });
 }
 
@@ -4044,6 +4217,7 @@ function updateHover() {
 
 function pressButton(btn) {
   if (!btn) return;
+  cancelAutoClose(); // qualsiasi interazione resetta il timer
   // animazione "premuto"
   if (btn.isCell) {
     const cell = btn.userData.cellMesh;
@@ -4091,6 +4265,15 @@ function pressButton(btn) {
     }
   } else if (btn.userData.action === 'exit') {
     exitCabin();
+  } else if (btn.userData.action === 'callUp' || btn.userData.action === 'callDown') {
+    // Polish Pack v1.5 #21: pulsantiera di chiamata esterna nel corridoio
+    // Chiama la cabina al piano del corridoio dove l'utente si trova.
+    // Se la cabina è già qui, requestFloor apre le porte gentilmente (no countdown).
+    // Se la cabina è in viaggio, il piano va in coda (la cabina ci tornerà).
+    // Se OOO/allarme, requestFloor rifiuta con beep 220Hz.
+    if (!state.playerInCabin) {
+      requestFloor(state.currentFloor);
+    }
   }
 }
 
@@ -4140,12 +4323,17 @@ document.addEventListener('pointerlockchange', () => {
 // MOVIMENTO FPS (corridoio) e LISTENERS TASTIERA
 // ============================================================
 addEventListener('keydown', e => {
-  if (e.code === 'KeyM') {
+  if (e.code === 'KeyM' && !e.shiftKey) {
     state.muted = !state.muted;
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.muted ? 'Audio: OFF' : 'Audio: ON';
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
+  } else if (e.code === 'KeyM' && e.shiftKey) {
+    // Polish Pack v1.4 #19: toggle modalità manutentore (Shift+M, non M solo)
+    // Deve essere prima del ramo KeyV/N/O/etc perche KeyM matcha qualsiasi combinazione
+    e.preventDefault();
+    toggleMaintenance();
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
     if (ttsEnabled) speak('Annunci vocali attivati');
@@ -4168,12 +4356,20 @@ addEventListener('keydown', e => {
       state.isMoving = false;
       movePaused = true;
       state.requestedFloors.clear();
+      state.prenotationActive = false; // annulla prenotazione automatica
       setDoors(false);
       if (typeof speak === 'function') speak('Ascensore fuori servizio.');
       playBeep(440, 0.15, 'square', 0.1);
       setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
     } else {
       movePaused = false;
+      // Fix: al ripristino, riapri le porte gentilmente se la cabina è ferma, non in allarme
+      // e l'utente è nella cabina. Se l'utente è nel corridoio e fuori servizio era ON mentre
+      // era nel corridoio, le porte restano chiuse (lui le può aprire premendo ◄| sulla pulsantiera
+      // — che è sempre raggiungibile tornando in cabina, oppure attendendo la prenotazione).
+      if (!state.alarmOn && state.playerInCabin && !state.isMoving) {
+        setDoors(true);
+      }
       if (typeof speak === 'function') speak('Ascensore ripristinato.');
       playBeep(660, 0.12, 'sine', 0.1);
     }
@@ -4192,10 +4388,6 @@ addEventListener('keydown', e => {
     // Polish Pack v1.4 #9: toggle comando vocale
     state.voiceEnabled = !state.voiceEnabled;
     if (state.voiceEnabled) startVoice(); else stopVoice();
-  } else if (e.code === 'KeyM' && e.shiftKey) {
-    // Polish Pack v1.4 #19: toggle modalità manutentore (Shift+M, non M solo)
-    e.preventDefault();
-    toggleMaintenance();
   } else if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' ||
              e.code === 'Digit4' || e.code === 'Digit5' || e.code === 'Digit6' ||
              e.code === 'Digit7' || e.code === 'Digit8' || e.code === 'Digit9' ||
@@ -4486,6 +4678,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
   // ferma il carosello
   if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
   ensureAudio();
+  audioReady = true; // sblocca AudioContext dopo il primo gesto utente
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
