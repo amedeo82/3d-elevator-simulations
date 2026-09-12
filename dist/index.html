@@ -2895,7 +2895,6 @@ function adjustPassengersForFloor(floor) {
   state.passengers = Math.max(0, Math.min(8, state.passengers + delta));
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
 }
-}
 
 // giorni della settimana e mesi
 const GIORNI = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
