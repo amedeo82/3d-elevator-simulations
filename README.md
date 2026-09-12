@@ -6,10 +6,11 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
-> **🟡 Polish Pack v1.5 in corso (2026-09-12)** — 4 feature: accessibilità tastiera
-> corridoio, logica passeggeri coerente, caching canvas offscreen per il display touch,
-> **pulsantiera di chiamata esterna (▲/▼) nel corridoio** (aggiunta durante audit).
-> Branch `feature/polish-pack-v1.5`. Target: **21/22 funzionalità implementate (95%)**.
+> **🟡 Polish Pack v1.5 in corso (2026-09-12)** — 4 feature pianificate (#13 #14 #18)
+> + **#21b pulsantiera di chiamata esterna (▲/▼) nel corridoio** + **timer di chiusura
+> automatica porte (6s)** aggiunti durante audit UX. Inoltre: porte ora visibili dal
+> corridoio (era un muro nero a causa di PlaneGeometry FrontSide + shaftBack nero).
+> Branch `feature/polish-pack-v1.5`. Target: **22/22 funzionalità implementate (100%)**.
 > Vedi `PIANO_MIGLIORAMENTI.md` §Fase 15 e `piani/README.md`.
 >
 > **✅ Polish Pack v1.4 completato (2026-09-12)** — 4 feature: musica contestuale,
@@ -85,6 +86,8 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 ### 🚪 Porte scorrevoli
 - Due ante che scorrono verso l'esterno
 - Animazione realistica con easing
+- **Visibili da entrambi i lati** (interno cabina + corridoio) — fix audit v1.5
+- **Chiusura automatica** dopo 6 secondi di inattività (comportamento ascensore reale)
 - Countdown 3..2..1 prima della chiusura con beep a tono crescente
 - Si bloccano se allarme attivo
 
@@ -213,6 +216,7 @@ Il tutto in **un singolo file HTML** di ~120KB, deployato staticamente, senza di
 - Header dorato "BOSS HOTEL" + 2 pulsanti rotondi verdi: **▲** (salita) e **▼** (discesa)
 - Al piano Terra solo ▲; al piano 9 (attico) solo ▼
 - **Click su ▲/▼**: chiama la cabina a quel piano (se è già lì, apre le porte gentilmente)
+  - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
 
 ---
@@ -441,7 +445,8 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 - [ ] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, guard `playerInCabin`)
 - [ ] **#14** Logica passeggeri coerente (sostituisce random 8s con `adjustPassengersForFloor` tematico)
 - [ ] **#18** Texture atlas / caching canvas offscreen per il display touch (3 layer)
-- [ ] **#21** Pulsantiera di chiamata esterna ▲/▼ nel corridoio (aggiunta dopo audit)
+- [x] **#21b** Pulsantiera di chiamata esterna ▲/▼ nel corridoio (aggiunta durante audit UX)
+- [x] **#22** Chiusura automatica porte dopo 6s di inattività (comportamento ascensore reale)
 
 ### ✅ Polish Pack v1.4 — completato (2026-09-12)
 - [x] **#2** Musica di sottofondo contestuale (jazz lobby T-3, classica 4-9, silenzia su allarme/OOO)
@@ -456,7 +461,11 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
       e strip HUD. Commit `e02adca`.
 
 ### Backlog residuo post-v1.5 (1/22 feature)
-- [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]` (alto sforzo)
+- [ ] **#12** Lingua selezionabile (IT/EN) — refactor `STRINGS[lang]` (~300+ righe, alto sforzo)
+
+> Le feature #21b e #22 sono state aggiunte durante l'audit UX di v1.5 (utente ha
+> segnalato "pulsanti di chiamata mancanti nel corridoio" + "timer di chiusura automatica
+> porte" + "muro nero al posto delle porte"). Tutte a basso sforzo, scope coerente.
 
 ### Backlog originale §9 (long-term)
 - [ ] Più di 10 piani (parametrico)
