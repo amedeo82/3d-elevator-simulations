@@ -6,11 +6,19 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
+> **🛗 Hotfix v1.7 (2026-09-12)** — comportamento porte allineato allo standard ADA/ASME
+> A17.1 per ascensori reali: timer differenziato per piano (lobby 8s, altri piani 5s) e
+> prenotazione automatica dal corridoio limitata al solo piano T (lobby). Ai piani 1-9 le
+> porte si chiudono automaticamente dopo il dwell time standard indipendentemente dalla
+> posizione del giocatore; per rientrare serve la pulsantiera ▲/▼ esterna. Dettaglio:
+> `PIANO_MIGLIORAMENTI.md` §Fase 18 (supera il fix precedente §Fase 17).
+
 > **🔧 Hotfix post-v1.6 (2026-09-12)** — auto-close porte (6s) non scatta più quando il
 > giocatore è fuori dalla cabina. Corretto bug "annuncio vocale 'porte si chiudono'
 > ma porte che restano aperte / riaprono" (la prenotazione automatica del corridoio
 > riapriva le porte durante la fase di chiusura). Dettaglio: `PIANO_MIGLIORAMENTI.md`
-> §Fase 17. Totale funzionalità backlog: **22/22 (100%)** invariato.
+> §Fase 17. **Superseded da v1.7** che adotta un comportamento più realistico.
+> Totale funzionalità backlog: **22/22 (100%)** invariato.
 
 > **🎉 Polish Pack v1.6 completato (2026-09-12)** — 3 feature: **#13 audit + fix accessibilità
 > tastiera corridoio**, **#14 logica passeggeri coerente con il piano tematico**,
@@ -101,9 +109,12 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - Due ante che scorrono verso l'esterno
 - Animazione realistica con easing
 - **Visibili da entrambi i lati** (interno cabina + corridoio) — fix audit v1.5
-- **Chiusura automatica** dopo 6 secondi di inattività **solo quando il giocatore è dentro la cabina** (comportamento ascensore reale)
+- **Chiusura automatica con timer differenziato per piano** (allineato ADA/ASME A17.1):
+  - **Piano T (lobby)**: 8 secondi di dwell time
+  - **Piani 1-9**: 5 secondi di dwell time (standard car call)
 - Countdown 3..2..1 prima della chiusura con beep a tono crescente
-- Quando il giocatore è nel corridoio, l'apertura/chiusura è gestita dalla **prenotazione automatica** (apre se ti avvicini, chiude silenziosamente se ti allontani) — l'auto-close con annuncio è disattivato per evitare conflitti
+- **La chiusura automatica avviene indipendentemente dalla posizione del giocatore**
+  (dentro o fuori dalla cabina) come in un vero ascensore
 - Si bloccano se allarme attivo
 
 ### 🚶 Corridoio del piano
@@ -221,10 +232,11 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - Log degli ultimi 10 eventi
 - **Teletrasporto**: in maintenance, i tasti `1`–`9` chiamano direttamente un piano (salta l'animazione)
 
-### 🚏 Prenotazione cabina automatica
-- Nel corridoio, ti avvicini alle porte della cabina (<1m) e queste **si aprono automaticamente**
+### 🚏 Prenotazione cabina automatica (solo lobby)
+- **Solo al piano T (lobby)**: nel corridoio ti avvicini alle porte della cabina (<1m) e queste **si aprono automaticamente**
 - Sul display touch appare un overlay azzurro "PRENOTATA · Tieni premuto E per entrare"
 - Se ti allontani dopo aver prenotato, le porte si chiudono gentilmente (no countdown)
+- **Ai piani 1-9 la prenotazione automatica è disabilitata** (comportamento ascensore reale): le porte si chiudono automaticamente dopo il dwell time standard; per rientrare in cabina usa la pulsantiera ▲/▼ esterna
 - Rispetta allarme e fuori servizio (prenotazione rifiutata)
 
 ### 🔔 Pulsantiera di chiamata esterna (corridoio)
@@ -457,13 +469,28 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 ## 🗺️ Roadmap
 
-### 🔧 Hotfix post-v1.6 — 2026-09-12
-- [x] **Auto-close porte rispettato solo dentro la cabina** — aggiunta guardia
+### 🛗 Hotfix v1.7 — 2026-09-12 (comportamento porte ADA-compliant)
+- [x] **Timer differenziato per piano** — `scheduleAutoClose()` ora sceglie tra
+      `DOOR_AUTO_CLOSE_MS_LOBBY = 8000` (piano T) e `DOOR_AUTO_CLOSE_MS_FLOOR = 5000`
+      (piani 1-9) in base a `state.currentFloor`. Allineato alle normative ADA §407.3.5
+      (car call 3-5s min) e specifiche tipiche differential door time.
+- [x] **Auto-close indipendente dalla posizione del giocatore** — rimosso il guard
+      `state.playerInCabin` aggiunto nel fix precedente (commit `8bbfeac`). Le porte
+      si chiudono automaticamente dopo il dwell time sia dentro che fuori dalla cabina,
+      come in un vero ascensore.
+- [x] **Prenotazione automatica limitata al lobby** — `tickPlayer()` ora gate
+      l'apertura/chiusura automatica su `state.currentFloor === 0`. Ai piani 1-9 il
+      passeggero deve usare la pulsantiera ▲/▼ esterna per richiamare la cabina
+      (comportamento standard).
+
+### 🔧 Hotfix post-v1.6 — 2026-09-12 (superseded da v1.7)
+- [x] ~~**Auto-close porte rispettato solo dentro la cabina** — aggiunta guardia
       `state.playerInCabin` al callback di `scheduleAutoClose()` (`elevator.html:3132`).
       Risolve il bug "annuncio vocale 'porte si stanno chiudendo' ma porte che restano
       aperte / riaprono" quando il giocatore era nel corridoio. La prenotazione
       automatica in `tickPlayer()` (~`elevator.html:4681`) è ora l'unica a gestire
-      le porte fuori dalla cabina.
+      le porte fuori dalla cabina.~~ **Sostituito dal comportamento più realistico
+      di v1.7** (auto-close + prenotazione lobby-only).
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

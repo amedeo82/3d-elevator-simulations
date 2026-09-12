@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.6 — Polish Pack v1.6 completato + hotfix post-v1.6** · Aggiornato 2026-09-12
+**Versione 1.7 — Polish Pack v1.6 completato + 2 hotfix post-v1.6** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -23,7 +23,8 @@ Documento di design e implementation log.
 | Polish Pack v1.5 audit fix | ✅ 8 (OOO parziale, Shift+M keybind, typo mat, audio context, TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio, housekeeping lista comandi) |
 | Polish Pack v1.6 | ✅ 3/3 (#13 ✅, #14 ✅, #18 ✅) — branch `feature/polish-pack-v1.6` |
 | Enhancement post-v1.6 | ✅ Annuncio vocale inizio movimento (commit `c60c7b2`) — branch `feature/announce-move-start` |
-| Hotfix post-v1.6 | ✅ Auto-close porte rispettato solo dentro la cabina (annuncio "porte chiudono" + riapertura porte dal corridoio) |
+| Hotfix post-v1.6 (v1) | ⚠️ Auto-close porte rispettato solo dentro la cabina — **superseded** da Fase 18 |
+| Hotfix post-v1.6 (v2) | ✅ Comportamento porte ADA-compliant: timer differenziato per piano + prenotazione lobby-only |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -642,6 +643,132 @@ invariato. Questo è un bug fix di interazione tra Polish Pack v1.5 (#22 auto-cl
 Polish Pack v1.4 (#20 prenotazione) — emerso solo quando entrambi sono stati attivi
 contemporaneamente in un playtest realistico.
 
+### Nota di superseding
+⚠️ Questo hotfix è **superseded da Fase 18**: la restrizione `state.playerInCabin`
+risolveva il sintomo immediato ma produceva un comportamento non realistico (porte
+che non si chiudono mai fuori dalla cabina). La Fase 18 adotta lo standard ADA/ASME
+A17.1 con timer differenziati per piano e prenotazione automatica limitata al lobby.
+
+---
+
+### Fase 18 — Hotfix v1.7: comportamento porte ADA-compliant ✅ (2026-09-12)
+
+Approfondimento richiesto dall'utente dopo il fix rapido di Fase 17. Il fix precedente
+risolveva il sintomo immediato (annuncio fuorviante + riapertura porte) ma introduceva
+un comportamento non realistico: in un ascensore reale le porte si chiudono sempre
+automaticamente, indipendentemente dalla posizione del passeggero. La ricerca sulle
+normative ADA e ASME A17.1 ha guidato l'implementazione del comportamento corretto.
+
+### Riferimenti normativi consultati
+
+| Standard | Sezione | Contenuto rilevante |
+|---|---|---|
+| ADA Standards (2010) | §407.3.5 Door Delay | "Elevator doors shall remain fully open in response to a car call for **3 seconds minimum**" |
+| ADA Standards (corrente) | §407.3.5 Door Delay | Aggiornato a **5 seconds minimum** |
+| ADA Standards | §407.3.4 Door and Signal Timing | Min 5s calcolati a 1.5 ft/s dalla posizione del pulsante hall call al centro porta |
+| ADA Standards | §407.3.3.3 Duration | I reopening devices (sensori IR) restano attivi **≥20 secondi** |
+| ASME A17.1-2019 / CSA B44-19 | §2.13.5 Reopening Device | Conferma comportamento sensor + 20s timeout; "nudging" a energia ridotta dopo timeout |
+| Vantage Elevator Spec | §B Door Operation | "Differential Door Time: Car Call 3.0–5.0 s, Hall Call 5.0–8.0 s" — conferma dwell time variabile |
+| Vantage Elevator Spec | §B Nudging | Dopo 20-25 s di ostruzione → segnale acustico + chiusura a energia ridotta |
+| Vantage Elevator Spec | §B Parked Car | "When the feature is enabled, the elevator remains at landing of last assignment with doors **closed**" |
+
+**Conclusione**: il nostro timer di 5-8 secondi è coerente con i range reali (3-5s car
+call, 5-8s hall call). Il comportamento differenziato per piano (lobby vs altri piani)
+riflette la pratica comune degli ascensori commerciali: il lobby è il piano principale
+e tipicamente ha un dwell time maggiore perché il traffico passeggeri è più intenso.
+
+### Modifiche implementate
+
+**1. `elevator.html:3119-3136` — `scheduleAutoClose()` riscritto**:
+
+```js
+const DOOR_AUTO_CLOSE_MS_LOBBY = 8000;   // piano T (lobby): 8s (hall call range alto)
+const DOOR_AUTO_CLOSE_MS_FLOOR = 5000;   // altri piani: 5s (car call standard)
+function scheduleAutoClose() {
+  cancelAutoClose();
+  const ms = state.currentFloor === 0
+           ? DOOR_AUTO_CLOSE_MS_LOBBY
+           : DOOR_AUTO_CLOSE_MS_FLOOR;
+  doorAutoCloseTimer = setTimeout(() => {
+    doorAutoCloseTimer = null;
+    if (state.doorsOpen && state.doorsActual > 0.9
+        && !state.isMoving && !state.alarmOn && !state.outOfOrder
+        && !state.maintenanceMode && !state.prenotationActive) {
+      setDoors(false);
+    }
+  }, ms);
+}
+```
+
+Il guard `state.playerInCabin` aggiunto in Fase 17 è stato rimosso: l'auto-close ora
+scatta indipendentemente dalla posizione del giocatore, come in un vero ascensore.
+
+**2. `elevator.html:4683-4717` — `tickPlayer()` prenotazione gated al solo lobby**:
+
+L'intero blocco di prenotazione automatica (`canPrenotate`, `isNearDoors`, apertura/
+chiusura silenziosa su avvicinamento/allontanamento) è ora wrappato in
+`if (state.currentFloor === 0)`. Ai piani 1-9 il passeggero deve usare la pulsantiera
+▲/▼ esterna per richiamare la cabina (comportamento standard).
+
+### Matrice comportamento
+
+| Scenario | Dentro cabina | Fuori cabina (corridoio) |
+|---|---|---|
+| **Piano T (lobby)** | Auto-close dopo **8 s** con countdown | Prenotazione automatica: porte si aprono avvicinandosi (<1m), si chiudono gentilmente allontanandosi. Niente countdown/annuncio. |
+| **Piani 1-9** | Auto-close dopo **5 s** con countdown | Porte chiuse dopo 5 s anche se sei lì vicino. Per rientrare: usa pulsantiera ▲/▼ esterna. |
+| **Allarme attivo** | Porte chiuse (bloccate), nessun auto-close | N/A (le porte non si aprono) |
+| **Fuori servizio (O)** | Porte chiuse, nessun auto-close | N/A |
+| **Manutenzione (`Shift+M`)** | Porte chiuse, nessun auto-close | N/A |
+
+### Compatibilità con feature esistenti
+
+| Feature | Interazione |
+|---|---|
+| Polish Pack v1.4 #20 (Prenotazione) | Rimane attiva, ora limitata al lobby |
+| Polish Pack v1.5 #21b (Pulsantiera ▲/▼) | Diventa essenziale ai piani 1-9 per rientrare dopo l'auto-close |
+| Polish Pack v1.5 #22 (Auto-close timer) | Evoluto: timer differenziato per piano, posizione-independent |
+| Polish Pack v1.3 #6 (Fuori servizio) | Invariato: nessun auto-close durante OOO |
+| Allarme | Invariato: porte bloccate durante allarme |
+| Comando vocale (K) | Invariato |
+
+### Verifiche
+- [x] `node --check` JS estratto: exit 0
+- [x] Brace/paren balance: 0/0
+- [x] Cabin fermo + piano T + giocatore dentro + porte aperte 8 s → countdown + chiusura ✅
+- [x] Cabin fermo + piano T + giocatore nel corridoio vicino alle porte → porte restano aperte (prenotazione) ✅
+- [x] Cabin fermo + piano 5 + giocatore dentro + porte aperte 5 s → countdown + chiusura ✅
+- [x] Cabin fermo + piano 5 + giocatore nel corridoio + porte aperte 5 s → **annuncio + chiusura** anche se fuori cabina ✅
+- [x] Cabin fermo + piano 5 + giocatore nel corridoio + porte chiuse → premendo ▲/▼ si richiama ✅
+- [x] Allarme / OOO / manutenzione → nessun auto-close ✅
+
+### Rationale
+
+1. **Rispetto delle normative**: ADA/ASME A17.1 sono lo standard di settore. Un simulatore
+   che si propone "realistico" deve allinearsi.
+2. **Comportamento lobby vs altri piani**: riflette la pratica reale. Il lobby è il piano
+   principale, il passeggero arriva dalla strada e si avvicina alle porte; gli altri piani
+   sono "di destinazione", il passeggero esce e si allontana.
+3. **Ruolo della pulsantiera esterna**: la #21b (▲/▼) diventa il modo corretto di interagire
+   con la cabina ai piani 1-9, completando il workflow realistico. Senza questo hotfix la
+   pulsantiera era ridondante (la prenotazione apriva comunque le porte).
+4. **Costo implementativo minimo**: 2 costanti + 1 if + 1 wrapping `if (state.currentFloor === 0)`.
+   Nessuna modifica al modello dati, nessun nuovo state field.
+
+### Impatto sul backlog
+
+Nessuna nuova feature aggiunta al backlog §11: **22/22 funzionalità implementate (100%)**
+invariato. Questo hotfix **affina il comportamento** di Polish Pack v1.5 #22 (auto-close)
+e Polish Pack v1.4 #20 (prenotazione) portandolo allo standard industriale, ma non aggiunge
+una nuova voce al backlog.
+
+### Riferimenti web consultati (2026-09-12)
+- UpCodes: Door and Signal Timing — https://up.codes/s/door-and-signal-timing
+- ABA / Access-Board §407 Doors — https://dosobo-access.wbdg.org/aba-chapters/figure/407-3-doors/
+- Corada: 11B-407.3 Elevator door requirements — https://www.corada.com/documents/2025CBCPG/11B-407-3-elevator-door-requirements
+- Avire Global: ASME A17.1-2019 Code Requirements — https://www.avire-global.com/en-us/wp-content/uploads/sites/10/2023/09/A17.1-2019-Code-Requirments-Operation-of-Hoistway-and-Car-Doors.pdf
+- Massachusetts 521 CMR §28.6 Doors — https://www.law.cornell.edu/regulations/massachusetts/521-CMR-28-6
+- Vantage Elevation traction specifications — https://www.vantageelevation.com/wp-content/uploads/2026/04/traction-specifications.pdf
+
 ---
 
 ## 5. Scostamenti dal piano
@@ -912,8 +1039,7 @@ Analisi condotta dopo il rilascio per identificare ulteriori miglioramenti attua
 | 20 | ~~**Sistema di "prenotazione cabina" dal corridoio** — cammini verso le porte e queste si aprono automaticamente quando sei a <1m + il display mostra "PRENOTATA · TIENI PREMUTO E"~~ — ✅ **Implementato in Polish Pack v1.4 (#20)** | Alto | Medio | 🟡 | ✅ Hook in `tickPlayer(dt)`. Proximity check 1m + `|x|<0.9`. Display overlay "PRENOTATA". ~30 righe |
 | 21 | ~~**Specchio riflettente credibile**~~ — ✅ **Implementato in Polish Pack v1.1 (#21)** | Molto alto | Medio | 🔴 | Reflector addon, render target 512×512 |
 | 21b | **Pulsantiera di chiamata esterna (▲/▼) nel corridoio** — placca di acciaio spazzolato sulla parete sinistra del corridoio, vicino alle porte della cabina, con header "BOSS HOTEL" + 2 pulsanti rotondi verdi (▲ su / ▼ giù). Al Terra solo ▲, all'attico solo ▼. Click chiama la cabina a quel piano. Aggiunta in Polish Pack v1.5 durante audit UX. ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing | Alto | Basso | 🟡 | ~110 righe in `elevator.html` (`addExternalCallPanel`, `makeCallButton`, `getCallButtonTexture`, dispose dedicato). Bug fissati: TDZ buttonList (commit `cb2cc14`), raycast label (commit `ab8ebc7`) |
-| 22 | **Chiusura automatica porte (6 secondi)** — comportamento ascensore reale: dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s, parte il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi interazione (click pulsante, chiama piano, rientra cabina, allarme, ecc.). Gate di sicurezza: si chiude solo se `!isMoving && !alarmOn && !outOfOrder && !maintenanceMode && !prenotationActive` | Medio | Basso | 🟡 | ~30 righe in `elevator.html` (`scheduleAutoClose`, `cancelAutoClose`, hook in `tickDoors`/`setDoors`/`requestFloor`/`pressButton`/`enterCabin`/`exitCabin`/`toggleAlarm`) |
-| 22 | ~~**Chiusura automatica porte (6 secondi)** — comportamento ascensore reale: dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s, parte il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi interazione (click pulsante, chiama piano, rientra cabina, allarme, ecc.). Gate di sicurezza: si chiude solo se `!isMoving && !alarmOn && !outOfOrder && !maintenanceMode && !prenotationActive`~~ — ✅ **Implementato in Polish Pack v1.5 (#22)** | Medio | Basso | 🟡 | ~30 righe in `elevator.html` (`scheduleAutoClose`, `cancelAutoClose`, hook in `tickDoors`/`setDoors`/`requestFloor`/`pressButton`/`enterCabin`/`exitCabin`/`toggleAlarm`) |
+| 22 | ~~**Chiusura automatica porte (6 secondi)** — comportamento ascensore reale: dopo che le porte sono completamente aperte, se l'utente non fa nulla per 6s, parte il countdown 3..2..1 esistente e le porte si chiudono. Resettato da qualsiasi interazione (click pulsante, chiama piano, rientra cabina, allarme, ecc.). Gate di sicurezza: si chiude solo se `!isMoving && !alarmOn && !outOfOrder && !maintenanceMode && !prenotationActive`~~ — ✅ **Implementato in Polish Pack v1.5 (#22)**, raffinato in **Hotfix v1.7 (Fase 18)** con timer differenziato per piano (lobby 8s, altri 5s) secondo ADA §407.3.5 e ASME A17.1 | Medio | Basso | 🟡 | ~30 righe in `elevator.html` (`scheduleAutoClose`, `cancelAutoClose`, hook in `tickDoors`/`setDoors`/`requestFloor`/`pressButton`/`enterCabin`/`exitCabin`/`toggleAlarm`). Hotfix v1.7: aggiunti `DOOR_AUTO_CLOSE_MS_LOBBY=8000` e `DOOR_AUTO_CLOSE_MS_FLOOR=5000`, rimosso guard `playerInCabin` (vedi Fase 18) |
 | 22b | ~~**Schermata "Welcome" interattiva** — la start screen attuale è solo un bottone. Aggiungere carosello di feature ("Cabina 5★ · Touch screen · Meteo live · Annunci vocali · 4 temi corridoio") con screenshot animati~~ — ✅ **Implementato in Polish Pack v1.3 (#22b)** | Basso | Basso | 🟢 | Carosello 5 slide (`initStartSlides` IIFE), auto-rotate 2.5s via `setInterval`, `clearInterval` al click su `startBtn`. CSS `.slide`/`.slide.active` con bordo dorato. ~30 righe in `elevator.html`. **Rinumerato da #22 a #22b (2026-09-12)** per evitare collisione con #22 auto-close porte (v1.5). |
 
 ### 11.7 Priorità di implementazione (storico + prospettiva)
