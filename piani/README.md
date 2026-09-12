@@ -4,27 +4,72 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 ## Aggiornamento 2026-09-12
 
-Aperto e completato branch **`feature/polish-pack-v1.4`** con 4 feature implementate dal backlog §11.
+Aperto branch **`feature/polish-pack-v1.6`** per completare le 3 feature pianificate di v1.5
+(#13, #14, #18) confluite qui perché v1.5 è stato mergiato con solo il sottoinsieme
+"bonus audit UX" (#21b + #22 + 8 bug fix).
 
 ---
 
-## Polish Pack v1.5 — IN CORSO (branch `feature/polish-pack-v1.5`)
+## Polish Pack v1.6 — ✅ COMPLETATO 2026-09-12 (branch `feature/polish-pack-v1.6`)
 
-Aperto 2026-09-12. **3 feature pianificate** selezionate dall'utente dal backlog residuo
-post-v1.4 (tutte a basso/medio sforzo, nessuna decisione architetturale pendente) +
-**2 feature bonus** aggiunte durante audit UX dello stesso giorno (utente ha segnalato
-muro nero al posto delle porte, mancanza tasti di chiamata nel corridoio, e assenza di
-timer di chiusura automatica).
+Aperto 2026-09-12. **3 feature pianificate** confluite da v1.5 (dove erano rimaste
+"in corso" senza implementazione): tutte a basso/medio sforzo, nessuna decisione
+architetturale pendente. Completa §11.4 (qualità) e §11.5 (performance).
 
-| # | Funzionalità | Gruppo | Stato | Note |
-|---|---|---|---|---|
-| #21b | Pulsantiera di chiamata esterna ▲/▼ | §11.6 Nuove | ✅ | Aggiunta durante audit UX: placca di acciaio sulla parete sx del corridoio, header "BOSS HOTEL", 2 pulsanti rotondi verdi ▲/▼. Click chiama la cabina a quel piano. ⚠️ ▲/▼ identici (no modello intenzione) |
-| #22 | Chiusura automatica porte (6s) | §11.6 Nuove | ✅ | Aggiunta durante audit UX: timer 6s dopo porte completamente aperte, usa countdown 3..2..1 esistente. Resettato da qualsiasi interazione. Gate: no se allarme/OOO/maint/prenotazione |
-| #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | 🟡 In corso | Audit WASD + tasti 1-9, guard `state.playerInCabin`, fix drift camera in cabina |
-| #14 | Logica passeggeri coerente | §11.4 Qualità | 🟡 In corso | Sostituisce random 8s con `adjustPassengersForFloor(floor)` tematico |
-| #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | 🟡 In corso | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) |
+| # | Funzionalità | Gruppo | Stato | Commit | Note |
+|---|---|---|---|---|---|
+| #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | ✅ | `49163a6` | Audit + fix drift: aggiunto reset di `keys` in `exitCabin`/`enterCabin` per evitare scatti al cambio stato |
+| #14 | Logica passeggeri coerente | §11.4 Qualità | ✅ | `d82dd60` | Nuova `adjustPassengersForFloor(floor)` tematica: lobby +0..2, uffici -0..-2, hotel ±1, attico +1. Rimosso timer random 8s di Fase 8 |
+| #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | ✅ | `427a635` | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) con caching canvas offscreen. In idle il display ridisegna solo il layer dinamico 1 volta/sec |
 
-**Audit fixes emersi durante il playtest di #21b/#22** (8 bug risolti):
+**Acceptance comune v1.6** (tutte ✅):
+- [x] Nessun calo FPS percepibile (target ≥50; #18 stima +5-8 FPS in idle)
+- [x] Rispetto vincolo singolo file HTML (tutte feature single-file)
+- [x] Nessuna dipendenza npm aggiunta
+- [x] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §16 + questo README + README.md)
+- [x] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+
+**Decisioni di scope**:
+- Singolo branch per tutte e 3 le feature (stessa filosofia di v1.1, v1.2, v1.3)
+- Implementazione in commit separati per ogni feature + commit build + commit docs
+- Esclude deliberatamente #12 (i18n) — unica feature residua dopo v1.6 (alto sforzo)
+- Non tocca le feature bonus di v1.5 (#21b, #22), già merged su `main`
+
+### Totale Polish Pack v1.6
+
+**Funzionalità backlog completate**: 22/22 (100%) — pre-v1.6 era 19/22.
+**Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con #13, #14, #18.
+Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane fuori scope).
+
+### Commit Polish Pack v1.6
+
+| # | Commit | Descrizione |
+|---|---|---|
+| docs | `1dc308b` | Apre branch + scope confermato |
+| feat | `49163a6` | #13 audit + fix accessibilità tastiera |
+| feat | `d82dd60` | #14 logica passeggeri coerente |
+| perf | `427a635` | #18 caching canvas offscreen display touch |
+| build | `1212e46` | Sync `dist/index.html` |
+| docs | (questo commit) | Finalizzazione docs |
+| merge | 🔄 da fare | Merge su `main` |
+
+---
+
+## Polish Pack v1.5 — ✅ COMPLETATO 2026-09-12 (branch `feature/polish-pack-v1.5`)
+
+Branch aperto e mergiato su `main` il **2026-09-12** (commit `5ec79b1`). Ha consegnato
+solo il sottoinsieme **"bonus audit UX"** (2 feature + 8 bug fix). Le 3 feature pianificate
+originali (#13, #14, #18) sono confluite nel **Polish Pack v1.6**.
+
+### Feature implementate (2)
+
+| # | Funzionalità | Gruppo | Stato | Commit | Note |
+|---|---|---|---|---|---|
+| #21b | Pulsantiera di chiamata esterna ▲/▼ | §11.6 Nuove | ✅ | `b2587ef` | Placca di acciaio sulla parete sx del corridoio, header "BOSS HOTEL", 2 pulsanti rotondi verdi ▲/▼. Click chiama la cabina a quel piano. ⚠️ ▲/▼ identici (no modello intenzione) |
+| #22 | Chiusura automatica porte (6s) | §11.6 Nuove | ✅ | `34232dd` | Timer 6s dopo porte completamente aperte, usa countdown 3..2..1 esistente. Resettato da qualsiasi interazione. Gate: no se allarme/OOO/maint/prenotazione |
+
+### Audit fixes (8 bug risolti durante playtest #21b/#22)
+
 - OOO: porte non si riaprivano al ripristino + rientro cabina non bloccato (commit `ba0d075`)
 - `Shift+M` non attivava manutentore (matchava `KeyM` audio) (commit `ea4e9ce`)
 - Typo `mat is not defined` in `applyWireframe` (commit `c826d25`)
@@ -34,20 +79,17 @@ timer di chiusura automatica).
 - Porte invisibili dal corridoio (PlaneGeometry FrontSide + shaftBack nero) (commit `6ab62b6`)
 - Housekeeping lista comandi (welcome screen + HUD non elencavano O/K/Shift+M) (commit `a6cb3c1`)
 
-**Acceptance comune v1.5** (obiettivi):
+### Acceptance comune v1.5** (tutte ✅):
 - [x] Nessun calo FPS percepibile (target ≥50; #21b aggiunge ~3 mesh, #22 solo timer)
 - [x] Rispetto vincolo singolo file HTML (tutte feature single-file)
 - [x] Nessuna dipendenza npm aggiunta
 - [x] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §15 + questo README + README.md)
 - [x] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
 
-**Decisioni di scope**:
-- Singolo branch per tutte e 5 le feature (3 pianificate + 2 bonus audit)
-- Implementazione in commit separati per ogni feature + commit docs
-- Esclude deliberatamente #12 (i18n) — unica feature residua dopo v1.5 (alto sforzo)
+### Totale Polish Pack v1.5
 
-**Polish Pack v1.5 → target 22/22 funzionalità implementate (100%)** con #21b + #22.
-Backlog residuo post-v1.5: **0/22 funzionalità** (#12 i18n rimane fuori scope).
+**Funzionalità backlog completate**: 19/22 (86.4%) — pre-v1.5 era 17/22, v1.5 ha aggiunto #21b e #22.
+**3 feature pianificate originali** (#13, #14, #18) → confluite in **Polish Pack v1.6**.
 
 ---
 
@@ -152,35 +194,26 @@ di piano. 4 modifiche in `elevator.html` (+19/-2 righe):
 | §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 4/4 (#1 ✅, #2 ✅, #3 ✅, #4 ✅) |
 | §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 4/4 (#5 ✅, #6 ✅, #7 ✅, #8 ✅) |
 | §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 3/4 (#9 ✅, #10 ✅, #11 ✅) |
-| §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 1/3 (#15 ✅) |
-| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) |
+| §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 3/3 (#13 ✅, #14 ✅, #15 ✅) |
+| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 2/3 (#17 ✅, #18 ✅) |
 | §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 6 | 6/6 (#19 ✅, #20 ✅, #21 ✅, #21b ✅, #22 ✅, #16 ❌ scartato per vincolo single-file) |
 
-**Totale implementato**: 22/22 funzionalità (100%) — *vedi nota* (con #21b e #22 aggiunte durante audit v1.5).
+**Totale implementato al merge di v1.6**: **22/22 funzionalità (100%)** — pre-v1.6 era 19/22.
 
-**Totale backlog residuo post-v1.4**: 4/22 funzionalità non ancora implementate
-(#12 i18n, #13 accessibilità tastiera, #14 logica passeggeri, #16 PWA, #18 texture atlas).
-Apparentemente 5 voci ma #12 e #16 sono raggruppate: in realtà sono 5 backlog items singoli.
+**Totale backlog residuo post-v1.6**: **0/22 funzionalità** (#12 i18n fuori scope, #16 PWA scartato).
 
-> *Aggiornamento conteggio: Polish Pack v1.4 ha aggiunto 4 feature (#2 #9 #19 #20). Totale
-> corretto: 17/22 implementate, 5/22 backlog (#12, #13, #14, #16, #18).*
-
-## Funzionalità non implementate (backlog residuo post-v1.4)
+## Backlog residuo post-v1.6 (fuori scope)
 
 ### §11.3 UX / accessibilità (1)
-- #12 — Lingua selezionabile (IT/EN)
+- #12 — Lingua selezionabile (IT/EN) — alto sforzo (~300+ righe), bassa priorità
 
-### §11.4 Qualità (2)
-- #13 — Verifica accessibilità tastiera nel corridoio
-- #14 — Logica passeggeri coerente
+### §11.5 Tecnico (1)
+- #16 — Service Worker offline-first + PWA (richiede multi-file → decisione D2 pendente) —
+  scartato dal vincolo single-file del progetto
 
-### §11.5 Tecnico (2)
-- #16 — Service Worker offline-first + PWA (richiede multi-file → decisione D2)
-- #18 — Texture atlas / caching canvas offscreen
+## Prossimi candidati (post-v1.6)
 
-## Prossimi candidati (post-v1.5)
-
-Dopo il Polish Pack v1.5, il backlog residuo è una sola feature, ad alto impatto ma ad
+Dopo il Polish Pack v1.6, il backlog residuo è una sola feature, ad alto impatto ma ad
 alto sforzo:
 
 | # | Idea | Impatto | Sforzo | Note |
