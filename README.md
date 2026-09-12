@@ -6,6 +6,12 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
+> **🔧 Hotfix post-v1.6 (2026-09-12)** — auto-close porte (6s) non scatta più quando il
+> giocatore è fuori dalla cabina. Corretto bug "annuncio vocale 'porte si chiudono'
+> ma porte che restano aperte / riaprono" (la prenotazione automatica del corridoio
+> riapriva le porte durante la fase di chiusura). Dettaglio: `PIANO_MIGLIORAMENTI.md`
+> §Fase 17. Totale funzionalità backlog: **22/22 (100%)** invariato.
+
 > **🎉 Polish Pack v1.6 completato (2026-09-12)** — 3 feature: **#13 audit + fix accessibilità
 > tastiera corridoio**, **#14 logica passeggeri coerente con il piano tematico**,
 > **#18 caching canvas offscreen per il display touch** (3 layer: statico /
@@ -95,8 +101,9 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - Due ante che scorrono verso l'esterno
 - Animazione realistica con easing
 - **Visibili da entrambi i lati** (interno cabina + corridoio) — fix audit v1.5
-- **Chiusura automatica** dopo 6 secondi di inattività (comportamento ascensore reale)
+- **Chiusura automatica** dopo 6 secondi di inattività **solo quando il giocatore è dentro la cabina** (comportamento ascensore reale)
 - Countdown 3..2..1 prima della chiusura con beep a tono crescente
+- Quando il giocatore è nel corridoio, l'apertura/chiusura è gestita dalla **prenotazione automatica** (apre se ti avvicini, chiude silenziosamente se ti allontani) — l'auto-close con annuncio è disattivato per evitare conflitti
 - Si bloccano se allarme attivo
 
 ### 🚶 Corridoio del piano
@@ -449,6 +456,14 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 ---
 
 ## 🗺️ Roadmap
+
+### 🔧 Hotfix post-v1.6 — 2026-09-12
+- [x] **Auto-close porte rispettato solo dentro la cabina** — aggiunta guardia
+      `state.playerInCabin` al callback di `scheduleAutoClose()` (`elevator.html:3132`).
+      Risolve il bug "annuncio vocale 'porte si stanno chiudendo' ma porte che restano
+      aperte / riaprono" quando il giocatore era nel corridoio. La prenotazione
+      automatica in `tickPlayer()` (~`elevator.html:4681`) è ora l'unica a gestire
+      le porte fuori dalla cabina.
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

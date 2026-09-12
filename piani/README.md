@@ -4,6 +4,11 @@ Piani dettagliati per ogni gruppo di funzionalità proposte in `PIANO_MIGLIORAME
 
 ## Aggiornamento 2026-09-12
 
+**Hotfix post-v1.6** — corretto bug "auto-close porte annuncia chiusura ma porte
+riaprono" quando il giocatore è nel corridoio. Aggiunta guardia `state.playerInCabin`
+al callback di `scheduleAutoClose()` (`elevator.html:3132`). Dettaglio:
+`PIANO_MIGLIORAMENTI.md` §Fase 17. **Nessuna modifica al backlog §11** (22/22 invariato).
+
 Aperto branch **`feature/polish-pack-v1.6`** per completare le 3 feature pianificate di v1.5
 (#13, #14, #18) confluite qui perché v1.5 è stato mergiato con solo il sottoinsieme
 "bonus audit UX" (#21b + #22 + 8 bug fix).

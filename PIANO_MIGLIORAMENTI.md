@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.5 — Polish Pack v1.6 in corso** · Aggiornato 2026-09-12
+**Versione 1.6 — Polish Pack v1.6 completato + hotfix post-v1.6** · Aggiornato 2026-09-12
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -23,6 +23,7 @@ Documento di design e implementation log.
 | Polish Pack v1.5 audit fix | ✅ 8 (OOO parziale, Shift+M keybind, typo mat, audio context, TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio, housekeeping lista comandi) |
 | Polish Pack v1.6 | ✅ 3/3 (#13 ✅, #14 ✅, #18 ✅) — branch `feature/polish-pack-v1.6` |
 | Enhancement post-v1.6 | ✅ Annuncio vocale inizio movimento (commit `c60c7b2`) — branch `feature/announce-move-start` |
+| Hotfix post-v1.6 | ✅ Auto-close porte rispettato solo dentro la cabina (annuncio "porte chiudono" + riapertura porte dal corridoio) |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -559,6 +560,87 @@ Completa §11.4 (qualità) e §11.5 (performance). Tutte e 3 implementate e comm
 ### Polish Pack v1.6 → 22/22 funzionalità implementate (100%)** con completamento
 di #13, #14, #18. Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica
 fuori scope, alto sforzo ~300+ righe).
+
+---
+
+### Fase 17 — Hotfix post-v1.6: auto-close porte fuori cabina ✅ (2026-09-12)
+
+Bug scoperto durante playtest dopo il merge di v1.6, riportato dall'utente con sintomi
+ben precisi: **"quando si è fuori dalla cabina, si sente l'annuncio vocale 'attenzione
+le porte si stanno chiudendo', poi però guardando verso l'ascensore le porte sono
+aperte oppure si riaprono"**.
+
+### Sintomo
+1. Il giocatore esce dalla cabina (o è nel corridoio ad attenderla mentre arriva)
+2. Le porte rimangono aperte per 6+ secondi (timer `DOOR_AUTO_CLOSE_MS = 6000`)
+3. Parte l'annuncio TTS *"Attenzione. Le porte si stanno chiudendo."* + countdown 3..2..1
+4. Le porte iniziano l'animazione di chiusura (1.0 s, ease-out cubic)
+5. A circa 0.55-0.60 s dall'inizio della chiusura, `doorsActual < 0.1` e la logica di
+   **prenotazione automatica** in `tickPlayer()` (`elevator.html:4681`) rileva
+   `isNearDoors && !state.doorsOpen && state.doorsActual < 0.1` → apre di nuovo le porte
+   con `animateDoorsTo(1, 1.4)`
+6. Risultato percepito: countdown 3..2..1 ancora visibile sul display, ma le porte
+   fisicamente riaprono dopo essersi chiuse al ~90%
+
+### Causa radice
+Il flag `state.prenotationActive` viene impostato a `true` **solo** quando l'utente si
+avvicina a porte **completamente chiuse** (`elevator.html:4681`, gate `doorsActual < 0.1`).
+Quindi quando il giocatore è nel corridoio con le porte **già aperte** (perché è appena
+uscito, o perché la cabina è appena arrivata), il flag resta `false` e il callback di
+`scheduleAutoClose()` (`elevator.html:3123-3130`) valuta `!prenotationActive` come `true`,
+facendo partire `setDoors(false)` con annuncio + countdown + chiusura.
+
+Il callback originale (`elevator.html:3125-3130`) non considerava `state.playerInCabin`:
+l'auto-close veniva fatto partire indipendentemente dalla posizione del giocatore.
+
+### Fix applicato
+Una sola riga modificata in `elevator.html:3129-3133`. Aggiunta la guardia
+`&& state.playerInCabin` alla condizione del callback `scheduleAutoClose`:
+
+```js
+if (state.doorsOpen && state.doorsActual > 0.9
+    && !state.isMoving && !state.alarmOn && !state.outOfOrder
+    && !state.maintenanceMode && !state.prenotationActive
+    && state.playerInCabin) {            // ⬅️ nuovo check
+  setDoors(false);
+}
+```
+
+### Effetto del fix
+- **Dentro la cabina** → auto-close dopo 6 s di inattività, con annuncio + countdown +
+  beep crescente (comportamento ascensore reale, identico a prima).
+- **Fuori dalla cabina** → l'auto-close è disattivato. La logica di prenotazione
+  automatica in `tickPlayer()` (~`elevator.html:4681`) è l'unica a governare le porte:
+  apre silenziosamente quando il giocatore si avvicina, chiude silenziosamente quando
+  si allontana (nessun annuncio, nessun countdown).
+- **Mai più** l'annuncio "porte si stanno chiudendo" a un passeggero che non è in cabina.
+
+### Verifiche
+- [x] `node --check` sul JS estratto: exit 0
+- [x] Brace/paren balance: 0/0
+- [x] Cabin fermo + giocatore dentro + porte aperte per 6 s → annuncio + countdown + chiusura regolare
+- [x] Cabin fermo + giocatore nel corridoio + porte aperte per 6 s → **nessun annuncio**,
+      porte rimangono aperte finché il giocatore è vicino, chiudono silenziosamente se si allontana
+- [x] Cabin fermo + giocatore nel corridoio ma lontano dalle porte + porte aperte → porte
+      rimangono aperte (la prenotazione non gestisce questo caso esplicitamente, ma è
+      coerente con "sei uscito dalla cabina e non torni")
+- [x] Allarme / fuori servizio / manutenzione → blocchi auto-close già esistenti restano invariati
+
+### Rationale
+Il fix minimo (1 condizione aggiuntiva) è preferibile al refactor di `prenotationActive`
+perché:
+1. La prenotazione automatica (`tickPlayer`) è già completa e robusta: gestisce
+   correttamente apertura/chiusura silenziosa in base alla vicinanza del giocatore.
+2. L'auto-close serve **solo** quando c'è un passeggero in cabina che potrebbe non
+   reagire agli stimoli esterni (es. passeggero distratto). Fuori dalla cabina, il
+   giocatore **è** lo stimolo: si muove, decide lui quando uscire.
+3. Non si rompe nessun comportamento esistente.
+
+### Impatto sul backlog
+Nessuna nuova feature aggiunta al backlog §11: **22/22 funzionalità implementate (100%)**
+invariato. Questo è un bug fix di interazione tra Polish Pack v1.5 (#22 auto-close) e
+Polish Pack v1.4 (#20 prenotazione) — emerso solo quando entrambi sono stati attivi
+contemporaneamente in un playtest realistico.
 
 ---
 
