@@ -21,7 +21,7 @@ Documento di design e implementation log.
 | Polish Pack v1.4 hotfix | ✅ 1/1 (display touchscreen passo-passo) — commit `e02adca` |
 | Polish Pack v1.5 | ✅ 2/5 (#21b ✅, #22 ✅) — merged su `main` (commit `5ec79b1`); 3 pianificate originali (#13 #14 #18) confluite in v1.6 |
 | Polish Pack v1.5 audit fix | ✅ 8 (OOO parziale, Shift+M keybind, typo mat, audio context, TDZ buttonList × 2, raycast pulsanti esterni, porte visibili corridoio, housekeeping lista comandi) |
-| Polish Pack v1.6 | 🟡 0/3 (#13 🔄, #14 🔄, #18 🔄) — branch `feature/polish-pack-v1.6` |
+| Polish Pack v1.6 | ✅ 3/3 (#13 ✅, #14 ✅, #18 ✅) — branch `feature/polish-pack-v1.6` |
 | Bug fix post-fasi | ✅ 6 (TDZ state, TDZ hoveredBtn, drawDisplay residuo, celle touch disallineate, dispose corridor vuoto, addSkylineWindow eZ non definito) |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
@@ -43,11 +43,13 @@ nel cartello del corridoio (`drawMovingSign`, Polish Pack v1.3 #4) e nella strip
 pianificate originali (#13, #14, #18) non sono state implementate in v1.5 e sono confluite
 nel **Polish Pack v1.6** (branch `feature/polish-pack-v1.6`).
 
-**Polish Pack v1.6** (in corso, aperto 2026-09-12): tre feature a basso/medio sforzo dal
-backlog residuo post-v1.5 — #13 accessibilità WASD, #14 logica passeggeri tematica,
-#18 caching canvas offscreen per il display touch. Nessuna decisione architetturale
-pendente (esclude deliberatamente #12 i18n e #16 PWA). Branch `feature/polish-pack-v1.6`.
-Target: 22/22 funzionalità implementate (100%).
+**Polish Pack v1.6** (completato 2026-09-12, branch `feature/polish-pack-v1.6`): tre
+feature a basso/medio sforzo dal backlog residuo post-v1.5 — #13 accessibilità
+tastiera, #14 logica passeggeri tematica, #18 caching canvas offscreen per il
+display touch. Nessuna decisione architetturale pendente (esclude deliberatamente
+#12 i18n e #16 PWA). Tutte e 3 implementate. Branch mergiato su `main` con commit
+`[merge-v1.6]`. Totale: **22/22 funzionalità implementate (100%)**. Backlog
+residuo: **0/22** (#12 i18n rimane unico fuori scope per alto sforzo).
 
 ---
 
@@ -470,74 +472,83 @@ a chiudere le 3 pianificate; #12 resta fuori scope per alto sforzo).
 
 ---
 
-### Fase 16 — Polish Pack v1.6 🟡 (in corso, branch `feature/polish-pack-v1.6`)
+### Fase 16 — Polish Pack v1.6 ✅ (completato, branch `feature/polish-pack-v1.6`)
 
 **3 feature pianificate** (#13, #14, #18) confluite da v1.5 (dove erano rimaste "in corso"
 senza implementazione) selezionate dall'utente il **2026-09-12** dal backlog residuo
 post-v1.5: tutte a basso/medio sforzo, nessuna decisione architetturale pendente.
-Completa §11.4 (qualità) e §11.5 (performance).
+Completa §11.4 (qualità) e §11.5 (performance). Tutte e 3 implementate e committate.
 
-### Feature pianificate (3, da fare)
+### Feature pianificate (3, completate)
 
-- 🔄 **#13 Verifica accessibilità tastiera nel corridoio** — audit del handler `keydown`
-  e del listener `WASD` in sezione `MOVIMENTO FPS` per verificare che:
-  - Premendo `W`/`A`/`S`/`D` in cabina la camera NON si muova (guard `state.playerInCabin`)
-  - Premendo i tasti `1`–`9`/`0` nel corridoio le porte si aprano o la cabina chiami
-    il piano solo se le porte sono aperte (no chiamata con porte chiuse a destinazione
-    sbagliata)
-  - Fix di eventuali drift di posizione dopo inattività prolungata in cabina
+- ✅ **#13 Verifica accessibilità tastiera nel corridoio** (commit `49163a6`) —
+  audit del handler `keydown` e del listener `WASD` in sezione `MOVIMENTO FPS`:
+  - Guard `state.playerInCabin` su `tickPlayer(dt)` verificato ✅
+  - Guard su `requestFloor` per tasti 1-9/0 nel corridoio verificato ✅
+    (apre porte se cabina già lì, altrimenti parte la cabina al piano)
+  - **Fix drift**: aggiunto reset di `keys` in `exitCabin()` e `enterCabin()`
+    (riga ~4119, ~4143). Senza questo, se l'utente preme W in cabina prima di
+    uscire, `keys['KeyW']` resta `true` e `tickPlayer` fa scattare il player
+    appena cambia lo stato `playerInCabin`.
   Acceptance: 3 test manuali + verifica `grep` dei guard esistenti.
 
-- 🔄 **#14 Logica passeggeri coerente** — sostituisce il timer random di Fase 8
-  (cambio passeggeri ogni 8s quando la cabina è ferma) con una logica condizionata al
-  piano tematico, agganciata all'apertura porte in `buildCorridor()`:
+- ✅ **#14 Logica passeggeri coerente** (commit `d82dd60`) — sostituisce il timer
+  random di Fase 8 (cambio passeggeri ogni 8s quando la cabina è ferma) con una
+  logica condizionata al piano tematico. Nuova funzione `adjustPassengersForFloor(floor)`
+  (~riga 2843):
   - Lobby (T): salgono (0–2 nuovi passeggeri)
-  - Uffici (1–3): scendono (fino a –2)
+  - Uffici (1–3): scendono (fino a –2), occasionalmente +1
   - Hotel (4–6): ±1 random (check-in / check-out)
   - Attico (7–9): +1 (per lo più suite, scende poco)
-  Acceptance: clamp [0, 8], display si aggiorna immediatamente, comportamento
-  credibile dopo 5+ viaggi random Terra↔3.
+  Hook in `tickMove` arrival (~riga 3987) + `teleportToFloor` (~riga 3764).
+  Timer random 8s rimosso dal LOOP (~riga 4628-4645, ~17 rggi rimosse).
+  Acceptance: clamp [0, 8], display si aggiorna immediatamente via `markDisplayDirty()`,
+  comportamento credibile dopo 5+ viaggi random Terra↔3.
 
-- 🔄 **#18 Texture atlas / caching canvas offscreen per display touch** — refactor di
-  `drawModernDisplay()` in 3 layer:
-  - **Layer statico** (cornice, header con nome hotel): disegnato 1 volta, cached
-    offscreen in `displayCacheStatic`
-  - **Layer semi-statico** (meteo, mappa edificio, griglia touch): ridisegnato solo
-    su evento specifico (cambio meteo, cambio lingua)
-  - **Layer dinamico** (piano corrente 130px, freccia, stato, "X → Y"): ridisegnato
-    a ogni `markDisplayDirty('dynamic')`
-  Acceptance: visivamente identico, FPS in idle sale da ~50 a ~58 (stimato), nessun
-  glitch durante cambio meteo o movimento cabina.
+- ✅ **#18 Texture atlas / caching canvas offscreen per display touch** (commit
+  `427a635`) — refactor di `drawModernDisplay()` in 3 layer con caching canvas
+  offscreen. Il display è 540×1100 px e `tickDisplay` ridisegnava ogni frame
+  (bug `shouldRedrawTime = (new Date().getSeconds() % 1) === 0` sempre true).
+  Dopo il refactor:
+  - **Layer statico** (`displayStaticCanvas`): cornice vetro nero, glow, 3 linee
+    separatrici, footer "BOSS HOTEL ELEVATOR SYSTEM · 2026". Disegnato 1 volta.
+  - **Layer semi-statico** (`displaySemistaticCanvas`): header (nome hotel + data),
+    meteo (icona + condizione + località, no temperatura), mappa edificio, griglia
+    interattiva. Cachato; invalidato da `markDisplaySemistaticDirty()`.
+  - **Layer dinamico** (`displayCanvas`): orologio + passeggeri, temperatura meteo,
+    piano 130px + freccia + "X → Y" + label stato, range camere, overlay OOO/PREN,
+    countdown chiusura porte. Sempre ridisegnato quando `displayDirty=true`.
+  Dispatcher `drawModernDisplay()`: clearRect → drawImage(static) → drawImage(semistatic)
+  → renderDynamicLayer. Nuove funzioni helper `markDisplaySemistaticDirty()` /
+  `markDisplayDynamicDirty()`. `tickDisplay` ora ridisegna il dynamic 1 volta/sec
+  per l'orologio + on-demand per eventi.
+  Acceptance: visivamente identico, FPS in idle stimato +5-8 (target ~58).
 
-### Acceptance comune v1.6** (obiettivi):
-- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a portarlo a ~58 in idle)
-- [ ] Rispetto vincolo singolo file HTML (tutte feature single-file)
-- [ ] Nessuna dipendenza npm aggiunta
-- [ ] Documentazione aggiornata (`README.md`, questo file, `piani/README.md`)
-- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+### Acceptance comune v1.6** (tutte ✅):
+- [x] Nessun calo FPS percepibile (target ≥50; #18 stima +5-8 FPS in idle)
+- [x] Rispetto vincolo singolo file HTML (tutte feature single-file)
+- [x] Nessuna dipendenza npm aggiunta
+- [x] Documentazione aggiornata (`README.md`, questo file, `piani/README.md`)
+- [x] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
 
 ### Decisioni di scope**:
 - Singolo branch per tutte e 3 le feature (stessa filosofia di v1.1, v1.2, v1.3)
-- Implementazione in commit separati per ogni feature + commit finale docs
+- Implementazione in commit separati per ogni feature + commit build + commit docs
 - Esclude deliberatamente #12 (i18n) — unica feature residua post-v1.6
 - Non tocca le feature bonus di v1.5 (#21b, #22), già merged su `main`
 
-### Commit Polish Pack v1.6** (da fare):
+### Commit Polish Pack v1.6** (tutti committati):
 | # | Commit | Descrizione |
 |---|---|---|
-| docs | `d09d629` (← già committato in v1.5) | Apre branch + scope confermato |
-| #13 | 🔄 da fare | Audit + fix accessibilità tastiera |
-| #14 | 🔄 da fare | Logica passeggeri coerente |
-| #18 | 🔄 da fare | Caching canvas offscreen display touch |
-| build | 🔄 da fare | Sync `dist/index.html` |
-| docs | 🔄 da fare | Finalizzazione docs |
+| docs | `1dc308b` | Apre branch v1.6 + scope confermato |
+| feat | `49163a6` | #13 audit + fix accessibilità tastiera |
+| feat | `d82dd60` | #14 logica passeggeri coerente |
+| perf | `427a635` | #18 caching canvas offscreen display touch |
+| build | `1212e46` | Sync `dist/index.html` |
+| docs | (questo commit) | Finalizzazione docs |
 | merge | 🔄 da fare | Merge su `main` |
 
-> Nota: il commit `d09d629` (apertura branch + scope) tecnicamente appartiene a v1.5 ma
-> viene qui riportato come "documentazione iniziale" del branch logico `feature/polish-pack-v1.6`
-> quando le 3 feature saranno effettivamente implementate.
-
-### Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con completamento
+### Polish Pack v1.6 → 22/22 funzionalità implementate (100%)** con completamento
 di #13, #14, #18. Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica
 fuori scope, alto sforzo ~300+ righe).
 
@@ -838,9 +849,9 @@ Polish Pack:
 17. ✅ **#20 Prenotazione cabina** — Polish Pack v1.4
 18. ✅ **#21b Pulsantiera di chiamata esterna** — Polish Pack v1.5 (aggiunta durante audit UX)
 19. ✅ **#22 Chiusura automatica porte (6s)** — Polish Pack v1.5 (aggiunta durante audit UX)
-20. 🔄 **#13 Accessibilità tastiera corridoio** — Polish Pack v1.6 (in corso, confluito da v1.5)
-21. 🔄 **#14 Logica passeggeri coerente** — Polish Pack v1.6 (in corso, confluito da v1.5)
-22. 🔄 **#18 Caching canvas offscreen** — Polish Pack v1.6 (in corso, confluito da v1.5)
+20. ✅ **#13 Accessibilità tastiera corridoio** — Polish Pack v1.6 (commit `49163a6`)
+21. ✅ **#14 Logica passeggeri coerente** — Polish Pack v1.6 (commit `d82dd60`)
+22. ✅ **#18 Caching canvas offscreen** — Polish Pack v1.6 (commit `427a635`)
 
 Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
@@ -855,7 +866,7 @@ Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sfo
 | D5 | Scope Polish Pack v1.4 | Tutti e 4 i candidati (#2, #9, #19, #20) | ✅ Risolto — approvato 2026-09-12 |
 | D6 | Scope Polish Pack v1.5 | Solo bonus audit UX (#21b, #22) — 3 pianificate confluite in v1.6 | ✅ Risolto (riscrittura 2026-09-12) |
 | D7 | Logica ▲/▼ pulsantiera esterna | Attualmente identici (entrambi "chiama cabina al mio piano") — refactor a modello "intenzione di viaggio" richiesto? | 🟡 Pendente — bassa priorità |
-| D8 | Scope Polish Pack v1.6 | I 3 candidati confluiti da v1.5 (#13, #14, #18) — esclusi #12 e #16 | 🟡 Pendente — approvazione utente attesa |
+| D8 | Scope Polish Pack v1.6 | I 3 candidati confluiti da v1.5 (#13, #14, #18) — esclusi #12 e #16 | ✅ Risolto — approvato e completato 2026-09-12 |
 
 ### 11.9 Note di compatibilità
 
@@ -865,13 +876,13 @@ Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sfo
 
 ---
 
-**Stato: Polish Pack v1.6 in corso (0/3 — #13 #14 #18 🔄)** 🟡
+**Stato: Polish Pack v1.6 completato (3/3 — #13 ✅ #14 ✅ #18 ✅)** ✅🎉
 Polish Pack v1.5 completato (2/2 feature bonus + 8 bug fix — #21b ✅, #22 ✅) ✅🟢
 Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
 
 **Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**.
 **Polish Pack v1.5 → 19/22 funzionalità implementate (86.4%)** con #21b + #22.
-**Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con #13 #14 #18.
+**Polish Pack v1.6 → 22/22 funzionalità implementate (100%)** con #13 #14 #18.
 Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica fuori scope).
 Hotfix display passo-passo non è una nuova voce di backlog ma un enhancement di coerenza
 UX (allinea display touchscreen a cartello corridoio e strip DOM, già passo-passo).

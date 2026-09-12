@@ -6,11 +6,12 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
 
-> **🟡 Polish Pack v1.6 in corso (2026-09-12)** — 3 feature pianificate residue da v1.5
-> (#13 accessibilità tastiera, #14 logica passeggeri coerente, #18 caching canvas
-> offscreen per display touch). Branch `feature/polish-pack-v1.6`. Target:
-> **22/22 funzionalità implementate (100%)**. Vedi `PIANO_MIGLIORAMENTI.md` §Fase 16
-> e `piani/README.md`.
+> **🎉 Polish Pack v1.6 completato (2026-09-12)** — 3 feature: **#13 audit + fix accessibilità
+> tastiera corridoio**, **#14 logica passeggeri coerente con il piano tematico**,
+> **#18 caching canvas offscreen per il display touch** (3 layer: statico /
+> semi-statico / dinamico). Branch `feature/polish-pack-v1.6`. Totale:
+> **22/22 funzionalità backlog implementate (100%)**. Vedi `PIANO_MIGLIORAMENTI.md`
+> §Fase 16 e `piani/README.md`.
 >
 > **✅ Polish Pack v1.5 completato (2026-09-12)** — 2 feature bonus da audit UX:
 > **#21b pulsantiera di chiamata esterna (▲/▼) nel corridoio** + **timer di chiusura
@@ -448,10 +449,10 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 ## 🗺️ Roadmap
 
-### 🟡 Polish Pack v1.6 — in corso (branch `feature/polish-pack-v1.6`)
-- [ ] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, guard `playerInCabin`)
-- [ ] **#14** Logica passeggeri coerente (sostituisce random 8s con `adjustPassengersForFloor` tematico)
-- [ ] **#18** Texture atlas / caching canvas offscreen per il display touch (3 layer)
+### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
+- [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)
+- [x] **#14** Logica passeggeri coerente (sostituisce random 8s con `adjustPassengersForFloor` tematico)
+- [x] **#18** Caching canvas offscreen per il display touch (3 layer: statico/semi-statico/dinamico)
 
 ### ✅ Polish Pack v1.5 — completato 2026-09-12 (branch `feature/polish-pack-v1.5`)
 - [x] **#21b** Pulsantiera di chiamata esterna ▲/▼ nel corridoio (aggiunta durante audit UX)
@@ -469,7 +470,8 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 
 > Polish Pack v1.5 ha consegnato solo il sottoinsieme "bonus audit UX" (#21b, #22) + 8 bug fix.
 > Le 3 feature pianificate originali (#13, #14, #18) sono confluite nel **Polish Pack v1.6**
-> (branch `feature/polish-pack-v1.6`).
+> (branch `feature/polish-pack-v1.6`) e completate. **22/22 funzionalità implementate (100%)**;
+> backlog residuo = 1 sola feature (#12 i18n, alto sforzo, fuori scope).
 
 ### 🔧 Hotfix post-v1.4 (2026-09-12)
 - [x] **Display touchscreen passo-passo** — durante il movimento il grande numero (130 px)

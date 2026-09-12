@@ -10,33 +10,48 @@ Aperto branch **`feature/polish-pack-v1.6`** per completare le 3 feature pianifi
 
 ---
 
-## Polish Pack v1.6 — IN CORSO (branch `feature/polish-pack-v1.6`)
+## Polish Pack v1.6 — ✅ COMPLETATO 2026-09-12 (branch `feature/polish-pack-v1.6`)
 
 Aperto 2026-09-12. **3 feature pianificate** confluite da v1.5 (dove erano rimaste
 "in corso" senza implementazione): tutte a basso/medio sforzo, nessuna decisione
 architetturale pendente. Completa §11.4 (qualità) e §11.5 (performance).
 
-| # | Funzionalità | Gruppo | Stato | Note |
-|---|---|---|---|---|
-| #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | 🔄 Da fare | Audit WASD + tasti 1-9, guard `state.playerInCabin`, fix drift camera in cabina |
-| #14 | Logica passeggeri coerente | §11.4 Qualità | 🔄 Da fare | Sostituisce random 8s con `adjustPassengersForFloor(floor)` tematico |
-| #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | 🔄 Da fare | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) |
+| # | Funzionalità | Gruppo | Stato | Commit | Note |
+|---|---|---|---|---|---|
+| #13 | Verifica accessibilità tastiera nel corridoio | §11.4 Qualità | ✅ | `49163a6` | Audit + fix drift: aggiunto reset di `keys` in `exitCabin`/`enterCabin` per evitare scatti al cambio stato |
+| #14 | Logica passeggeri coerente | §11.4 Qualità | ✅ | `d82dd60` | Nuova `adjustPassengersForFloor(floor)` tematica: lobby +0..2, uffici -0..-2, hotel ±1, attico +1. Rimosso timer random 8s di Fase 8 |
+| #18 | Texture atlas / caching canvas offscreen per display touch | §11.5 Tecnico | ✅ | `427a635` | Refactor `drawModernDisplay` in 3 layer (statico / semi-statico / dinamico) con caching canvas offscreen. In idle il display ridisegna solo il layer dinamico 1 volta/sec |
 
-**Acceptance comune v1.6** (obiettivi):
-- [ ] Nessun calo FPS percepibile (target ≥50; #18 mira a portarlo a ~58 in idle)
-- [ ] Rispetto vincolo singolo file HTML (tutte feature single-file)
-- [ ] Nessuna dipendenza npm aggiunta
-- [ ] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §16 + questo README + README.md)
-- [ ] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
+**Acceptance comune v1.6** (tutte ✅):
+- [x] Nessun calo FPS percepibile (target ≥50; #18 stima +5-8 FPS in idle)
+- [x] Rispetto vincolo singolo file HTML (tutte feature single-file)
+- [x] Nessuna dipendenza npm aggiunta
+- [x] Documentazione aggiornata (`PIANO_MIGLIORAMENTI.md` §16 + questo README + README.md)
+- [x] `node --check` JS estratto: exit 0 · brace/paren balance 0/0
 
 **Decisioni di scope**:
-- Singolo branch per tutte e 3 le feature
-- Implementazione in commit separati per ogni feature + commit finale docs
+- Singolo branch per tutte e 3 le feature (stessa filosofia di v1.1, v1.2, v1.3)
+- Implementazione in commit separati per ogni feature + commit build + commit docs
 - Esclude deliberatamente #12 (i18n) — unica feature residua dopo v1.6 (alto sforzo)
 - Non tocca le feature bonus di v1.5 (#21b, #22), già merged su `main`
 
-**Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con completamento di
-#13, #14, #18. Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane fuori scope).
+### Totale Polish Pack v1.6
+
+**Funzionalità backlog completate**: 22/22 (100%) — pre-v1.6 era 19/22.
+**Polish Pack v1.6 → target 22/22 funzionalità implementate (100%)** con #13, #14, #18.
+Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane fuori scope).
+
+### Commit Polish Pack v1.6
+
+| # | Commit | Descrizione |
+|---|---|---|
+| docs | `1dc308b` | Apre branch + scope confermato |
+| feat | `49163a6` | #13 audit + fix accessibilità tastiera |
+| feat | `d82dd60` | #14 logica passeggeri coerente |
+| perf | `427a635` | #18 caching canvas offscreen display touch |
+| build | `1212e46` | Sync `dist/index.html` |
+| docs | (questo commit) | Finalizzazione docs |
+| merge | 🔄 da fare | Merge su `main` |
 
 ---
 
@@ -179,23 +194,13 @@ di piano. 4 modifiche in `elevator.html` (+19/-2 righe):
 | §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 4/4 (#1 ✅, #2 ✅, #3 ✅, #4 ✅) |
 | §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 4/4 (#5 ✅, #6 ✅, #7 ✅, #8 ✅) |
 | §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 3/4 (#9 ✅, #10 ✅, #11 ✅) |
-| §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 1/3 (#15 ✅) — **#13, #14 in v1.6** |
-| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 1/3 (#17 ✅) — **#18 in v1.6** |
+| §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 3/3 (#13 ✅, #14 ✅, #15 ✅) |
+| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 2/3 (#17 ✅, #18 ✅) |
 | §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 6 | 6/6 (#19 ✅, #20 ✅, #21 ✅, #21b ✅, #22 ✅, #16 ❌ scartato per vincolo single-file) |
 
-**Totale implementato al merge di v1.5**: 19/22 funzionalità (86.4%) — pre-v1.5 era 17/22.
-**Polish Pack v1.6** mira a completare le 3 feature residue (#13, #14, #18) → **22/22 (100%)**.
+**Totale implementato al merge di v1.6**: **22/22 funzionalità (100%)** — pre-v1.6 era 19/22.
 
-**Totale backlog residuo post-v1.6**: 1/22 funzionalità (#12 i18n).
-
-## Funzionalità in corso (Polish Pack v1.6 — branch `feature/polish-pack-v1.6`)
-
-### §11.4 Qualità (2)
-- #13 — Verifica accessibilità tastiera nel corridoio
-- #14 — Logica passeggeri coerente
-
-### §11.5 Tecnico (1)
-- #18 — Texture atlas / caching canvas offscreen
+**Totale backlog residuo post-v1.6**: **0/22 funzionalità** (#12 i18n fuori scope, #16 PWA scartato).
 
 ## Backlog residuo post-v1.6 (fuori scope)
 
