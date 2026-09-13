@@ -4100,6 +4100,314 @@ function tickMusic() {
   }
 }
 
+// ============================================================
+// POLISH PACK V2 STEP 3a — AUDIO CONTESTUALE CORRIDOIO
+// Loop audio unico per ogni tema (lobby/office/hotel/penthouse) che
+// parte quando il giocatore esce dalla cabina e si spegne quando
+// rientra. Ogni tema ha 2-3 layer sintetizzati (no asset esterni).
+// Rispetta state.muted, state.alarmOn, state.outOfOrder.
+// ============================================================
+let corridorAudioNodes = null;   // {theme, layers: [{osc/noise, gain, ...}], masterGain}
+let corridorAudioTheme = null;   // 'lobby' | 'office' | 'hotel' | 'penthouse' | null
+
+function startCorridorAudio(theme) {
+  if (!audioCtx || state.muted || state.alarmOn || state.outOfOrder || !audioReady) return;
+  if (corridorAudioNodes && corridorAudioTheme === theme) return;
+  stopCorridorAudio();
+  corridorAudioTheme = theme;
+  ensureAudio();
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+  const layers = [];
+  const now = audioCtx.currentTime;
+
+  if (theme === 'lobby') {
+    // Lobby: brusio di fondo + tintinnio tazzine
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
+    noise.loop = true;
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 600;
+    noiseFilter.Q.value = 0.8;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.025;
+    noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+    noise.start();
+    layers.push({ node: noise, gain: noiseGain, type: 'noise' });
+
+    // Tintinnio: square 1200Hz modulato a 4Hz (tremolo)
+    const osc = audioCtx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = 1200;
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.value = 0;
+    const lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 4;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 0.012;
+    lfo.connect(lfoGain).connect(oscGain.gain);
+    osc.connect(oscGain).connect(masterGain);
+    osc.start();
+    lfo.start();
+    layers.push({ node: osc, gain: oscGain, type: 'osc' });
+  } else if (theme === 'office') {
+    // Uffici: ticchettio tastiere lontano (impulsi brevi) + brusio sommesso
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
+    noise.loop = true;
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.value = 400;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.015;
+    noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+    noise.start();
+    layers.push({ node: noise, gain: noiseGain, type: 'noise' });
+
+    // Ticchettio: oscillatore che fa click brevi ogni 200-400ms
+    const tickGain = audioCtx.createGain();
+    tickGain.gain.value = 0;
+    tickGain.connect(masterGain);
+    let tickInterval = null;
+    function scheduleTick() {
+      const t = audioCtx.currentTime;
+      const click = audioCtx.createOscillator();
+      click.type = 'square';
+      click.frequency.value = 800 + Math.random() * 400;
+      const cg = audioCtx.createGain();
+      cg.gain.value = 0;
+      click.connect(cg).connect(tickGain);
+      cg.gain.setValueAtTime(0.02, t);
+      cg.gain.linearRampToValueAtTime(0, t + 0.04);
+      click.start(t);
+      click.stop(t + 0.05);
+    }
+    tickInterval = setInterval(() => {
+      if (!corridorAudioNodes || corridorAudioTheme !== 'office') return;
+      scheduleTick();
+      if (Math.random() < 0.3) scheduleTick(); // occasionale doppio click
+    }, 250);
+    layers.push({ node: null, gain: tickGain, type: 'tick', interval: tickInterval });
+  } else if (theme === 'hotel') {
+    // Hotel: silenzio ovattato + ticchettio orologio
+    const drone = audioCtx.createOscillator();
+    drone.type = 'sine';
+    drone.frequency.value = 60;
+    const droneGain = audioCtx.createGain();
+    droneGain.gain.value = 0.01;
+    drone.connect(droneGain).connect(masterGain);
+    drone.start();
+    layers.push({ node: drone, gain: droneGain, type: 'osc' });
+
+    // Orologio: click secco ogni secondo
+    const clockGain = audioCtx.createGain();
+    clockGain.gain.value = 0;
+    clockGain.connect(masterGain);
+    let clockCount = 0;
+    const clockInterval = setInterval(() => {
+      if (!corridorAudioNodes || corridorAudioTheme !== 'hotel') return;
+      const t = audioCtx.currentTime;
+      const click = audioCtx.createOscillator();
+      click.type = 'triangle';
+      click.frequency.value = 1000;
+      const cg = audioCtx.createGain();
+      cg.gain.value = 0;
+      click.connect(cg).connect(clockGain);
+      cg.gain.setValueAtTime(0.025, t);
+      cg.gain.linearRampToValueAtTime(0, t + 0.08);
+      click.start(t);
+      click.stop(t + 0.1);
+      clockCount++;
+    }, 1000);
+    layers.push({ node: null, gain: clockGain, type: 'clock', interval: clockInterval });
+  } else if (theme === 'penthouse') {
+    // Attico: pianoforte lontano (sweep sinusoidale lento) + vento
+    // Sweep sinusoidale lento: oscillatore la cui frequenza varia
+    const piano = audioCtx.createOscillator();
+    piano.type = 'sine';
+    piano.frequency.value = 220;
+    const pianoGain = audioCtx.createGain();
+    pianoGain.gain.value = 0.018;
+    // LFO che modula la frequenza tra 220 e 440 Hz lentamente (5s periodo)
+    const pianoLFO = audioCtx.createOscillator();
+    pianoLFO.type = 'sine';
+    pianoLFO.frequency.value = 0.2;
+    const pianoLFOGain = audioCtx.createGain();
+    pianoLFOGain.gain.value = 110;
+    pianoLFO.connect(pianoLFOGain).connect(piano.frequency);
+    piano.connect(pianoGain).connect(masterGain);
+    piano.start();
+    pianoLFO.start();
+    layers.push({ node: piano, gain: pianoGain, type: 'osc' });
+
+    // Vento: white noise filtrato highpass
+    const wind = audioCtx.createBufferSource();
+    wind.buffer = makeNoiseBuffer(audioCtx, 3.0);
+    wind.loop = true;
+    const windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = 'highpass';
+    windFilter.frequency.value = 800;
+    const windGain = audioCtx.createGain();
+    windGain.gain.value = 0.012;
+    wind.connect(windFilter).connect(windGain).connect(masterGain);
+    wind.start();
+    layers.push({ node: wind, gain: windGain, type: 'noise' });
+  }
+
+  corridorAudioNodes = { theme, layers, masterGain };
+  // fade-in 1.0s al volume target
+  try { masterGain.gain.linearRampToValueAtTime(0.5, now + 1.0); } catch(e) {}
+}
+
+function stopCorridorAudio() {
+  if (!corridorAudioNodes) return;
+  const toStop = corridorAudioNodes;
+  const now = audioCtx.currentTime;
+  try {
+    toStop.masterGain.gain.cancelScheduledValues(now);
+    toStop.masterGain.gain.setValueAtTime(toStop.masterGain.gain.value, now);
+    toStop.masterGain.gain.linearRampToValueAtTime(0, now + 0.5);
+  } catch(e) {}
+  corridorAudioNodes = null;
+  corridorAudioTheme = null;
+  setTimeout(() => {
+    toStop.layers.forEach(l => {
+      try { if (l.node && l.type !== 'tick' && l.type !== 'clock') l.node.stop(); } catch(e) {}
+      if (l.interval) clearInterval(l.interval);
+    });
+  }, 600);
+}
+
+function tickCorridorAudio() {
+  // Condizioni di stop globale
+  if (state.muted || state.alarmOn || state.outOfOrder || !audioReady || state.maintenanceMode) {
+    if (corridorAudioNodes) stopCorridorAudio();
+    return;
+  }
+  // Condizioni di start: giocatore FUORI dalla cabina, cabina ferma, porte aperte
+  const inCorridor = !state.playerInCabin && !state.isMoving && !movePaused
+                   && state.doorsActual > 0.5;
+  if (!inCorridor) {
+    if (corridorAudioNodes) stopCorridorAudio();
+    return;
+  }
+  const theme = getThemeForFloor(state.currentFloor);
+  if (!corridorAudioNodes || corridorAudioTheme !== theme) {
+    startCorridorAudio(theme);
+  }
+}
+
+// ============================================================
+// POLISH PACK V2 STEP 3b — MUSICA RISTORANTE "LA TERRAZZA"
+// Quando il giocatore è nel corridoio del piano 8 (piano ristorante),
+// una musica di sottofondo sottile: chitarra classica + piatti lontani.
+// Si spegne in cabina (la musica cabin jazz/classica prende il posto,
+// vedi Q3.5=A).
+// ============================================================
+let ristoranteAudioNodes = null;
+
+function startRistoranteAudio() {
+  if (!audioCtx || state.muted || state.alarmOn || state.outOfOrder || !audioReady) return;
+  if (ristoranteAudioNodes) return;
+  ensureAudio();
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+
+  // Chitarra classica: arpeggio C-Am-F-G con oscillatori triangolari
+  // Cmaj7 = [261.63, 329.63, 392.00, 493.88], Am = [220, 261.63, 329.63, 392]
+  // F = [174.61, 220, 261.63, 349.23], G = [196, 246.94, 293.66, 392]
+  const chords = [
+    [261.63, 329.63, 392.00, 493.88], // C
+    [220.00, 261.63, 329.63, 392.00], // Am
+    [174.61, 220.00, 261.63, 349.23], // F
+    [196.00, 246.94, 293.66, 392.00]  // G
+  ];
+  const seq = [0, 1, 2, 3, 2, 1]; // progressione soul/folk
+  const oscs = [];
+  const oscGains = [];
+  for (let i = 0; i < 4; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle';
+    oscGains.push(audioCtx.createGain());
+    oscGains[i].gain.value = 0;
+    o.connect(oscGains[i]).connect(masterGain);
+    oscs.push(o);
+  }
+  // Arpeggio: ogni 800ms accende la nota corrente, spegne le altre
+  let idx = 0;
+  const arpeggioInterval = setInterval(() => {
+    if (!ristoranteAudioNodes) return;
+    const t = audioCtx.currentTime;
+    oscGains.forEach((g, i) => {
+      const targetFreq = chords[seq[idx]][i];
+      const o = oscs[i];
+      try {
+        o.frequency.setValueAtTime(targetFreq, t);
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(i === seq[idx] % 4 ? 0.18 : 0, t + 0.15);
+      } catch(e) {}
+    });
+    idx = (idx + 1) % seq.length;
+  }, 800);
+  oscs.forEach(o => o.start());
+
+  // Piatti lontani: white noise filtrato highpass a 8kHz
+  const piatti = audioCtx.createBufferSource();
+  piatti.buffer = makeNoiseBuffer(audioCtx, 2.0);
+  piatti.loop = true;
+  const piattiFilter = audioCtx.createBiquadFilter();
+  piattiFilter.type = 'highpass';
+  piattiFilter.frequency.value = 8000;
+  const piattiGain = audioCtx.createGain();
+  piattiGain.gain.value = 0.008;
+  piatti.connect(piattiFilter).connect(piattiGain).connect(masterGain);
+  piatti.start();
+
+  ristoranteAudioNodes = {
+    oscs, oscGains, arpeggioInterval,
+    piatti, piattiGain,
+    masterGain
+  };
+  // fade-in 1.5s
+  try { masterGain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 1.5); } catch(e) {}
+}
+
+function stopRistoranteAudio() {
+  if (!ristoranteAudioNodes) return;
+  const toStop = ristoranteAudioNodes;
+  const now = audioCtx.currentTime;
+  try {
+    toStop.masterGain.gain.cancelScheduledValues(now);
+    toStop.masterGain.gain.setValueAtTime(toStop.masterGain.gain.value, now);
+    toStop.masterGain.gain.linearRampToValueAtTime(0, now + 0.5);
+  } catch(e) {}
+  ristoranteAudioNodes = null;
+  setTimeout(() => {
+    try { toStop.oscs.forEach(o => o.stop()); toStop.piatti.stop(); } catch(e) {}
+    clearInterval(toStop.arpeggioInterval);
+  }, 600);
+}
+
+function tickRistoranteAudio() {
+  // Condizioni di stop globale
+  if (state.muted || state.alarmOn || state.outOfOrder || !audioReady || state.maintenanceMode) {
+    if (ristoranteAudioNodes) stopRistoranteAudio();
+    return;
+  }
+  // Condizioni di start: SOLO piano 8 E in corridoio (Q3.3=B)
+  const shouldPlay = state.currentFloor === 8
+                   && !state.playerInCabin
+                   && !state.isMoving && !movePaused
+                   && state.doorsActual > 0.5;
+  if (shouldPlay && !ristoranteAudioNodes) startRistoranteAudio();
+  else if (!shouldPlay && ristoranteAudioNodes) stopRistoranteAudio();
+}
+
 // ---- Comando vocale (Polish Pack v1.4 #9): SpeechRecognition API it-IT ----
 // Mappa "piano cinque" / "cinque" / "5" → requestFloor(5). Toggle con tasto K.
 // Fallback graceful se l'API non è disponibile (Firefox).
@@ -5315,6 +5623,10 @@ cabin.rotation.z = state.vibrationRoll;
 
   // Polish Pack v1.4 #2: musica di sottofondo contestuale
   tickMusic();
+  // Polish Pack V2 Step 3a: audio contestuale corridoio (4 temi)
+  tickCorridorAudio();
+  // Polish Pack V2 Step 3b: musica ristorante La Terrazza (piano 8, solo corridoio)
+  tickRistoranteAudio();
 
   // Polish Pack v1.4 #19: aggiorna HUD manutentore (FPS, eventi, ecc.)
   tickMaintenance(now);
