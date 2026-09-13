@@ -535,6 +535,37 @@ const hoveredBtn = { current: null };
 const buttonList = [];
 
 // ============================================================
+// POLISH PACK V2 STEP 1d — MINI EVENT BUS
+// Disaccoppia i produttori di stato (tickDoors, setDoors, toggleAlarm, OOO,
+// enterCabin, exitCabin) dai consumatori (display, prenotazione, auto-close,
+// HUD). Zero dipendenze.
+//
+// Eventi emessi (vedi PIANO_V2.md Step 1d):
+//   door:opened     - porte completamente aperte (animazione conclusa)
+//   door:closed     - porte completamente chiuse (animazione conclusa)
+//   door:opening    - inizio animazione apertura
+//   door:closing    - inizio animazione chiusura (countdown partito)
+//   floor:arrived   - cabina arrivata a un piano ({floor})
+//   alarm:on/off    - toggle allarme
+//   ooo:on/off      - toggle fuori servizio
+//   cabin:entered   - giocatore entrato in cabina
+//   cabin:exited    - giocatore uscito dalla cabina
+// ============================================================
+const bus = {
+  _h: {},
+  on(event, fn) { (this._h[event] = this._h[event] || []).push(fn); },
+  off(event, fn) {
+    const arr = this._h[event]; if (!arr) return;
+    const i = arr.indexOf(fn); if (i >= 0) arr.splice(i, 1);
+  },
+  emit(event, payload) {
+    const arr = this._h[event]; if (!arr) return;
+    // copia difensiva: un handler che chiama off() durante l'emit non rompe il loop
+    for (const fn of arr.slice()) fn(payload);
+  }
+};
+
+// ============================================================
 // SCENA, RENDERER, CAMERA
 // ============================================================
 const app = document.getElementById('app');
@@ -3234,6 +3265,10 @@ function cancelAutoClose() {
   if (doorAutoCloseTimer) { clearTimeout(doorAutoCloseTimer); doorAutoCloseTimer = null; }
 }
 
+// Polish Pack V2 Step 1d: scheduleAutoClose ascolta 'door:opened' invece di
+// essere invocato da tickDoors ogni frame (polling su state.doorsActual).
+bus.on('door:opened', scheduleAutoClose);
+
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
 // Restituisce la stringa da mostrare sul display in base al piano corrente
 function floorRoomRange(f) {
@@ -4275,6 +4310,8 @@ function tickMove(dt) {
     setDoors(true);
     // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
     if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
+    // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
+    bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
     refreshHudButtons();
     // processa la coda
@@ -4303,16 +4340,17 @@ function tickDoors(dt) {
     state.doorsActual = doorAnim.from + (doorAnim.to - doorAnim.from) * e;
     if (t >= 1) {
       const r = doorAnim.resolve; doorAnim = null; r && r();
+      // Polish Pack V2 Step 1d: emetti evento fine animazione porte.
+      // scheduleAutoClose e drawModernDisplay ascoltano 'door:opened' invece
+      // di fare polling ogni frame su state.doorsActual.
+      if (state.doorsOpen && state.doorsActual >= 0.99) bus.emit('door:opened');
+      else if (!state.doorsOpen && state.doorsActual <= 0.01) bus.emit('door:closed');
     }
   }
   // applica posizione porte
   const openOffset = state.doorsActual * DOOR_TRAVEL;
   doorLeft.position.x = -CABIN.w/4 + 0.025 - openOffset;
   doorRight.position.x = CABIN.w/4 - 0.025 + openOffset;
-  // Polish Pack v1.5 #21b audit: schedula auto-close quando le porte sono completamente aperte
-  if (state.doorsActual >= 0.99 && state.doorsOpen && !doorAnim && !doorAutoCloseTimer) {
-    scheduleAutoClose();
-  }
 }
 
 function setDoors(open) {
@@ -4328,6 +4366,9 @@ function setDoors(open) {
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
     cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
+  // Polish Pack V2 Step 1d: emetti evento inizio animazione (start),
+  // 'door:opened'/'door:closed' verra' emesso da tickDoors a fine animazione.
+  bus.emit(open ? 'door:opening' : 'door:closing');
   animateDoorsTo(open ? 1 : 0, open ? 1.2 : 1.0);
   updateFloorDisplay();
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
@@ -4337,6 +4378,7 @@ function setDoors(open) {
 // ALLARME
 // ============================================================
 function toggleAlarm() {
+  const wasOn = state.alarmOn;
   state.alarmOn = !state.alarmOn;
   if (state.alarmOn) {
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
@@ -4352,6 +4394,8 @@ function toggleAlarm() {
     alarmLight.intensity = 0;
     if (state._alarmId) clearInterval(state._alarmId);
   }
+  // Polish Pack V2 Step 1d: emetti evento allarme (consumatori: display, audio)
+  bus.emit(state.alarmOn ? 'alarm:on' : 'alarm:off');
   updateFloorDisplay();
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
 }
@@ -4406,6 +4450,8 @@ function exitCabin() {
   // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
   // (es. W premuto in cabina prima di uscire → il player scatta in avanti appena fuori)
   for (const k in keys) keys[k] = false;
+  // Polish Pack V2 Step 1d: emetti evento uscita cabina (consumatori: display)
+  bus.emit('cabin:exited');
   refreshHudButtons();
   playBeep(700, 0.08, 'sine', 0.1);
   setTimeout(() => playBeep(900, 0.1, 'sine', 0.1), 80);
@@ -4430,6 +4476,10 @@ function enterCabin() {
   // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
   // (es. freccia/W premuto nel corridoio prima di rientrare → non deve influenzare la cabina)
   for (const k in keys) keys[k] = false;
+  // Polish Pack V2 Step 1d: emetti evento entrata cabina (consumatori: display).
+  // markDisplayDirty() ora e' chiamato anche dal listener cabin:entered, ma lo
+  // lasciamo anche qui per coerenza con il path "immediato".
+  bus.emit('cabin:entered');
   refreshHudButtons();
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   playBeep(900, 0.08, 'sine', 0.1);
@@ -4672,6 +4722,8 @@ addEventListener('keydown', e => {
     }
     // aggiorna cartello corridoio + display touch
     drawFloorSign(state.currentFloor);
+    // Polish Pack V2 Step 1d: emetti evento fuori servizio (consumatori: display)
+    bus.emit(state.outOfOrder ? 'ooo:on' : 'ooo:off');
     if (typeof markDisplayDirty === 'function') markDisplayDirty();
     const status = document.getElementById('statusText');
     if (status) {
@@ -4949,6 +5001,40 @@ cabin.rotation.z = state.vibrationRoll;
 // ============================================================
 // AVVIO
 // ============================================================
+
+// Polish Pack V2 Step 1d: sottoscrivi i consumatori agli eventi del bus.
+// Centralizza qui le subscription cosi' che ogni funzione "produttrice"
+// (toggleAlarm, OOO, setDoors, exitCabin, enterCabin, tickMove arrival,
+// tickDoors) si limita a emettere, e i consumatori (display, HUD, audio)
+// ascoltano senza fare polling su state.
+// Fatto dopo le definizioni di markDisplayDirty/updateFloorDisplay
+// per evitare TDZ.
+bus.on('floor:arrived', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('alarm:on', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('alarm:off', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('ooo:on', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('ooo:off', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('cabin:entered', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+});
+bus.on('cabin:exited', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+});
 
 // ---- Preferenze persistenti (localStorage) ----
 const PREFS_KEY = 'bossHotelPrefs';
