@@ -133,6 +133,86 @@
     margin-right: 4px;
   }
 
+  /* Polish Pack V2 Step 2b: overlay tutorial contestuale (tooltip) */
+  #tutorial-tooltip {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 0.3s;
+  }
+  #tutorial-tooltip.tutorial-hidden { opacity: 0; }
+  #tutorial-tooltip.tutorial-shown { opacity: 1; pointer-events: auto; }
+  #tutorial-tooltip.tutorial-shown #crosshair { cursor: default; }
+  .tt-bubble {
+    position: absolute;
+    left: 50%;
+    bottom: 18%;
+    transform: translateX(-50%);
+    background: rgba(10, 10, 14, 0.92);
+    border: 2px solid #c9a55a;
+    border-radius: 14px;
+    padding: 16px 22px;
+    color: #f0e8d8;
+    font-family: Georgia, serif;
+    box-shadow: 0 0 24px rgba(201, 165, 90, 0.4), 0 8px 24px rgba(0,0,0,0.6);
+    max-width: 520px;
+    min-width: 360px;
+  }
+  .tt-step {
+    color: #c9a55a;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .tt-text {
+    font-size: 17px;
+    line-height: 1.4;
+    margin-bottom: 14px;
+  }
+  .tt-text kbd {
+    background: #2a2a30;
+    border: 1px solid #c9a55a;
+    border-radius: 4px;
+    padding: 1px 7px;
+    color: #c9a55a;
+    font-family: monospace;
+    font-size: 14px;
+    margin: 0 2px;
+  }
+  .tt-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .tt-btn {
+    background: rgba(40, 40, 50, 0.9);
+    border: 1px solid #6a5a40;
+    color: #d8c8a0;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .tt-btn:hover { background: rgba(60, 60, 70, 0.9); }
+  .tt-btn.tt-primary {
+    background: linear-gradient(180deg, #c9a55a, #8a7030);
+    border-color: #c9a55a;
+    color: #1a1a1a;
+    font-weight: bold;
+  }
+  .tt-btn.tt-primary:hover { background: linear-gradient(180deg, #d8b56a, #9a8040); }
+  /* freccia che collega il tooltip all'elemento puntato */
+  .tt-arrow {
+    position: absolute;
+    width: 0; height: 0;
+    border: 12px solid transparent;
+    border-top-color: #c9a55a;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  }
+
   /* Overlay manutentore (Polish Pack v1.4 #19) */
   #maint-overlay {
     position: absolute;
@@ -376,6 +456,7 @@
     <div class="row"><span><kbd>N</kbd></span><span>toggle modalità notte</span></div>
     <div class="row"><span><kbd>O</kbd></span><span>fuori servizio</span></div>
     <div class="row"><span><kbd>K</kbd></span><span>comando vocale</span></div>
+    <div class="row"><span><kbd>?</kbd></span><span>apri / rivedi tutorial</span></div>
     <div class="row"><span><kbd>Shift+M</kbd></span><span>manutentore</span></div>
   </div>
   <div id="status">
@@ -402,6 +483,18 @@
   <div id="pointerhint">Clicca per attivare il puntatore</div>
 </div>
 
+<!-- Polish Pack V2 Step 2b: overlay tooltip contestuale per il tutorial prima volta -->
+<div id="tutorial-tooltip" class="tutorial-hidden">
+  <div class="tt-bubble">
+    <div class="tt-step" id="tt-step">1/5</div>
+    <div class="tt-text" id="tt-text">Testo del tooltip</div>
+    <div class="tt-actions">
+      <button id="tt-skip" class="tt-btn">Salta tutorial</button>
+      <button id="tt-next" class="tt-btn tt-primary">Avanti →</button>
+    </div>
+  </div>
+</div>
+
 <div id="startscreen">
   <h1>Boss Hotel · <b>Ascensore 3D</b></h1>
   <p>Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch,
@@ -419,6 +512,7 @@
     <div>N</div><div>Attiva/disattiva modalità notte</div>
     <div>O</div><div>Fuori servizio (manutenzione)</div>
     <div>K</div><div>Comando vocale (speech-to-text)</div>
+    <div>?</div><div>Apri / rivedi tutorial contestuale</div>
     <div>Shift+M</div><div>Modalità manutentore (debug)</div>
   </div>
   <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
@@ -520,7 +614,19 @@ const state = {
   _fpsBuf: [],                    // buffer ultimi 60 frame per FPS medio
   _wireframeSnapshot: null,       // mappa {mesh: originalWireframe} per ripristino uscita maintenance
   // piano mostrato sul display touchscreen (passo-passo durante il movimento)
-  floorShown: 0
+  floorShown: 0,
+  // Polish Pack V2 Step 1c: debug mode per assert runtime dei contratti state
+  // (vedi STATE.md). false in produzione, true in dev per attivare i warning.
+  DEBUG: false,
+  // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
+  irObstacleActive: false,    // true quando il sensore sta rilevando un ostacolo
+  irObstacleStart: 0,         // performance.now() in cui l'ostacolo e' iniziato
+  irNudgingActive: false,     // true dopo 15s di ostruzione (fase nudging)
+  // Polish Pack V2 Step 2b: tutorial contestuale prima volta
+  onboarded: false,           // true dopo aver completato il tutorial iniziale
+  tutorialActive: false,      // true quando il tutorial e' in overlay
+  tutorialStep: 0,            // step corrente del tutorial (0..N-1)
+  lastInteractionTs: 0        // timestamp ultima interazione (per prompt inattivita')
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -530,6 +636,37 @@ const hoveredBtn = { current: null };
 // buildCorridor (chiamato a riga ~2588 nell'AVVIO, prima che la dichiarazione
 // originale fosse valutata). Pattern coerente con state e hoveredBtn.
 const buttonList = [];
+
+// ============================================================
+// POLISH PACK V2 STEP 1d — MINI EVENT BUS
+// Disaccoppia i produttori di stato (tickDoors, setDoors, toggleAlarm, OOO,
+// enterCabin, exitCabin) dai consumatori (display, prenotazione, auto-close,
+// HUD). Zero dipendenze.
+//
+// Eventi emessi (vedi PIANO_V2.md Step 1d):
+//   door:opened     - porte completamente aperte (animazione conclusa)
+//   door:closed     - porte completamente chiuse (animazione conclusa)
+//   door:opening    - inizio animazione apertura
+//   door:closing    - inizio animazione chiusura (countdown partito)
+//   floor:arrived   - cabina arrivata a un piano ({floor})
+//   alarm:on/off    - toggle allarme
+//   ooo:on/off      - toggle fuori servizio
+//   cabin:entered   - giocatore entrato in cabina
+//   cabin:exited    - giocatore uscito dalla cabina
+// ============================================================
+const bus = {
+  _h: {},
+  on(event, fn) { (this._h[event] = this._h[event] || []).push(fn); },
+  off(event, fn) {
+    const arr = this._h[event]; if (!arr) return;
+    const i = arr.indexOf(fn); if (i >= 0) arr.splice(i, 1);
+  },
+  emit(event, payload) {
+    const arr = this._h[event]; if (!arr) return;
+    // copia difensiva: un handler che chiama off() durante l'emit non rompe il loop
+    for (const fn of arr.slice()) fn(payload);
+  }
+};
 
 // ============================================================
 // SCENA, RENDERER, CAMERA
@@ -3188,6 +3325,118 @@ let doorCountdownStart = 0;       // performance.now() quando è iniziato
 let doorCountdownBeepLast = 0;    // per beep a ogni secondo
 const DOOR_COUNTDOWN_DURATION = 3.0;
 
+// ============================================================
+// POLISH PACK V2 STEP 2b — TUTORIAL CONTESTUALE PRIMA VOLTA
+// Tooltip overlay con step sequenziali che appare al primo avvio
+// (o su richiesta con tasto '?'). Persiste il flag in localStorage.
+// Aggiunge prompt vocale "Premi ? per aiuto" dopo 30s di inattivita'.
+// ============================================================
+const ONBOARDED_KEY = 'bossHotelOnboarded';
+const ONBOARDED_VERSION = 1;
+const TUTORIAL_STEPS = [
+  {
+    text: 'Benvenuto al <b>BOSS HOTEL</b>. Sei nella cabina al piano Terra. Premi <kbd>1</kbd>–<kbd>9</kbd> per chiamare un piano, oppure tocca il display touchscreen sulla destra.',
+    voice: 'Benvenuto al Boss Hotel. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.'
+  },
+  {
+    text: 'Premi <kbd>E</kbd> per <b>uscire</b> dalla cabina ed esplorare il corridoio. Verrai riposizionato di fronte alle porte.',
+    voice: 'Premi E per uscire dalla cabina.'
+  },
+  {
+    text: 'Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Per rientrare in cabina premi di nuovo <kbd>E</kbd> vicino alle porte.',
+    voice: 'Nel corridoio usa WASD per muoverti. Premi E vicino alle porte per rientrare.'
+  },
+  {
+    text: 'Comandi utili: <kbd>M</kbd> audio on/off, <kbd>V</kbd> annunci vocali, <kbd>K</kbd> comando vocale, <kbd>N</kbd> modalita\' notte, <kbd>O</kbd> fuori servizio.',
+    voice: 'Comandi utili: M per muto, V per annunci vocali, K per comando vocale, N per modalita\' notte, O per fuori servizio.'
+  },
+  {
+    text: 'In qualsiasi momento premi <kbd>?</kbd> per rivedere questo tutorial, oppure <kbd>Shift+M</kbd> per la modalita\' manutentore (FPS, teletrasporto).',
+    voice: 'In qualsiasi momento premi punto interrogativo per rivedere questo tutorial.'
+  }
+];
+let tutorialTimeout = null;
+
+function loadOnboarded() {
+  try {
+    const raw = localStorage.getItem(ONBOARDED_KEY);
+    if (!raw) return false;
+    const p = JSON.parse(raw);
+    return !!(p && p.v === ONBOARDED_VERSION && p.onboarded === true);
+  } catch(e) { return false; }
+}
+function saveOnboarded(val) {
+  try {
+    localStorage.setItem(ONBOARDED_KEY, JSON.stringify({
+      v: ONBOARDED_VERSION,
+      onboarded: val
+    }));
+  } catch(e) { /* storage non disponibile: ignora */ }
+}
+
+function startTutorial(force) {
+  if (state.tutorialActive && !force) return;
+  state.tutorialActive = true;
+  state.tutorialStep = 0;
+  state.lastInteractionTs = performance.now();
+  const tt = document.getElementById('tutorial-tooltip');
+  if (tt) tt.className = 'tutorial-shown';
+  renderTutorialStep();
+  if (typeof pointerLockControls !== 'undefined' && pointerLockControls && pointerLockControls.isLocked) {
+    document.exitPointerLock();
+  }
+}
+function nextTip() {
+  state.tutorialStep++;
+  if (state.tutorialStep >= TUTORIAL_STEPS.length) {
+    endTutorial();
+    return;
+  }
+  renderTutorialStep();
+}
+function endTutorial() {
+  state.tutorialActive = false;
+  state.tutorialStep = 0;
+  const tt = document.getElementById('tutorial-tooltip');
+  if (tt) tt.className = 'tutorial-hidden';
+  state.onboarded = true;
+  saveOnboarded(true);
+}
+function renderTutorialStep() {
+  const step = TUTORIAL_STEPS[state.tutorialStep];
+  if (!step) return;
+  const stepEl = document.getElementById('tt-step');
+  const textEl = document.getElementById('tt-text');
+  if (stepEl) stepEl.textContent = (state.tutorialStep + 1) + '/' + TUTORIAL_STEPS.length;
+  if (textEl) textEl.innerHTML = step.text;
+  // Voice: pronuncia solo se TTS attivo, con rate leggermente ridotto
+  if (typeof speak === 'function' && ttsEnabled && !state.muted && step.voice) {
+    speak(step.voice, { rate: 0.95 });
+  }
+}
+
+// Polish Pack V2 Step 2b (Q2.4=C): prompt vocale "Premi ? per aiuto"
+// dopo 30s di inattivita' in-game. Traccia interazioni ovunque.
+let lastInactivityPromptTs = 0;
+function tickInactivityPrompt() {
+  if (!state.playerInCabin || state.alarmOn || state.tutorialActive) {
+    state.lastInteractionTs = performance.now();
+    return;
+  }
+  const idleMs = performance.now() - state.lastInteractionTs;
+  // Solo se sono passati almeno 30s dall'ultima interazione E almeno 5 min
+  // dall'ultimo prompt vocale (per non spammare)
+  if (idleMs > 30000 && performance.now() - lastInactivityPromptTs > 300000) {
+    lastInactivityPromptTs = performance.now();
+    if (typeof speak === 'function' && ttsEnabled && !state.muted) {
+      speak('Premi punto interrogativo per aiuto.');
+    }
+  }
+}
+function noteInteraction() {
+  state.lastInteractionTs = performance.now();
+}
+
 function startDoorCountdown() {
   doorCountdownStart = performance.now();
   doorCountdownBeepLast = 0;
@@ -3199,16 +3448,25 @@ function cancelDoorCountdown() {
   }
 }
 
-// ---- Polish Pack v1.5 #21b audit: timer di chiusura automatica porte ----
-// Comportamento realistico di un ascensore reale: dopo che le porte sono
-// completamente aperte (post arrivo al piano), se l'utente non fa nulla
-// per N secondi, le porte si chiudono automaticamente (con countdown 3..2..1).
-// Il timer si resetta se l'utente fa qualcosa (click pulsante, chiama piano,
-// rientra cabina, ecc.).
-const DOOR_AUTO_CLOSE_MS = 6000;
+// ---- Polish Pack v1.5 #21b audit + Polish Pack v1.7: timer di chiusura automatica porte ----
+// Comportamento realistico di un ascensore reale, allineato alle normative ADA/ASME A17.1:
+// - §407.3.5 Door Delay (Car Call): porte aperte ≥3-5s dopo una chiamata dalla cabina
+// - §407.3.4 Door and Signal Timing (Hall Call): ≥5s calcolati a 1.5 ft/s
+// - Specifiche tipiche: Car Call 3-5s, Hall Call 5-8s
+// Differenziazione per piano:
+//   - Lobby (T): 8s (traffico intenso, passeggeri in entrata/uscita)
+//   - Altri piani (1-9): 5s (standard ADA car call)
+// Le porte si chiudono automaticamente dopo il dwell time **indipendentemente** dalla
+// posizione del giocatore. La prenotazione automatica (apri se ti avvicini) si applica
+// SOLO al lobby (vedi tickPlayer). Ai piani 1-9 il passeggero deve usare la pulsantiera
+// ▲/▼ esterna per richiamare la cabina. Il timer si resetta se l'utente fa qualcosa
+// (click pulsante, chiama piano, rientra cabina, ecc.).
+const DOOR_AUTO_CLOSE_MS_LOBBY = 8000;
+const DOOR_AUTO_CLOSE_MS_FLOOR = 5000;
 let doorAutoCloseTimer = null;
-function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
+function scheduleAutoClose() {
   cancelAutoClose();
+  const ms = state.currentFloor === 0 ? DOOR_AUTO_CLOSE_MS_LOBBY : DOOR_AUTO_CLOSE_MS_FLOOR;
   doorAutoCloseTimer = setTimeout(() => {
     doorAutoCloseTimer = null;
     if (state.doorsOpen && state.doorsActual > 0.9
@@ -3221,6 +3479,10 @@ function scheduleAutoClose(ms = DOOR_AUTO_CLOSE_MS) {
 function cancelAutoClose() {
   if (doorAutoCloseTimer) { clearTimeout(doorAutoCloseTimer); doorAutoCloseTimer = null; }
 }
+
+// Polish Pack V2 Step 1d: scheduleAutoClose ascolta 'door:opened' invece di
+// essere invocato da tickDoors ogni frame (polling su state.doorsActual).
+bus.on('door:opened', scheduleAutoClose);
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
 // Restituisce la stringa da mostrare sul display in base al piano corrente
@@ -4263,6 +4525,8 @@ function tickMove(dt) {
     setDoors(true);
     // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
     if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
+    // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
+    bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
     refreshHudButtons();
     // processa la coda
@@ -4291,16 +4555,17 @@ function tickDoors(dt) {
     state.doorsActual = doorAnim.from + (doorAnim.to - doorAnim.from) * e;
     if (t >= 1) {
       const r = doorAnim.resolve; doorAnim = null; r && r();
+      // Polish Pack V2 Step 1d: emetti evento fine animazione porte.
+      // scheduleAutoClose e drawModernDisplay ascoltano 'door:opened' invece
+      // di fare polling ogni frame su state.doorsActual.
+      if (state.doorsOpen && state.doorsActual >= 0.99) bus.emit('door:opened');
+      else if (!state.doorsOpen && state.doorsActual <= 0.01) bus.emit('door:closed');
     }
   }
   // applica posizione porte
   const openOffset = state.doorsActual * DOOR_TRAVEL;
   doorLeft.position.x = -CABIN.w/4 + 0.025 - openOffset;
   doorRight.position.x = CABIN.w/4 - 0.025 + openOffset;
-  // Polish Pack v1.5 #21b audit: schedula auto-close quando le porte sono completamente aperte
-  if (state.doorsActual >= 0.99 && state.doorsOpen && !doorAnim && !doorAutoCloseTimer) {
-    scheduleAutoClose();
-  }
 }
 
 function setDoors(open) {
@@ -4316,6 +4581,9 @@ function setDoors(open) {
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
     cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
+  // Polish Pack V2 Step 1d: emetti evento inizio animazione (start),
+  // 'door:opened'/'door:closed' verra' emesso da tickDoors a fine animazione.
+  bus.emit(open ? 'door:opening' : 'door:closing');
   animateDoorsTo(open ? 1 : 0, open ? 1.2 : 1.0);
   updateFloorDisplay();
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
@@ -4325,6 +4593,7 @@ function setDoors(open) {
 // ALLARME
 // ============================================================
 function toggleAlarm() {
+  const wasOn = state.alarmOn;
   state.alarmOn = !state.alarmOn;
   if (state.alarmOn) {
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
@@ -4340,6 +4609,8 @@ function toggleAlarm() {
     alarmLight.intensity = 0;
     if (state._alarmId) clearInterval(state._alarmId);
   }
+  // Polish Pack V2 Step 1d: emetti evento allarme (consumatori: display, audio)
+  bus.emit(state.alarmOn ? 'alarm:on' : 'alarm:off');
   updateFloorDisplay();
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
 }
@@ -4394,6 +4665,8 @@ function exitCabin() {
   // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
   // (es. W premuto in cabina prima di uscire → il player scatta in avanti appena fuori)
   for (const k in keys) keys[k] = false;
+  // Polish Pack V2 Step 1d: emetti evento uscita cabina (consumatori: display)
+  bus.emit('cabin:exited');
   refreshHudButtons();
   playBeep(700, 0.08, 'sine', 0.1);
   setTimeout(() => playBeep(900, 0.1, 'sine', 0.1), 80);
@@ -4418,6 +4691,10 @@ function enterCabin() {
   // Polish Pack v1.6 #13: reset tasti movimento per evitare drift improvviso
   // (es. freccia/W premuto nel corridoio prima di rientrare → non deve influenzare la cabina)
   for (const k in keys) keys[k] = false;
+  // Polish Pack V2 Step 1d: emetti evento entrata cabina (consumatori: display).
+  // markDisplayDirty() ora e' chiamato anche dal listener cabin:entered, ma lo
+  // lasciamo anche qui per coerenza con il path "immediato".
+  bus.emit('cabin:entered');
   refreshHudButtons();
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   playBeep(900, 0.08, 'sine', 0.1);
@@ -4573,6 +4850,96 @@ pitchObj.add(camera);
 let yaw = 0, pitch = 0;
 const SENS = 0.0022;
 
+// ============================================================
+// POLISH PACK V2 STEP 2a — SENSORE IR ANTI-OSTACOLO (ASME A17.1 §2.13.5)
+// Posizionato qui (dopo yawObj) per evitare TDZ sul riferimento al player.
+// Rileva quando il giocatore è sulla soglia della cabina mentre le porte
+// stanno chiudendo: annulla la chiusura, riapre le porte, annuncia l'ostacolo.
+// Dopo 15s di ostruzione continua entra in "nudging mode" (chiusura forzata
+// a energia ridotta + beep acuto continuo, come da normativa).
+// Emette l'evento bus 'door:obstacle' per audit/maintenance overlay.
+// ============================================================
+const IR_THRESHOLD_DIST = 0.6;   // m dalla soglia (z vicino a CABIN.d/2)
+const IR_THRESHOLD_X = 0.5;      // m dal centro cabina (|x| < soglia)
+const IR_TIMEOUT_MS = 15000;     // 15s prima del nudging
+const IR_NUDGING_BEEP_HZ = 1200; // Hz del beep in nudging mode
+
+function isPlayerOnDoorway() {
+  if (!yawObj) return false;
+  const distZ = Math.abs(yawObj.position.z - CABIN.d / 2);
+  return distZ < IR_THRESHOLD_DIST && Math.abs(yawObj.position.x) < IR_THRESHOLD_X;
+}
+
+function tickIRSensor() {
+  // Safety gates: non operare se porte bloccate o cabina in moto
+  if (state.alarmOn || state.outOfOrder || state.maintenanceMode || state.isMoving) {
+    if (state.irObstacleActive) {
+      // Reset ostacolo se entriamo in uno stato di blocco
+      state.irObstacleActive = false;
+      state.irObstacleStart = 0;
+      state.irNudgingActive = false;
+    }
+    return;
+  }
+
+  const onDoorway = isPlayerOnDoorway();
+  // Porte in fase di chiusura (animazione attiva, tra 5% e 95% chiuse)
+  const doorIsClosing = !state.doorsOpen && state.doorsActual > 0.05 && state.doorsActual < 0.95;
+
+  if (onDoorway && doorIsClosing) {
+    // Prima rilevazione ostacolo durante la chiusura
+    if (!state.irObstacleActive) {
+      state.irObstacleActive = true;
+      state.irObstacleStart = performance.now();
+      // Annuncio vocale + beep IR (stile ascensore reale)
+      playBeep(880, 0.15, 'square', 0.15);
+      if (typeof speak === 'function' && ttsEnabled && !state.muted) {
+        speak('Attenzione. Le porte rilevano un ostacolo.');
+      }
+      if (typeof showSubtitle === 'function') {
+        showSubtitle('Ostacolo rilevato', 2000);
+      }
+      bus.emit('door:obstacle', { source: 'ir-sensor' });
+    }
+    // Tieni aperte: riapri e cancella countdown/auto-close
+    if (!state.doorsOpen || state.doorsActual < 0.99) {
+      state.doorsOpen = true;
+      state.doorsTarget = 1;
+      cancelDoorCountdown();
+      cancelAutoClose();
+      animateDoorsTo(1, 0.6); // riapri rapidamente invertendo l'animazione
+      if (typeof refreshHudButtons === 'function') refreshHudButtons();
+    }
+  } else if (state.irObstacleActive && !onDoorway) {
+    // Ostacolo rimosso: ripristina timer auto-close
+    state.irObstacleActive = false;
+    state.irObstacleStart = 0;
+    state.irNudgingActive = false;
+    if (state.doorsOpen && state.doorsActual > 0.9 && !doorAutoCloseTimer) {
+      scheduleAutoClose();
+    }
+  }
+
+  // Nudging: dopo 15s di ostruzione continua, forza chiusura a energia ridotta
+  if (state.irObstacleActive && !state.irNudgingActive) {
+    const elapsed = performance.now() - state.irObstacleStart;
+    if (elapsed > IR_TIMEOUT_MS) {
+      state.irNudgingActive = true;
+      // Beep acuto continuo, due volte ravvicinate
+      playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2);
+      setTimeout(() => playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2), 280);
+      if (typeof speak === 'function' && ttsEnabled && !state.muted) {
+        speak('Chiusura porte forzata. Attenzione.');
+      }
+      // Forza chiusura ignorando l'ostacolo
+      state.irObstacleActive = false;
+      state.irObstacleStart = 0;
+      setDoors(false);
+      bus.emit('door:nudging', { source: 'ir-sensor' });
+    }
+  }
+}
+
 function onMouseMove(e) {
   if (document.pointerLockElement !== renderer.domElement) return;
   yaw -= e.movementX * SENS;
@@ -4608,6 +4975,26 @@ document.addEventListener('pointerlockchange', () => {
 // MOVIMENTO FPS (corridoio) e LISTENERS TASTIERA
 // ============================================================
 addEventListener('keydown', e => {
+  // Polish Pack V2 Step 2b: tasto ? apre/riapre il tutorial contestuale
+  if (e.code === 'Slash' && e.shiftKey) {
+    e.preventDefault();
+    startTutorial(true);
+    noteInteraction();
+    return;
+  }
+  if (state.tutorialActive && (e.code === 'Enter' || e.code === 'Space' || e.code === 'ArrowRight')) {
+    e.preventDefault();
+    noteInteraction();
+    nextTip();
+    return;
+  }
+  if (state.tutorialActive && e.code === 'Escape') {
+    e.preventDefault();
+    noteInteraction();
+    endTutorial();
+    return;
+  }
+  noteInteraction();
   if (e.code === 'KeyM' && !e.shiftKey) {
     state.muted = !state.muted;
     const status = document.getElementById('statusText');
@@ -4660,6 +5047,8 @@ addEventListener('keydown', e => {
     }
     // aggiorna cartello corridoio + display touch
     drawFloorSign(state.currentFloor);
+    // Polish Pack V2 Step 1d: emetti evento fuori servizio (consumatori: display)
+    bus.emit(state.outOfOrder ? 'ooo:on' : 'ooo:off');
     if (typeof markDisplayDirty === 'function') markDisplayDirty();
     const status = document.getElementById('statusText');
     if (status) {
@@ -4760,33 +5149,36 @@ function tickPlayer(dt) {
     reBtn.textContent = '↙ Avvicinati per rientrare';
   }
 
-  // Polish Pack v1.4 #20: prenotazione automatica cabina dal corridoio
-  // Se il player è vicino (<1m) alle porte della cabina E fuori dalla cabina E
-  // cabina ferma E non allarme/OOO → apri le porte gentilmente (no countdown).
-  // Se si allontana dopo aver prenotato → chiudi gentilmente (no countdown, no annuncio).
-  const canPrenotate = !state.playerInCabin
-                    && !state.isMoving && !state.alarmOn && !state.outOfOrder;
-  const isNearDoors = distToDoors < 1.0 && Math.abs(yawObj.position.x) < 0.9;
-  if (canPrenotate && isNearDoors && !state.doorsOpen && state.doorsActual < 0.1) {
-    // apri le porte senza countdown né annuncio
-    state.doorsOpen = true;
-    state.doorsTarget = 1;
-    state.prenotationActive = true;
-    playDoorSound(true);
-    animateDoorsTo(1, 1.4);
-    markDisplayDirty();
-    if (typeof refreshHudButtons === 'function') refreshHudButtons();
-  } else if (state.prenotationActive && (!isNearDoors || !canPrenotate)) {
-    // chiudi gentilmente
-    if (state.doorsActual > 0.05) {
-      animateDoorsTo(0, 0.8);
-      playDoorSound(false);
+  // Polish Pack v1.4 #20 + Polish Pack v1.7: prenotazione automatica cabina SOLO al piano T (lobby).
+  // Comportamento ascensore reale: al lobby il passeggero si avvicina alle porte e queste
+  // si aprono automaticamente (è il piano principale, traffico intenso). Ai piani 1-9
+  // le porte si chiudono automaticamente dopo il dwell time standard (5s) indipendentemente
+  // dalla posizione del giocatore; per rientrare in cabina serve la pulsantiera ▲/▼ esterna.
+  if (state.currentFloor === 0) {
+    const canPrenotate = !state.playerInCabin
+                      && !state.isMoving && !state.alarmOn && !state.outOfOrder;
+    const isNearDoors = distToDoors < 1.0 && Math.abs(yawObj.position.x) < 0.9;
+    if (canPrenotate && isNearDoors && !state.doorsOpen && state.doorsActual < 0.1) {
+      // apri le porte senza countdown né annuncio
+      state.doorsOpen = true;
+      state.doorsTarget = 1;
+      state.prenotationActive = true;
+      playDoorSound(true);
+      animateDoorsTo(1, 1.4);
+      markDisplayDirty();
+      if (typeof refreshHudButtons === 'function') refreshHudButtons();
+    } else if (state.prenotationActive && (!isNearDoors || !canPrenotate)) {
+      // chiudi gentilmente
+      if (state.doorsActual > 0.05) {
+        animateDoorsTo(0, 0.8);
+        playDoorSound(false);
+      }
+      state.doorsOpen = false;
+      state.doorsTarget = 0;
+      state.prenotationActive = false;
+      markDisplayDirty();
+      if (typeof refreshHudButtons === 'function') refreshHudButtons();
     }
-    state.doorsOpen = false;
-    state.doorsTarget = 0;
-    state.prenotationActive = false;
-    markDisplayDirty();
-    if (typeof refreshHudButtons === 'function') refreshHudButtons();
   }
 }
 
@@ -4819,6 +5211,41 @@ function placeCameraInCabin() {
 }
 
 // ============================================================
+// POLISH PACK V2 STEP 1c — assert runtime dei contratti state
+// (vedi STATE.md per la tabella completa). No-op se state.DEBUG=false.
+// Chiamata una volta per frame alla fine del LOOP per non rallentare
+// il path caldo del rendering.
+// ============================================================
+function assertStateInvariants() {
+  if (!state.DEBUG) return;
+  const warn = (msg) => console.warn('[state invariant]', msg);
+  if (state.currentFloor < 0 || state.currentFloor > 9)
+    warn('currentFloor fuori range: ' + state.currentFloor);
+  if (state.targetFloor < 0 || state.targetFloor > 9)
+    warn('targetFloor fuori range: ' + state.targetFloor);
+  if (state.isMoving && state.doorsActual > 0.5)
+    warn('isMoving=true ma porte aperte al ' + (state.doorsActual * 100).toFixed(0) + '%');
+  if (state.alarmOn && state.doorsOpen)
+    warn('alarmOn=true ma doorsOpen=true');
+  if (state.alarmOn && state.isMoving)
+    warn('alarmOn=true ma isMoving=true');
+  if (state.outOfOrder && state.isMoving)
+    warn('outOfOrder=true ma isMoving=true');
+  if (state.outOfOrder && state.requestedFloors.size > 0)
+    warn('outOfOrder=true ma coda non vuota: ' + state.requestedFloors.size);
+  if (!state.playerInCabin && state.passengers !== 0)
+    warn('!playerInCabin ma passengers=' + state.passengers);
+  if (state.passengers < 0 || state.passengers > 8)
+    warn('passengers fuori range [0,8]: ' + state.passengers);
+  if (state.prenotationActive && state.playerInCabin)
+    warn('prenotationActive=true ma playerInCabin=true');
+  if (state.prenotationActive && state.currentFloor !== 0)
+    warn('prenotationActive=true ma non al lobby (currentFloor=' + state.currentFloor + ')');
+  if (state.doorsActual < 0 || state.doorsActual > 1.001)
+    warn('doorsActual fuori [0,1]: ' + state.doorsActual);
+}
+
+// ============================================================
 // LOOP
 // ============================================================
 let last = performance.now();
@@ -4828,8 +5255,14 @@ function loop(now) {
   tickDoors(dt);
   tickMove(dt);
   tickPlayer(dt);
+  // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (soglia della cabina)
+  tickIRSensor();
+  // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
+  tickInactivityPrompt();
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
+  // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)
+  assertStateInvariants();
 
   // lampeggio allarme / modalità notte (Fase 8)
   if (state.alarmOn) {
@@ -4898,6 +5331,40 @@ cabin.rotation.z = state.vibrationRoll;
 // AVVIO
 // ============================================================
 
+// Polish Pack V2 Step 1d: sottoscrivi i consumatori agli eventi del bus.
+// Centralizza qui le subscription cosi' che ogni funzione "produttrice"
+// (toggleAlarm, OOO, setDoors, exitCabin, enterCabin, tickMove arrival,
+// tickDoors) si limita a emettere, e i consumatori (display, HUD, audio)
+// ascoltano senza fare polling su state.
+// Fatto dopo le definizioni di markDisplayDirty/updateFloorDisplay
+// per evitare TDZ.
+bus.on('floor:arrived', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('alarm:on', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('alarm:off', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('ooo:on', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('ooo:off', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof updateFloorDisplay === 'function') updateFloorDisplay();
+});
+bus.on('cabin:entered', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+});
+bus.on('cabin:exited', () => {
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+});
+
 // ---- Preferenze persistenti (localStorage) ----
 const PREFS_KEY = 'bossHotelPrefs';
 const PREFS_VERSION = 1;
@@ -4954,6 +5421,25 @@ document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
   renderer.domElement.requestPointerLock();
+  // Polish Pack V2 Step 2b: tutorial contestuale prima volta
+  // (caricato da localStorage; mostrato solo se l'utente non l'ha ancora visto)
+  state.onboarded = loadOnboarded();
+  if (!state.onboarded) {
+    // Breve ritardo per far apparire la cabina prima del tooltip
+    setTimeout(() => startTutorial(false), 600);
+  } else {
+    state.lastInteractionTs = performance.now();
+  }
+});
+
+// Polish Pack V2 Step 2b: hook bottoni del tooltip (click + Enter/Space)
+document.getElementById('tt-next').addEventListener('click', () => {
+  noteInteraction();
+  nextTip();
+});
+document.getElementById('tt-skip').addEventListener('click', () => {
+  noteInteraction();
+  endTutorial();
 });
 
 requestAnimationFrame(loop);
