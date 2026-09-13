@@ -520,7 +520,10 @@ const state = {
   _fpsBuf: [],                    // buffer ultimi 60 frame per FPS medio
   _wireframeSnapshot: null,       // mappa {mesh: originalWireframe} per ripristino uscita maintenance
   // piano mostrato sul display touchscreen (passo-passo durante il movimento)
-  floorShown: 0
+  floorShown: 0,
+  // Polish Pack V2 Step 1c: debug mode per assert runtime dei contratti state
+  // (vedi STATE.md). false in produzione, true in dev per attivare i warning.
+  DEBUG: false
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -4831,6 +4834,41 @@ function placeCameraInCabin() {
 }
 
 // ============================================================
+// POLISH PACK V2 STEP 1c — assert runtime dei contratti state
+// (vedi STATE.md per la tabella completa). No-op se state.DEBUG=false.
+// Chiamata una volta per frame alla fine del LOOP per non rallentare
+// il path caldo del rendering.
+// ============================================================
+function assertStateInvariants() {
+  if (!state.DEBUG) return;
+  const warn = (msg) => console.warn('[state invariant]', msg);
+  if (state.currentFloor < 0 || state.currentFloor > 9)
+    warn('currentFloor fuori range: ' + state.currentFloor);
+  if (state.targetFloor < 0 || state.targetFloor > 9)
+    warn('targetFloor fuori range: ' + state.targetFloor);
+  if (state.isMoving && state.doorsActual > 0.5)
+    warn('isMoving=true ma porte aperte al ' + (state.doorsActual * 100).toFixed(0) + '%');
+  if (state.alarmOn && state.doorsOpen)
+    warn('alarmOn=true ma doorsOpen=true');
+  if (state.alarmOn && state.isMoving)
+    warn('alarmOn=true ma isMoving=true');
+  if (state.outOfOrder && state.isMoving)
+    warn('outOfOrder=true ma isMoving=true');
+  if (state.outOfOrder && state.requestedFloors.size > 0)
+    warn('outOfOrder=true ma coda non vuota: ' + state.requestedFloors.size);
+  if (!state.playerInCabin && state.passengers !== 0)
+    warn('!playerInCabin ma passengers=' + state.passengers);
+  if (state.passengers < 0 || state.passengers > 8)
+    warn('passengers fuori range [0,8]: ' + state.passengers);
+  if (state.prenotationActive && state.playerInCabin)
+    warn('prenotationActive=true ma playerInCabin=true');
+  if (state.prenotationActive && state.currentFloor !== 0)
+    warn('prenotationActive=true ma non al lobby (currentFloor=' + state.currentFloor + ')');
+  if (state.doorsActual < 0 || state.doorsActual > 1.001)
+    warn('doorsActual fuori [0,1]: ' + state.doorsActual);
+}
+
+// ============================================================
 // LOOP
 // ============================================================
 let last = performance.now();
@@ -4842,6 +4880,8 @@ function loop(now) {
   tickPlayer(dt);
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
+  // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)
+  assertStateInvariants();
 
   // lampeggio allarme / modalità notte (Fase 8)
   if (state.alarmOn) {
