@@ -1105,42 +1105,75 @@ function drawClockFace(ctx, w, h) {
 }
 
 function drawWeatherScreen(ctx, w, h) {
+  // Polish Pack V2 Step 4d (Q4.5=C): slide meteo RICCA con previsioni 24h
+  // in 6 blocchi da 4h ciascuno. Include tutte e 10 le condizioni meteo.
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, '#0a3050');
   grad.addColorStop(1, '#1a5070');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
+  // header
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('ROMA · METEO OGGI', w/2, 10);
-  // icona grande sole
-  ctx.fillStyle = '#ffd66b';
-  ctx.beginPath();
-  ctx.arc(w/2, h/2 - 5, 32, 0, Math.PI*2);
-  ctx.fill();
-  // raggi
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + (Date.now() / 2000);
-    const x1 = w/2 + Math.cos(a) * 42;
-    const y1 = (h/2 - 5) + Math.sin(a) * 42;
-    const x2 = w/2 + Math.cos(a) * 52;
-    const y2 = (h/2 - 5) + Math.sin(a) * 52;
-    ctx.strokeStyle = '#ffd66b'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.fillText('ROMA · METEO + PREVISIONI 24H', w/2, 8);
+  // icona grande corrente + temperatura
+  if (currentWeather) {
+    drawWeatherIconBig(ctx, 80, 70, 30, currentWeather.type, Date.now() / 1000);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(currentTemp + '°', 120, 50);
+    ctx.font = '13px Arial';
+    ctx.fillStyle = '#aaccff';
+    ctx.fillText(currentWeather.label, 120, 90);
   }
-  // temperatura
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 38px Arial';
-  ctx.fillText('22°', w/2, h/2 + 35);
-  ctx.font = '14px Arial';
+  // dettagli atm (a destra)
   ctx.fillStyle = '#aaccff';
-  ctx.fillText('Sereno · Umidità 55%', w/2, h/2 + 72);
-  ctx.fillText('Vento 8 km/h · Visibilità 10 km', w/2, h/2 + 90);
-  // previsioni
   ctx.font = '11px Arial';
-  ctx.fillStyle = '#aaccff';
-  ctx.fillText('DOM 24° ☀   LUN 20° ⛅   MAR 18° 🌧', w/2, h - 16);
+  ctx.textAlign = 'right';
+  const humidity = 40 + Math.floor(Math.random() * 40);
+  const windKmh = 5 + Math.floor(Math.random() * 25);
+  const visibility = 5 + Math.floor(Math.random() * 10);
+  ctx.fillText('Umidita ' + humidity + '%', w - 12, 35);
+  ctx.fillText('Vento ' + windKmh + ' km/h', w - 12, 50);
+  ctx.fillText('Visib. ' + visibility + ' km', w - 12, 65);
+  ctx.fillText('Mese: ' + MESI[new Date().getMonth()], w - 12, 85);
+  // divider
+  ctx.strokeStyle = '#3a6080';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(20, 105); ctx.lineTo(w - 20, 105); ctx.stroke();
+  // previsioni 24h in 6 blocchi da 4h
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('PREVISIONI PROSSIME 24 ORE', w/2, 110);
+  // genera 6 previsioni sintetiche (temperature coerenti con mese)
+  const month = new Date().getMonth();
+  const monthMid = [3, 6, 10, 13, 17, 21, 25, 25, 22, 17, 11, 5][month]; // temp media mese
+  const blockW = (w - 40) / 6;
+  const blockY = 135;
+  for (let i = 0; i < 6; i++) {
+    const bx = 20 + i * blockW;
+    const bw = blockW - 4;
+    // ora etichetta
+    const ora = (new Date().getHours() + i * 4) % 24;
+    ctx.fillStyle = '#aaccff';
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText(String(ora).padStart(2, '0') + ':00', bx + bw / 2, blockY);
+    // condizione (varia leggermente tra i blocchi)
+    const wPick = pickWeather();
+    drawWeatherIconBig(ctx, bx + bw / 2, blockY + 32, 18, wPick.type, Date.now() / 1000 + i);
+    // temperatura (varia di +-3°C)
+    const t = Math.round(monthMid + (Math.random() * 6 - 3) + (i > 2 ? -2 : 2));
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(t + '°', bx + bw / 2, blockY + 60);
+  }
+  // footer
+  ctx.fillStyle = '#7a8a9a';
+  ctx.font = '9px Arial';
+  ctx.fillText('Aggiornato: ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }), w/2, h - 8);
 }
 
 function drawWelcomeScreen(ctx, w, h) {
@@ -3144,15 +3177,50 @@ let displaySemistaticReady = false;
 
 // meteo corrente (aggiornato in updateWeather)
 let currentWeather = null;
+// Polish Pack V2 Step 4: tabella pesi mensile per le 10 condizioni meteo.
+// Clima di Roma (emisfero nord): inverno piovoso/nebbioso, estate soleggiata,
+// primavera/autunno variabili. Stagionalita' influenza le probabilita' ma
+// non le elimina completamente (es. neve possibile solo nov-mar).
+const WEATHER_MONTHLY_WEIGHTS = [
+  // GEN: sole=-, nebbia=+, pioggia=+, neve=+, grandine=+, foschia=+, vento=+
+  { sunny: 15, partly: 15, cloudy: 20, rain: 18, storm: 4, snow: 8, fog: 10, hail: 3, mist: 5, wind: 2 },
+  // FEB: simile a GEN, leggermente piu' pioggia
+  { sunny: 18, partly: 16, cloudy: 18, rain: 18, storm: 4, snow: 6, fog: 10, hail: 3, mist: 5, wind: 2 },
+  // MAR: transizione, piu' pioggia, meno neve/nebbia
+  { sunny: 22, partly: 20, cloudy: 18, rain: 20, storm: 5, snow: 2, fog: 6, hail: 2, mist: 3, wind: 2 },
+  // APR: pioggia + sole, variabile
+  { sunny: 25, partly: 22, cloudy: 16, rain: 18, storm: 6, snow: 0, fog: 4, hail: 2, mist: 3, wind: 4 },
+  // MAG: sole + poco nuvoloso
+  { sunny: 32, partly: 25, cloudy: 14, rain: 12, storm: 7, snow: 0, fog: 2, hail: 1, mist: 2, wind: 5 },
+  // GIU: sole pieno
+  { sunny: 42, partly: 22, cloudy: 10, rain: 8, storm: 8, snow: 0, fog: 1, hail: 0, mist: 1, wind: 8 },
+  // LUG: sole + temporali estivi
+  { sunny: 50, partly: 18, cloudy: 8, rain: 5, storm: 10, snow: 0, fog: 0, hail: 0, mist: 0, wind: 9 },
+  // AGO: come LUG
+  { sunny: 50, partly: 18, cloudy: 8, rain: 5, storm: 10, snow: 0, fog: 0, hail: 0, mist: 0, wind: 9 },
+  // SET: transizione, ancora sole ma calo
+  { sunny: 38, partly: 22, cloudy: 14, rain: 12, storm: 6, snow: 0, fog: 2, hail: 1, mist: 2, wind: 3 },
+  // OTT: autunno, pioggia, nebbia
+  { sunny: 25, partly: 22, cloudy: 18, rain: 18, storm: 5, snow: 0, fog: 6, hail: 1, mist: 3, wind: 2 },
+  // NOV: verso l'inverno, nebbia + pioggia
+  { sunny: 18, partly: 18, cloudy: 20, rain: 18, storm: 4, snow: 4, fog: 10, hail: 2, mist: 4, wind: 2 },
+  // DIC: come GEN, picco di neve/foschia
+  { sunny: 14, partly: 14, cloudy: 20, rain: 16, storm: 4, snow: 10, fog: 12, hail: 4, mist: 5, wind: 1 }
+];
 function pickWeather() {
+  const month = new Date().getMonth();   // 0=GEN, 11=DIC
+  const weights = WEATHER_MONTHLY_WEIGHTS[month];
   const w = [
-    { type: 'sunny',  icon: '☀', label: 'SERENO',       weight: 35 },
-    { type: 'partly', icon: '⛅', label: 'POCO NUVOLOSO', weight: 25 },
-    { type: 'cloudy', icon: '☁', label: 'NUVOLOSO',     weight: 15 },
-    { type: 'rain',   icon: '🌧', label: 'PIOGGIA',     weight: 12 },
-    { type: 'storm',  icon: '⛈', label: 'TEMPORALE',   weight: 5 },
-    { type: 'snow',   icon: '❄', label: 'NEVE',        weight: 3 },
-    { type: 'fog',    icon: '🌫', label: 'NEBBIA',      weight: 5 }
+    { type: 'sunny',  icon: '☀', label: 'SERENO',       weight: weights.sunny },
+    { type: 'partly', icon: '⛅', label: 'POCO NUVOLOSO', weight: weights.partly },
+    { type: 'cloudy', icon: '☁', label: 'NUVOLOSO',     weight: weights.cloudy },
+    { type: 'rain',   icon: '🌧', label: 'PIOGGIA',     weight: weights.rain },
+    { type: 'storm',  icon: '⛈', label: 'TEMPORALE',   weight: weights.storm },
+    { type: 'snow',   icon: '❄', label: 'NEVE',        weight: weights.snow },
+    { type: 'fog',    icon: '🌫', label: 'NEBBIA',      weight: weights.fog },
+    { type: 'hail',   icon: '🧊', label: 'GRANDINE',    weight: weights.hail },
+    { type: 'mist',   icon: '🌁', label: 'FOSCHIA',     weight: weights.mist },
+    { type: 'wind',   icon: '💨', label: 'VENTO',       weight: weights.wind }
   ];
   const total = w.reduce((s, x) => s + x.weight, 0);
   let r = Math.random() * total;
@@ -3167,7 +3235,8 @@ function pickTemperature(weatherType, floor) {
   // leggermente più freddo ai piani alti
   const base = {
     sunny: [22, 32], partly: [18, 28], cloudy: [14, 24],
-    rain: [10, 20], storm: [12, 22], snow: [-2, 4], fog: [8, 16]
+    rain: [10, 20], storm: [12, 22], snow: [-2, 4], fog: [8, 16],
+    hail: [4, 14], mist: [12, 20], wind: [10, 22]
   }[weatherType];
   const [lo, hi] = base;
   const offset = floor >= 7 ? -3 : (floor >= 4 ? -1 : 0);
@@ -3182,8 +3251,9 @@ function maybeRegenerateWeather(floor) {
   if (!currentWeather) {
     currentWeather = pickWeather();
     currentTemp = pickTemperature(currentWeather.type, floor);
-  } else if (floor !== lastWeatherFloor && Math.random() < 0.5) {
-    // 50% di probabilità di cambiare ad ogni arrivo al piano
+  } else if (floor !== lastWeatherFloor && Math.random() < 0.3) {
+    // Polish Pack V2 Step 4c (Q4.4=B): 30% di probabilita' di cambiare ad ogni
+    // arrivo al piano (era 50%). Piu' persistente, il giocatore nota il meteo.
     currentWeather = pickWeather();
     currentTemp = pickTemperature(currentWeather.type, floor);
   }
@@ -3307,6 +3377,55 @@ function drawWeatherIconBig(ctx, cx, cy, r, type, animT) {
       const y = -r*0.4 + i * r*0.25;
       ctx.globalAlpha = 0.5 + 0.3 * Math.sin(animT * 2 + i);
       ctx.fillRect(-r*0.8, y, r*1.6, r*0.15);
+    }
+    ctx.globalAlpha = 1;
+  } else if (type === 'hail') {
+    // Polish Pack V2 Step 4b: grandine (cerchi grigi che cadono veloci)
+    ctx.fillStyle = '#888890';
+    for (const [dx, dy, sz] of [[-r*0.3, -r*0.2, 0.4], [0, -r*0.1, 0.5], [r*0.3, -r*0.2, 0.35]]) {
+      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+    }
+    // chicchi di grandine (cerchi grigi che cadono)
+    ctx.fillStyle = '#a0a0a8';
+    for (let i = 0; i < 8; i++) {
+      const t = (animT * 3 + i * 0.15) % 1;  // piu' veloce della pioggia
+      const x = -r*0.5 + (i % 4) * r*0.33;
+      const y = r*0.2 + t * r*0.8;
+      ctx.globalAlpha = 1 - t;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (type === 'mist') {
+    // Polish Pack V2 Step 4b: foschia (particelle bianche lente, piu' chiare della nebbia)
+    ctx.fillStyle = '#e8e8e8';
+    for (let i = 0; i < 12; i++) {
+      const t = (animT * 0.5 + i * 0.083) % 1;  // piu' lento
+      const x = -r*0.7 + t * r*1.4;
+      const y = -r*0.5 + (i % 4) * r*0.3;
+      ctx.globalAlpha = (1 - Math.abs(t - 0.5) * 2) * 0.7;
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (type === 'wind') {
+    // Polish Pack V2 Step 4b: vento (linee orizzontali animate)
+    ctx.fillStyle = '#90a0b0';
+    for (const [dx, dy, sz] of [[-r*0.3, 0, 0.4], [r*0.3, -r*0.1, 0.35]]) {
+      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+    }
+    // linee di vento (orizzontali, animate)
+    ctx.strokeStyle = '#c0d0e0';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const t = (animT * 2 + i * 0.25) % 1;
+      const x = -r*0.9 + t * r*1.8;
+      const y = -r*0.4 + (i % 3) * r*0.4;
+      ctx.globalAlpha = 1 - Math.abs(t - 0.5) * 2;
+      const len = r * (0.3 + 0.1 * (i % 2));
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
