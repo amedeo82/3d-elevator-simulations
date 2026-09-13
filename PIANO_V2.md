@@ -20,7 +20,7 @@
 |---|---|---|---|---|---|
 | 1 | Salute del codice: CI, AGENTS.md, audit `state`, event bus | 1 sessione | 🟡 | Refactor | ✅ |
 | 2 | UX invisibile: sensore IR ostacolo + tutorial prima volta | 1 sessione | 🔴 | Polish | ✅ |
-| 3 | Audio contestuale corridoi + musica ristorante piano 8 | 1 sessione | 🟡 | Feature | ⏳ |
+| 3 | Audio contestuale corridoi + musica ristorante piano 8 | 1 sessione | 🟡 | Feature | ✅ |
 | 4 | Meteo evoluto: stagionalità + nuove condizioni | 1 sessione | 🟡 | Feature | ⏳ |
 | 5 | Personalizzazione hotel (`HOTEL_CONFIG`) | 1 sessione | 🔴 | Refactor+Feature | ⏳ |
 | 6 | D2 — PWA installabile (manifest inline) | 1 sessione | 🟢 | Feature | ⏳ |
