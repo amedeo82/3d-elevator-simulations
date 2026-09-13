@@ -31,6 +31,7 @@
 | 11 | L-block: più piani parametrico + texture HD arredi | 1-2 sessioni | 🟡 | Feature | ⏳ |
 | 12 | Test framework leggero (unit test funzioni pure) | 1 sessione | 🟡 | DX | ⏳ |
 | 13 | Long-term: WebXR, multi-cabina, multiplayer | future | 🟢 | Vision | ⏳ |
+| 14 | Citofono interattivo + pairing con tasto SOS | 1 sessione | 🟡 | Polish | ⏳ |
 
 **Legenda stato**: ⏳ pending · 🔄 in corso · ✅ done · ❌ scartato
 
@@ -724,6 +725,106 @@ Step visionari per il futuro, **non** da implementare in V2 ma da tenere come ri
 - **D. Personalizzazione completa** — più "creatività"
 - **E. Mobile redesign** — più "reach"
 - **F. Altro**
+
+---
+
+# STEP 14 · Citofono interattivo + pairing con tasto SOS
+
+## Contesto
+Il citofono (interphone) è presente nella cabina come **dettaglio decorativo dalla Fase 1**
+(vedi `elevator.html:1591-1639`): frame scuro, griglia altoparlante, pulsante verde,
+etichetta "INTERFONO". Non è attualmente cliccabile (non in `buttonList`,
+no `userData.isButton`). Realisticamente rappresenta un dispositivo di
+emergenza EN 81-28 che permette al passeggero di chiamare la reception.
+
+Il tasto **SOS** nella pulsantiera moderna è il pulsante `!` rosso (vedi
+`elevator.html:3085`, `userData.action = 'alarm'`) che chiama
+`toggleAlarm()` (vedi `elevator.html:4906`). Sono due sistemi di emergenza
+distinti nel mondo reale: SOS = allarme immediato (soccorsi),
+citofono = comunicazione vocale con la reception.
+
+## Scope proposto
+- **14a**. **Citofono interattivo**: aggiungere click handler, userData.isButton,
+  entry in buttonList. Click → animazione pulsante verde che lampeggia per
+  3 secondi + beep + annuncio vocale "Chiamata in corso. Attendere prego."
+  + subtitle HUD. Stato `state.interphoneCalling` (true durante la chiamata).
+- **14b**. **Pairing con SOS**: definire la relazione tra citofono e tasto
+  SOS. Opzioni (vedi Decision Questions):
+  - Citofono + SOS = stesso effetto (chiamata soccorsi): semplice ma perde
+    la sfumatura realistica (citofono = reception, SOS = soccorsi).
+  - Citofono = chiamata "soft" (reception), SOS = chiamata "hard" (soccorsi):
+    realistico, due stati separati, due annunci diversi.
+  - Citofono + SOS insieme = escalation: citofono premuto mentre SOS è
+    attivo aggiunge "soccorsi aggiuntivi allertati".
+- **14c**. **Persistenza stato**: salvataggio di `interphoneCalling` in
+  localStorage insieme alle altre preferenze (mute/tts/night).
+- **14d**. **HUD manutentore**: aggiungere riga "Citofono: ON/OFF"
+  nell'overlay `Shift+M` per coerenza con gli altri stati.
+
+## Decision Questions
+
+### Q14.1 — Scope di questo step
+
+- **A. Solo citofono interattivo (14a)** — solo il citofono diventa cliccabile,
+  nessun pairing con SOS
+- **B. Citofono + pairing soft/hard (14a + 14b opzione B)** — citofono
+  chiama reception, SOS chiama soccorsi, due sistemi distinti *(Recommended)*
+- **C. Tutto (14a + 14b + 14c + 14d)** — completo con persistenza e HUD
+- **D. Altro**
+
+### Q14.2 — Pairing citofono ↔ SOS
+
+- **A. Stesso effetto** — citofono + SOS = `toggleAlarm()` identico
+- **B. Due sistemi distinti** — citofono chiama reception (annuncio vocale
+  + lampeggio), SOS = allarme soccorsi (luci rosse + annuncio "soccorsi")
+  *(Recommended, più realistico)*
+- **C. Escalation** — citofono + SOS insieme = chiamata soccorsi + reception
+  in simultanea
+- **D. Citofono delega a SOS** — citofono è solo UI, click delega a `toggleAlarm()`
+
+### Q14.3 — Comportamento chiamata citofono
+
+Cosa succede durante i 3 secondi di "chiamata in corso"?
+
+- **A. Solo annuncio + lampeggio** — niente altro, il passeggero aspetta
+  *(Recommended, simula la realtà)*
+- **B. Voce reception simulata** — TTS che dice "Centralino, buongiorno.
+  Come posso aiutarla?" dopo 2 secondi
+- **C. Beep periodico** — come un telefono che squilla, ogni 500ms
+
+### Q14.4 — Posizione nel codice
+
+Dove inserire la logica del citofono?
+
+- **A. Inline nella sezione esistente del citofono (riga ~1591)** —
+  modifica del blocco esistente
+- **B. Nuova sezione dedicata dopo `toggleAlarm` (~riga 4925)** —
+  funzioni `handleInterphoneCall()`, `stopInterphoneCall()`,
+  `tickInterphoneCall()` raggruppate
+- **C. Modulo separato** — refactor che estrae la logica in un modulo ES
+  (rompe vincolo single-file)
+
+### Q14.5 — Sub-commit
+
+- **A. Un commit unico per tutto lo step**
+- **B. Commit separati per 14a / 14b / 14c / 14d** *(Recommended)*
+- **C. Un commit per citofono + uno per pairing**
+
+## Acceptance criteria
+
+- [ ] Citofono cliccabile: pulsante verde lampeggia per 3s + beep + TTS
+- [ ] Stato `state.interphoneCalling` distinto da `state.alarmOn`
+- [ ] Tasto SOS mantiene comportamento esistente (toggleAlarm)
+- [ ] (se 14b opzione B) Citofono e SOS hanno annunci TTS diversi
+- [ ] (se 14c) Stato persiste dopo refresh
+- [ ] (se 14d) HUD manutentore mostra citofono ON/OFF
+- [ ] `node --check` + brace balance
+- [ ] Nessuna regressione su feature esistenti
+
+## Effort
+1 sessione (mezza sessione se si fa solo 14a).
+
+---
 
 ---
 
