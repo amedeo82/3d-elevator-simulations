@@ -4132,22 +4132,25 @@ function startCorridorAudio(theme) {
     noiseFilter.frequency.value = 600;
     noiseFilter.Q.value = 0.8;
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.025;
+    noiseGain.gain.value = 0.06;   // BUG FIX v2: alzato da 0.025 (troppo basso)
     noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
     noise.start();
     layers.push({ node: noise, gain: noiseGain, type: 'noise' });
 
-    // Tintinnio: square 1200Hz modulato a 4Hz (tremolo)
+    // Tintinnio: square 1200Hz modulato a 4Hz (tremolo).
+    // BUG FIX v2: oscGain base > 0 perche' WebAudio clampa i gain a 0 minimo;
+    // con base=0 e LFO ampiezza 0.012 il gain oscillava -0.012..+0.012 (sotto 0)
+    // e il suono era SILENZIOSO.
     const osc = audioCtx.createOscillator();
     osc.type = 'square';
     osc.frequency.value = 1200;
     const oscGain = audioCtx.createGain();
-    oscGain.gain.value = 0;
+    oscGain.gain.value = 0.012;   // base udibile
     const lfo = audioCtx.createOscillator();
     lfo.type = 'sine';
     lfo.frequency.value = 4;
     const lfoGain = audioCtx.createGain();
-    lfoGain.gain.value = 0.012;
+    lfoGain.gain.value = 0.006;   // tremolo ±0.006 attorno al base 0.012
     lfo.connect(lfoGain).connect(oscGain.gain);
     osc.connect(oscGain).connect(masterGain);
     osc.start();
@@ -4162,7 +4165,7 @@ function startCorridorAudio(theme) {
     noiseFilter.type = 'lowpass';
     noiseFilter.frequency.value = 400;
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.015;
+    noiseGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.015
     noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
     noise.start();
     layers.push({ node: noise, gain: noiseGain, type: 'noise' });
@@ -4180,7 +4183,7 @@ function startCorridorAudio(theme) {
       const cg = audioCtx.createGain();
       cg.gain.value = 0;
       click.connect(cg).connect(tickGain);
-      cg.gain.setValueAtTime(0.02, t);
+      cg.gain.setValueAtTime(0.05, t);   // BUG FIX v2: alzato da 0.02
       cg.gain.linearRampToValueAtTime(0, t + 0.04);
       click.start(t);
       click.stop(t + 0.05);
@@ -4197,7 +4200,7 @@ function startCorridorAudio(theme) {
     drone.type = 'sine';
     drone.frequency.value = 60;
     const droneGain = audioCtx.createGain();
-    droneGain.gain.value = 0.01;
+    droneGain.gain.value = 0.025;   // BUG FIX v2: alzato da 0.01
     drone.connect(droneGain).connect(masterGain);
     drone.start();
     layers.push({ node: drone, gain: droneGain, type: 'osc' });
@@ -4216,7 +4219,7 @@ function startCorridorAudio(theme) {
       const cg = audioCtx.createGain();
       cg.gain.value = 0;
       click.connect(cg).connect(clockGain);
-      cg.gain.setValueAtTime(0.025, t);
+      cg.gain.setValueAtTime(0.06, t);   // BUG FIX v2: alzato da 0.025
       cg.gain.linearRampToValueAtTime(0, t + 0.08);
       click.start(t);
       click.stop(t + 0.1);
@@ -4230,7 +4233,7 @@ function startCorridorAudio(theme) {
     piano.type = 'sine';
     piano.frequency.value = 220;
     const pianoGain = audioCtx.createGain();
-    pianoGain.gain.value = 0.018;
+    pianoGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.018
     // LFO che modula la frequenza tra 220 e 440 Hz lentamente (5s periodo)
     const pianoLFO = audioCtx.createOscillator();
     pianoLFO.type = 'sine';
@@ -4251,15 +4254,15 @@ function startCorridorAudio(theme) {
     windFilter.type = 'highpass';
     windFilter.frequency.value = 800;
     const windGain = audioCtx.createGain();
-    windGain.gain.value = 0.012;
+    windGain.gain.value = 0.03;   // BUG FIX v2: alzato da 0.012
     wind.connect(windFilter).connect(windGain).connect(masterGain);
     wind.start();
     layers.push({ node: wind, gain: windGain, type: 'noise' });
   }
 
   corridorAudioNodes = { theme, layers, masterGain };
-  // fade-in 1.0s al volume target
-  try { masterGain.gain.linearRampToValueAtTime(0.5, now + 1.0); } catch(e) {}
+  // fade-in 1.0s al volume target (BUG FIX v2: alzato da 0.5 a 0.8)
+  try { masterGain.gain.linearRampToValueAtTime(0.8, now + 1.0); } catch(e) {}
 }
 
 function stopCorridorAudio() {
@@ -4364,7 +4367,7 @@ function startRistoranteAudio() {
   piattiFilter.type = 'highpass';
   piattiFilter.frequency.value = 8000;
   const piattiGain = audioCtx.createGain();
-  piattiGain.gain.value = 0.008;
+  piattiGain.gain.value = 0.025;   // BUG FIX v2: alzato da 0.008
   piatti.connect(piattiFilter).connect(piattiGain).connect(masterGain);
   piatti.start();
 
@@ -4373,8 +4376,8 @@ function startRistoranteAudio() {
     piatti, piattiGain,
     masterGain
   };
-  // fade-in 1.5s
-  try { masterGain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 1.5); } catch(e) {}
+  // fade-in 1.5s (BUG FIX v2: alzato da 0.55 a 0.9)
+  try { masterGain.gain.linearRampToValueAtTime(0.9, audioCtx.currentTime + 1.5); } catch(e) {}
 }
 
 function stopRistoranteAudio() {
@@ -5106,8 +5109,10 @@ function pressButton(btn) {
     top.scale.set(0.85, 0.85, 0.6);
     top.position.z = -0.003;
     setTimeout(() => {
-      top.scale.set(0.9, 0.9, 0.9);
-      top.position.z = 0;
+      // BUG FIX v2: ripristina allo stato iniziale (scale=1, z=0.012).
+      // Prima il release lasciava scale=0.9 e z=0 (recessed permanente).
+      top.scale.set(1, 1, 1);
+      top.position.z = 0.012;
     }, 130);
   }
   playBeep(900, 0.06, 'square', 0.08);
