@@ -1,23 +1,71 @@
-# OS files
+# ============================================================
+# BOSS HOTEL Elevator 3D - gitignore
+# Progetto single-file HTML: nessuna build, nessuna dipendenza npm.
+# Questo file ignora gli artifact locali e i file di tooling.
+#
+# NOTA: gitignore NON supporta commenti inline dopo i pattern
+# (es. ".DS_Store # comment" non funziona - il "# comment" viene
+# interpretato come parte del pattern). I commenti devono essere
+# su righe separate, che iniziano con "#".
+# ============================================================
+
+# ---- Sistema operativo ----
 .DS_Store
 Thumbs.db
 desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# Editor / IDE
+# ---- Editor / IDE ----
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+*.sublime-project
+*.sublime-workspace
 
-# Logs
+# ---- Kilo Code / Agent Manager (state locale, non committare) ----
+# Lo state dell'agent manager e' gestito localmente; inoltre l'.exclude
+# interno di .git/info/exclude gia' esclude questi pattern quando si
+# lavora in Agent Manager worktrees. Dichiararli qui li rende espliciti
+# anche in contesti non-worktree.
+/.kilo/agent-manager.json
+.kilo/agent-manager.json
+.kilo/setup-script*
+.kilo/worktrees/
+
+# ---- Log ----
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Build artifacts
+# ---- Build artifacts ----
+# dist/index.html e' committato (build copy di elevator.html per deploy),
+# ma altri artifact in dist/ no.
 dist/*.zip
-*.zip.bak
+dist/*.tar.gz
 
-# Temporary files
+# ---- Backup files ----
+*.zip.bak
+*.bak
+*.orig
+*.rej
+
+# ---- Temporary / cache ----
 *.tmp
+*.temp
 .cache/
+tmp/
+temp/
+__pycache__/
+
+# ---- Dipendenze (non usate, ma difensive) ----
+# Il progetto non ha dipendenze npm, ma se in futuro si aggiungono:
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
