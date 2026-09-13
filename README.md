@@ -286,6 +286,7 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 | **Chiama un piano** | `1`–`9` / `0` (anche tastierino numerico) |
 | **Fuori servizio** | `O` (toggle manutenzione) |
 | **Comando vocale** | `K` (toggle speech-to-text) |
+| **Apri / rivedi tutorial** | `?` (5 step contestuali al primo avvio) |
 | **Modalità manutentore** | `Shift+M` (debug + wireframe + teletrasporto) |
 
 ### Flusso tipico
