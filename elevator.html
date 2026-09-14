@@ -893,6 +893,11 @@ function applyHotelConfigToUI() {
 // della creazione delle cabin texture) garantisce che HOTEL_CONFIG abbia i
 // valori salvati al momento del baking delle texture.
 loadHotelConfig();
+// Polish Pack V2 Step 5: applica override tema corridoio per hotel preset.
+// Cambia wall/carpet/accent della hall cosi' Sky Tower ha pareti blu,
+// Paris ha dorato classico, Burj ha oro su blu, Boss ha colori originali.
+// Viene chiamato anche dopo Apply/Save per refresh live (vedi handlers).
+applyHotelThemeOverride();
 function openHotelCustomizer() {
   const el = document.getElementById('hotel-customizer');
   if (!el) return;
@@ -924,6 +929,11 @@ function applyHotelCustomizerForm() {
   HOTEL_CONFIG.tagline = document.getElementById('hc-tag').value || HOTEL_CONFIG_DEFAULTS.tagline;
   HOTEL_CONFIG.motto = document.getElementById('hc-motto').value || HOTEL_CONFIG_DEFAULTS.motto;
   HOTEL_CONFIG.accentGold = document.getElementById('hc-color').value || HOTEL_CONFIG_DEFAULTS.accentGold;
+  // Polish Pack V2 Step 5: applica override tema corridoio + rebuild
+  applyHotelThemeOverride();
+  if (typeof buildCorridor === 'function' && typeof state !== 'undefined') {
+    buildCorridor(state.currentFloor);
+  }
   applyHotelConfigToUI();
   saveHotelConfig();
 }
@@ -1870,7 +1880,8 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
 {
   const threshold = new THREE.Mesh(
     new THREE.BoxGeometry(CABIN.w - 0.05, 0.02, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0xc9a55a, roughness: 0.25, metalness: 0.95 })
+    // Polish Pack V2 Step 5: colore soglia cabina derivato da HOTEL_CONFIG.accentGold
+    new THREE.MeshStandardMaterial({ color: parseInt(HOTEL_CONFIG.accentGold.slice(1), 16), roughness: 0.25, metalness: 0.95 })
   );
   threshold.position.set(0, 0.01, CABIN.d/2 - 0.08);
   threshold.castShadow = true; threshold.receiveShadow = true;
@@ -2058,11 +2069,12 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
     g.addColorStop(0, '#1a1300');
     g.addColorStop(1, '#0a0800');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 384, 128);
-    ctx.strokeStyle = '#c9a55a';
+    // Polish Pack V2 Step 5: bordi e testi targa derivati da HOTEL_CONFIG.accentGold
+    ctx.strokeStyle = HOTEL_CONFIG.accentGold;
     ctx.lineWidth = 4; ctx.strokeRect(6, 6, 372, 116);
-    ctx.strokeStyle = '#7a5a20';
+    ctx.strokeStyle = HOTEL_CONFIG.accentGoldDark;
     ctx.lineWidth = 1; ctx.strokeRect(12, 12, 360, 104);
-    ctx.fillStyle = '#f6c945';
+    ctx.fillStyle = HOTEL_CONFIG.accentGoldLight;
     ctx.font = 'bold 30px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2070,7 +2082,7 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
     ctx.shadowBlur = 8;
     ctx.fillText(HOTEL_CONFIG.name, 192, 38);
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#d4a23a';
+    ctx.fillStyle = HOTEL_CONFIG.accentGoldLight;
     ctx.font = 'italic 14px Georgia, serif';
     ctx.fillText('★'.repeat(HOTEL_CONFIG.stars) + ' ' + HOTEL_CONFIG.tagline, 192, 72);
     ctx.font = '11px Arial';
@@ -2273,29 +2285,30 @@ function drawFloorSign(floor) {
   // sfondo hotel
   g.fillStyle = '#0e0900';
   g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = '#d4a23a';
+  // Polish Pack V2 Step 5: bordi cartello piano derivati da HOTEL_CONFIG.accentGold
+  g.strokeStyle = HOTEL_CONFIG.accentGoldLight;
   g.lineWidth = 5;
   g.strokeRect(8, 8, 496, 112);
-  g.strokeStyle = '#7a5a20';
+  g.strokeStyle = HOTEL_CONFIG.accentGoldDark;
   g.lineWidth = 2;
   g.strokeRect(15, 15, 482, 98);
   // angoli decorativi
-  g.strokeStyle = '#f6c945';
+  g.strokeStyle = HOTEL_CONFIG.accentGoldLight;
   g.lineWidth = 2;
   for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
     g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
   }
   // testo piano
-  g.fillStyle = '#f6c945';
+  g.fillStyle = HOTEL_CONFIG.accentGoldLight;
   g.font = 'bold 34px Georgia, serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.shadowColor = '#f6c945';
+  g.shadowColor = HOTEL_CONFIG.accentGold;
   g.shadowBlur = 10;
   const floorLabel = floor === 0 ? 'PIANO  TERRA' : `PIANO  ${floor}°`;
   g.fillText(floorLabel, 256, 50);
   g.shadowBlur = 0;
-  g.fillStyle = '#d4a23a';
+  g.fillStyle = HOTEL_CONFIG.accentGoldLight;
   g.font = 'italic 17px Georgia, serif';
   g.fillText('— ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 256, 88);
   signTex.needsUpdate = true;
@@ -2314,11 +2327,12 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
   const up = toFloor > fromFloor;
   // stesso sfondo del cartello statico (mantiene coerenza visiva)
   g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = '#d4a23a'; g.lineWidth = 5;
+  // Polish Pack V2 Step 5: bordi derivati da HOTEL_CONFIG.accentGold
+  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 5;
   g.strokeRect(8, 8, 496, 112);
-  g.strokeStyle = '#7a5a20'; g.lineWidth = 2;
+  g.strokeStyle = HOTEL_CONFIG.accentGoldDark; g.lineWidth = 2;
   g.strokeRect(15, 15, 482, 98);
-  g.strokeStyle = '#f6c945'; g.lineWidth = 2;
+  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 2;
   for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
     g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
   }
@@ -2413,6 +2427,56 @@ function getThemeForFloor(floor) {
   if (floor <= 3) return 'office';
   if (floor <= 6) return 'hotel';
   return 'penthouse';
+}
+// Polish Pack V2 Step 5: override tema corridoio per hotel preset.
+// Cambia wall/carpet/accent in base al hotel attivo, cosi' la hall sembra
+// effettivamente diversa tra preset. Le chiavi sono i 4 temi base (lobby,
+// office, hotel, penthouse); per ogni preset specifichiamo gli override.
+function parseHexColor(str) {
+  // '#4a9eff' -> 0x4a9eff
+  return parseInt(str.slice(1), 16);
+}
+function getHotelThemeOverride() {
+  // Determina quale preset e' attivo confrontando accentGold
+  const target = HOTEL_CONFIG.accentGold;
+  if (target === '#4a9eff') return 'sky';
+  if (target === '#d4af37') return 'paris';
+  if (target === '#e0b973') return 'burj';
+  return 'boss';   // default BOSS HOTEL oro
+}
+function applyHotelThemeOverride() {
+  const preset = getHotelThemeOverride();
+  // Reset to base
+  const base = {
+    lobby: { floor: 0x5a1818, wall: 0xf2e4cf, ceiling: 0xfaf0db, accent: 0xd4a23a, carpet: 0x3a0e0e, furniture: 0x5a3a1a, label: 'LOBBY' },
+    office: { floor: 0x5a5a5a, wall: 0xe8e8e8, ceiling: 0xf0f0f0, accent: 0x4a90e2, carpet: 0x2a2a2a, furniture: 0x4a3a2a, label: 'UFFICI' },
+    hotel: { floor: 0x2e3a5a, wall: 0xede0c8, ceiling: 0xf5ead0, accent: 0xc9a560, carpet: 0x1a2a4a, furniture: 0x6a4a2a, label: 'CAMERE' },
+    penthouse: { floor: 0xc8b898, wall: 0xf8f0e0, ceiling: 0xffffff, accent: 0x2a2a2a, carpet: 0xa89060, furniture: 0x2a1a0a, label: 'ATTICO' }
+  };
+  if (preset === 'sky') {
+    // Sky Tower Tokyo: futuristico blu, luminoso, hi-tech
+    base.lobby = { floor: 0x1a3a6a, wall: 0xe8f0ff, ceiling: 0xf8faff, accent: 0x4a9eff, carpet: 0x0a1a3a, furniture: 0x2a4a7a, label: 'SKY TOWER' };
+    base.office = { floor: 0x2a4a7a, wall: 0xc8d8f0, ceiling: 0xe0eaff, accent: 0x4a9eff, carpet: 0x1a2a4a, furniture: 0x3a5a8a, label: 'SKY FLOOR' };
+    base.hotel = { floor: 0x3a5a8a, wall: 0xb0c8e8, ceiling: 0xd0e0f8, accent: 0x6ab0ff, carpet: 0x1a2a5a, furniture: 0x4a6a9a, label: 'SKY ROOMS' };
+    base.penthouse = { floor: 0x4a6a9a, wall: 0x90b0d8, ceiling: 0xc0d8f0, accent: 0x80c8ff, carpet: 0x2a3a6a, furniture: 0x5a7aaa, label: 'SKY SUITE' };
+  } else if (preset === 'paris') {
+    // Hôtel de Paris Monte Carlo: classico dorato, crema, opulento
+    base.lobby = { floor: 0x4a3a1a, wall: 0xfae8c0, ceiling: 0xfff8e0, accent: 0xd4af37, carpet: 0x4a1818, furniture: 0x6a5a30, label: 'PARIS ENTRANCE' };
+    base.office = { floor: 0x5a4a2a, wall: 0xf0d8b0, ceiling: 0xfae8c8, accent: 0xb88a20, carpet: 0x3a2818, furniture: 0x7a6a40, label: 'PARIS FLOOR' };
+    base.hotel = { floor: 0x6a5a3a, wall: 0xf8e8c8, ceiling: 0xfff0d8, accent: 0xe0c060, carpet: 0x4a2818, furniture: 0x8a7a50, label: 'PARIS ROOMS' };
+    base.penthouse = { floor: 0x7a6a4a, wall: 0xfae8d8, ceiling: 0xfff8e8, accent: 0xfff0a0, carpet: 0x6a4028, furniture: 0x9a8a60, label: 'PARIS SUITE' };
+  } else if (preset === 'burj') {
+    // Burj Al Arab: lusso estremo, oro e blu marino, stile Dubai
+    base.lobby = { floor: 0x1a2a5a, wall: 0xf8e8c8, ceiling: 0xffffff, accent: 0xe0b973, carpet: 0x0a1a4a, furniture: 0x4a3a1a, label: 'BURJ AL ARAB' };
+    base.office = { floor: 0x2a3a6a, wall: 0xe8d8b8, ceiling: 0xfff0d8, accent: 0xc09040, carpet: 0x1a2a5a, furniture: 0x5a4a2a, label: 'BURJ FLOOR' };
+    base.hotel = { floor: 0x3a4a7a, wall: 0xf8e0c0, ceiling: 0xfff8e8, accent: 0xd8a860, carpet: 0x0a1a3a, furniture: 0x6a5a3a, label: 'BURJ ROOMS' };
+    base.penthouse = { floor: 0x4a5a8a, wall: 0xfae8c8, ceiling: 0xffffff, accent: 0xfff0a0, carpet: 0x1a2a6a, furniture: 0x7a6a4a, label: 'BURJ SUITE' };
+  }
+  // Applica gli override al themeConfig
+  Object.assign(themeConfig.lobby, base.lobby);
+  Object.assign(themeConfig.office, base.office);
+  Object.assign(themeConfig.hotel, base.hotel);
+  Object.assign(themeConfig.penthouse, base.penthouse);
 }
 
 let currentThemeName = null;
@@ -2607,7 +2671,8 @@ function addExternalCallPanel(floor) {
   const hctx = headerCanvas.getContext('2d');
   hctx.fillStyle = '#3a3d40';
   hctx.fillRect(0, 0, 256, 48);
-  hctx.fillStyle = '#d4a23a';
+  // Polish Pack V2 Step 5: colore header pulsantiera esterna derivato da accentGold
+  hctx.fillStyle = HOTEL_CONFIG.accentGoldLight;
   hctx.font = 'bold 22px Georgia, serif';
   hctx.textAlign = 'center';
   hctx.textBaseline = 'middle';
@@ -6330,8 +6395,13 @@ document.querySelectorAll('.hc-preset-btn').forEach(btn => {
     // 1) Popola SOLO i campi del form con i valori del preset
     hcPopulateFormFromConfig(preset);
     // 2) Live preview: aggiorna HOTEL_CONFIG temporaneamente per vedere
-    //    subito l'effetto sulla start screen + accent CSS (non persiste)
+    //    subito l'effetto sulla start screen + accent CSS + tema corridoio
     for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = preset[k];
+    // Polish Pack V2 Step 5: rebuild corridoio live con nuovo tema
+    applyHotelThemeOverride();
+    if (typeof buildCorridor === 'function' && typeof state !== 'undefined') {
+      buildCorridor(state.currentFloor);
+    }
     applyHotelConfigToUI();
     hcShowStatus('Preset "' + preset.shortName + '" caricato. Modifica e premi "Applica e salva".', 'success');
   });
