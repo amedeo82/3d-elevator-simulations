@@ -226,8 +226,8 @@
     transition: opacity 0.25s;
     pointer-events: auto;
   }
-  #hotel-customizer.hc-hidden { opacity: 0; pointer-events: none; }
-  #hotel-customizer.hc-shown { opacity: 1; }
+  #hotel-customizer.hc-hidden { display: none; }
+  #hotel-customizer.hc-shown { display: flex; }
   .hc-panel {
     background: linear-gradient(180deg, #1a1a24, #0a0a10);
     border: 2px solid var(--hc-accent, #c9a55a);
@@ -854,7 +854,10 @@ function saveHotelConfig() {
     localStorage.setItem(HOTEL_CONFIG_KEY, JSON.stringify(Object.assign(
       { v: HOTEL_CONFIG_VERSION }, HOTEL_CONFIG
     )));
-  } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
 }
 function applyHotelPreset(key) {
   const p = HOTEL_PRESETS[key];
@@ -919,15 +922,19 @@ function applyHotelCustomizerForm() {
 // L'utente vede la conferma del salvataggio e poi la simulazione riparte
 // con tutte le texture (targa principale, citofono, header pulsantiera, ecc.)
 // rigenerate con il nuovo HOTEL_CONFIG.
-function hcShowStatus(text, thenReload) {
+function hcShowStatus(text, tone) {
   const stEl = document.getElementById('hc-status');
   if (stEl) {
     stEl.textContent = text;
     stEl.className = 'hc-status hc-status-active';
+    stEl.style.color = tone === 'error' ? '#ff7070' : (tone === 'success' ? '#6dff7c' : '');
   }
-  if (thenReload) {
-    setTimeout(() => { location.reload(); }, 800);
-  }
+}
+function hcScheduleReload(delayMs, message) {
+  hcShowStatus(message || 'Riavvio in corso...', 'success');
+  // Disabilita tutti i bottoni durante il reload per evitare doppio click
+  document.querySelectorAll('#hotel-customizer button').forEach(b => { b.disabled = true; });
+  setTimeout(() => { location.reload(); }, delayMs || 800);
 }
 
 // ============================================================
@@ -6263,7 +6270,6 @@ document.getElementById('tt-skip').addEventListener('click', () => {
 document.getElementById('hc-close').addEventListener('click', closeHotelCustomizer);
 document.getElementById('hc-reset').addEventListener('click', () => {
   for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = HOTEL_CONFIG_DEFAULTS[k];
-  // ripopola i campi con i valori resettati
   document.getElementById('hc-name').value = HOTEL_CONFIG.name;
   document.getElementById('hc-short').value = HOTEL_CONFIG.shortName;
   document.getElementById('hc-addr').value = HOTEL_CONFIG.address;
@@ -6274,20 +6280,40 @@ document.getElementById('hc-reset').addEventListener('click', () => {
   document.getElementById('hc-motto').value = HOTEL_CONFIG.motto;
   document.getElementById('hc-color').value = HOTEL_CONFIG.accentGold;
   applyHotelConfigToUI();
-  saveHotelConfig();
-  hcShowStatus('Default ripristinati · Riavvio...', true);
+  const result = saveHotelConfig();
+  if (!result.ok) {
+    hcShowStatus('ERRORE salvataggio: ' + result.error, 'error');
+    console.error('[hotel-config] save error:', result.error);
+    return;
+  }
+  hcScheduleReload(900, 'Default ripristinati · Riavvio in corso...');
 });
 document.getElementById('hc-apply').addEventListener('click', () => {
+  // 1) Leggi i campi e applica a HOTEL_CONFIG nell'ordine:
   applyHotelCustomizerForm();
-  // Auto-reload per aggiornare le canvas texture statiche della cabina
-  hcShowStatus('Configurazione salvata · Riavvio in corso...', true);
+  // 2) UI live (start screen, targa piano, accent CSS) - ridisegno immediato
+  applyHotelConfigToUI();
+  // 3) Salva su localStorage (sincrono, ritorna ok/error)
+  const result = saveHotelConfig();
+  if (!result.ok) {
+    // Es: localStorage pieno, modalita' privata, storage disabilitato
+    hcShowStatus('ERRORE salvataggio: ' + result.error + ' (annullato)', 'error');
+    console.error('[hotel-config] save error:', result.error);
+    return;
+  }
+  // 4) Mostra feedback positivo + auto-reload per texture statiche
+  hcScheduleReload(900, 'Configurazione salvata · Riavvio in corso...');
 });
 document.querySelectorAll('.hc-preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     applyHotelPreset(btn.dataset.preset);
-    saveHotelConfig();
-    const presetName = HOTEL_CONFIG.shortName;
-    hcShowStatus('Preset ' + presetName + ' applicato · Riavvio...', true);
+    const result = saveHotelConfig();
+    if (!result.ok) {
+      hcShowStatus('ERRORE salvataggio: ' + result.error, 'error');
+      console.error('[hotel-config] save error:', result.error);
+      return;
+    }
+    hcScheduleReload(900, 'Preset ' + HOTEL_CONFIG.shortName + ' · Riavvio in corso...');
   });
 });
 // carica config custom salvata (se presente) PRIMA del primo frame
