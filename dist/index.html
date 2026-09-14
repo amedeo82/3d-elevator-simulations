@@ -6269,24 +6269,14 @@ document.getElementById('tt-skip').addEventListener('click', () => {
 // Polish Pack V2 Step 5b/5c: hook bottoni personalizzazione hotel
 document.getElementById('hc-close').addEventListener('click', closeHotelCustomizer);
 document.getElementById('hc-reset').addEventListener('click', () => {
+  // Popola SOLO i campi del form con i default (no save, no reload).
+  // Per applicare davvero serve premere 'Applica e salva'.
+  hcPopulateFormFromConfig(HOTEL_CONFIG_DEFAULTS);
+  // Live preview: ripristina temporaneamente HOTEL_CONFIG (verra' sovrascritto
+  // se l'utente modifica e clicca Applica).
   for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = HOTEL_CONFIG_DEFAULTS[k];
-  document.getElementById('hc-name').value = HOTEL_CONFIG.name;
-  document.getElementById('hc-short').value = HOTEL_CONFIG.shortName;
-  document.getElementById('hc-addr').value = HOTEL_CONFIG.address;
-  document.getElementById('hc-city').value = HOTEL_CONFIG.city;
-  document.getElementById('hc-stars').value = HOTEL_CONFIG.stars;
-  document.getElementById('hc-year').value = HOTEL_CONFIG.established;
-  document.getElementById('hc-tag').value = HOTEL_CONFIG.tagline;
-  document.getElementById('hc-motto').value = HOTEL_CONFIG.motto;
-  document.getElementById('hc-color').value = HOTEL_CONFIG.accentGold;
   applyHotelConfigToUI();
-  const result = saveHotelConfig();
-  if (!result.ok) {
-    hcShowStatus('ERRORE salvataggio: ' + result.error, 'error');
-    console.error('[hotel-config] save error:', result.error);
-    return;
-  }
-  hcScheduleReload(900, 'Default ripristinati · Riavvio in corso...');
+  hcShowStatus('Default ripristinati nei campi. Premi "Applica e salva" per confermare.', 'success');
 });
 document.getElementById('hc-apply').addEventListener('click', () => {
   // 1) Leggi i campi e applica a HOTEL_CONFIG nell'ordine:
@@ -6304,16 +6294,35 @@ document.getElementById('hc-apply').addEventListener('click', () => {
   // 4) Mostra feedback positivo + auto-reload per texture statiche
   hcScheduleReload(900, 'Configurazione salvata · Riavvio in corso...');
 });
+// Polish Pack V2 Step 5 fix (utente): il reload al click di un preset
+// impedisce di modificare le impostazioni. I preset adesso popolano SOLO
+// i campi del form (no save, no reload). L'utente puo' quindi modificarli
+// e cliccare 'Applica e salva' per rendere effettive le modifiche.
+// Aggiunto live-preview: HOTEL_CONFIG viene aggiornato temporaneamente per
+// vedere l'anteprima nella start screen / accent CSS, ma NON viene salvato.
+function hcPopulateFormFromConfig(cfg) {
+  document.getElementById('hc-name').value = cfg.name;
+  document.getElementById('hc-short').value = cfg.shortName;
+  document.getElementById('hc-addr').value = cfg.address;
+  document.getElementById('hc-city').value = cfg.city;
+  document.getElementById('hc-stars').value = cfg.stars;
+  document.getElementById('hc-year').value = cfg.established;
+  document.getElementById('hc-tag').value = cfg.tagline;
+  document.getElementById('hc-motto').value = cfg.motto;
+  document.getElementById('hc-color').value = cfg.accentGold;
+}
 document.querySelectorAll('.hc-preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    applyHotelPreset(btn.dataset.preset);
-    const result = saveHotelConfig();
-    if (!result.ok) {
-      hcShowStatus('ERRORE salvataggio: ' + result.error, 'error');
-      console.error('[hotel-config] save error:', result.error);
-      return;
-    }
-    hcScheduleReload(900, 'Preset ' + HOTEL_CONFIG.shortName + ' · Riavvio in corso...');
+    const presetKey = btn.dataset.preset;
+    const preset = HOTEL_PRESETS[presetKey];
+    if (!preset) return;
+    // 1) Popola SOLO i campi del form con i valori del preset
+    hcPopulateFormFromConfig(preset);
+    // 2) Live preview: aggiorna HOTEL_CONFIG temporaneamente per vedere
+    //    subito l'effetto sulla start screen + accent CSS (non persiste)
+    for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = preset[k];
+    applyHotelConfigToUI();
+    hcShowStatus('Preset "' + preset.shortName + '" caricato. Modifica e premi "Applica e salva".', 'success');
   });
 });
 // carica config custom salvata (se presente) PRIMA del primo frame
