@@ -882,6 +882,17 @@ function applyHotelConfigToUI() {
   // Nota: canvas texture statiche della cabina (targa principale, citofono,
   // pulsantiera) sono create una volta. Per vederle aggiornate serve reload.
 }
+// Polish Pack V2 Step 5 - FIX CRITICO: loadHotelConfig() DEVE essere chiamato
+// PRIMA delle IIFE che bakano HOTEL_CONFIG nelle canvas texture della cabina
+// (targa principale riga ~2042, header pulsantiera esterna, ecc.). Se
+// chiamato dopo (es. alla fine del modulo), le texture sarebbero baked con i
+// valori ORIGINALI di HOTEL_CONFIG e l'utente vedrebbe "BOSS HOTEL" anche
+// dopo aver salvato "Sky Tower Tokyo". Sintomo: 'non vedo differenze tra
+// preset'.
+// Posizionato qui (subito dopo le definizioni delle funzioni helper e prima
+// della creazione delle cabin texture) garantisce che HOTEL_CONFIG abbia i
+// valori salvati al momento del baking delle texture.
+loadHotelConfig();
 function openHotelCustomizer() {
   const el = document.getElementById('hotel-customizer');
   if (!el) return;
@@ -6325,8 +6336,6 @@ document.querySelectorAll('.hc-preset-btn').forEach(btn => {
     hcShowStatus('Preset "' + preset.shortName + '" caricato. Modifica e premi "Applica e salva".', 'success');
   });
 });
-// carica config custom salvata (se presente) PRIMA del primo frame
-loadHotelConfig();
 
 requestAnimationFrame(loop);
 </script>
