@@ -2311,6 +2311,26 @@ function drawFloorSign(floor) {
   g.fillStyle = HOTEL_CONFIG.accentGoldLight;
   g.font = 'italic 17px Georgia, serif';
   g.fillText('— ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 256, 88);
+  // Polish Pack V2 Step 7c: freccia intenzione in basso a destra
+  // Mostra direzione della prossima richiesta in coda (verde = up, ambra = down)
+  // solo se ci sono richieste pendenti.
+  if (typeof queueNext === 'function') {
+    const nextEntry = queueNext();
+    if (nextEntry && nextEntry.direction) {
+      const intentionUp = nextEntry.direction === 'up';
+      const intentionColor = intentionUp ? '#7fff7f' : '#ff8c5a';
+      g.fillStyle = intentionColor;
+      g.shadowColor = intentionColor; g.shadowBlur = 12;
+      g.font = 'bold 28px Georgia, serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(intentionUp ? '▲' : '▼', 480, 30);
+      g.shadowBlur = 0;
+      g.fillStyle = intentionColor;
+      g.font = 'bold 9px Georgia, serif';
+      g.fillText(intentionUp ? 'IN SALITA' : 'IN DISCESA', 480, 50);
+    }
+  }
   signTex.needsUpdate = true;
 }
 drawFloorSign(0);
@@ -2617,10 +2637,39 @@ function drawExternalFloorIndicator() {
   ctx.fillStyle = '#ffeb3b';
   ctx.font = 'bold 96px Arial Black, Helvetica, sans-serif';
   ctx.fillText(txt, c.width / 2, c.height / 2 + 22);
-  // piccola label ausiliaria "BOSS HOTEL" sul fondo
+  // piccola label ausiliaria hotel sul fondo
   ctx.fillStyle = '#808898';
   ctx.font = '12px Arial, sans-serif';
   ctx.fillText(HOTEL_CONFIG.shortName, c.width / 2, c.height - 14);
+  // Polish Pack V2 Step 7c: icona "↻ IN ARRIVO" se la cabina sta arrivando a questo piano
+  // Mostra freccia circolare verde in alto a sinistra quando la cabina sta
+  // muovendosi verso questo piano (requestedFloors contiene questo piano).
+  const isArriving = typeof queueHas === 'function' && queueHas(state.currentFloor)
+                     && state.isMoving;
+  if (isArriving) {
+    ctx.save();
+    // cerchio verde semitrasparente in alto a sinistra
+    ctx.fillStyle = 'rgba(109, 255, 124, 0.85)';
+    ctx.beginPath();
+    ctx.arc(c.width - 24, 24, 18, 0, Math.PI * 2);
+    ctx.fill();
+    // icona ↻ (freccia circolare) bianca
+    ctx.strokeStyle = '#0a0a18';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(c.width - 24, 24, 9, -Math.PI / 2, Math.PI);
+    ctx.stroke();
+    // freccia
+    ctx.beginPath();
+    ctx.moveTo(c.width - 24, 15);
+    ctx.lineTo(c.width - 19, 19);
+    ctx.lineTo(c.width - 19, 11);
+    ctx.closePath();
+    ctx.fillStyle = '#0a0a18';
+    ctx.fill();
+    ctx.restore();
+  }
   externalCallFloorTex.needsUpdate = true;
 }
 let _lastExternalFloorShown = -999;
