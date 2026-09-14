@@ -24,7 +24,7 @@
 | 4 | Meteo evoluto: stagionalità + nuove condizioni | 1 sessione | 🟡 | Feature | ✅ |
 | 5 | Personalizzazione hotel (`HOTEL_CONFIG`) | 1 sessione | 🔴 | Refactor+Feature | ✅ |
 | 6 | D2 — PWA installabile (manifest inline) | 1 sessione | 🟢 | Feature | ⏳ |
-| 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | 1 sessione | 🟡 | Feature | ⏳ |
+| 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | 1 sessione | 🟡 | Feature | ✅ |
 | 8 | i18n IT/EN (backlog #12) | 1-2 sessioni | 🔴 | Refactor+Feature | ⏳ |
 | 9 | Shaft "dietro le quinte" + animazione micro porte | 1-2 sessioni | 🟢 | Feature | ⏳ |
 | 10 | Eventi speciali hotel (matrimonio, conferenza) | 1 sessione | 🟢 | Feature | ⏳ |
@@ -436,6 +436,21 @@ Oggi la coda è un `Set<number>`. Con direzione diventa `Map<floor, direction>` 
 - [ ] ▲ al piano 9 → beep rifiuto + messaggio
 - [ ] Comportamento esistente (coda semplice) preservato
 - [ ] `node --check` + brace balance
+
+## Verifiche (Q7.5=A: scenario test)
+
+| # | Scenario | Setup | Azione | Atteso |
+|---|---|---|---|---|
+| V1 | Disabilitazione ▲ al top | Cabin al piano 9, apri customizer ▲/▼ in corridoio | Osserva pulsantiera | Solo tasto ▼ visibile (▲ non esiste) |
+| V2 | Disabilitazione ▼ al bottom | Cabin al piano 0, apri customizer ▲/▼ in corridoio | Osserva pulsantiera | Solo tasto ▲ visibile (▼ non esiste) |
+| V3 | Routing intelligente ▲ | Cabin al 7, esci, vai al piano 3 | Premi ▲ | Cabina scende al 3 (intenzione 'up' registrata nella coda) |
+| V4 | Routing intelligente ▼ | Cabin al 3, esci, vai al piano 9 | Premi ▼ | Cabina sale al 9 (intenzione 'down' registrata) |
+| V5 | Routing mixed direction | Cabin al 5, utente al 3 ▼ e al 8 ▲ | Entrambi premuti | Smart routing: prima il 3 (down), poi inversione al 8 (up) |
+| V6 | Coda FIFO con direction | Cabin al 0, request piano 5 (1-9 tastiera) poi esci al piano 3 e premi ▲ | Osserva coda | cabin sale al 5, poi torna al 3 (FIFO) |
+| V7 | Visualizzazione cartello | Cabin al 0, ▲ premuto al piano 5 | Osserva cartello corridoio dopo click | Freccia ▲ verde + label 'IN SALITA' in basso a destra |
+| V8 | Visualizzazione pulsantiera | Cabin al 5 in movimento verso piano 3 | Osserva pulsantiera al piano 3 | Icona ↻ verde in alto a destra del display |
+| V9 | Compat legacy | Cabin fermo, request piano 5 (tasto tastiera, no direction) | Osserva coda | direction = null, funziona come prima |
+| V10 | Defensive check | Cabin al 9, programmaticamente requestFloor(9, 'up') | Osserva | Beep 220Hz + subtitle "Sei al piano piu' alto" |
 
 ## Effort
 1 sessione.
