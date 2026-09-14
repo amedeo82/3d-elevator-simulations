@@ -77,6 +77,8 @@ CI GitHub Actions: `.github/workflows/ci.yml` gira `check-balance.js` su ogni pu
 | D2 | **Stato in cima al file** | Lezione dei bug TDZ (Phase 13, 15, 16): dichiarare `state`, `hoveredBtn`, `buttonList` PRIMA delle funzioni che li usano. |
 | D3 | **No emoji nel codice** | Consistenza; emoji solo in output utente (HUD/README). |
 | D4 | **Commenti in italiano + sezioni numerate** | Coerenza con codebase esistente; leggibilità. |
+| D5 | **HOTEL_CONFIG centralizzato + HOTEL_CONFIG_DEFAULTS frozen** | Polish Pack V2 Step 5. Refactor di 23 stringhe brand hardcoded in un oggetto unico. `HOTEL_CONFIG_DEFAULTS` è `Object.freeze()` per i reset; `HOTEL_CONFIG` è la copia runtime mutabile. Modificabile via HUD tasto `H`. |
+| D6 | **Carica config PRIMA delle cabin texture IIFE** | Polish Pack V2 Step 5 fix critico. `loadHotelConfig()` deve girare prima delle IIFE che bakano `HOTEL_CONFIG` nelle canvas texture (targa cabina, header pulsantiera). Altrimenti le texture sono baked con valori originali e l'utente vede "BOSS HOTEL" anche dopo aver salvato "Sky Tower". Sintomo: 'non vedo differenze tra preset'. |
 
 ---
 
