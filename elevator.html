@@ -496,7 +496,7 @@
 </div>
 
 <div id="startscreen">
-  <h1>Boss Hotel · <b>Ascensore 3D</b></h1>
+  <h1 id="startHotelName">Boss Hotel · <b>Ascensore 3D</b></h1>
   <p>Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch,
      apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessità,
      attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.</p>
@@ -522,7 +522,7 @@
       <div class="slide active">
         <div class="emoji">🛗</div>
         <div>Cabina 5★</div>
-        <div class="small">Boss Hotel Edition</div>
+        <div class="small" id="startEdition">Boss Hotel Edition</div>
       </div>
       <div class="slide">
         <div class="emoji">📱</div>
@@ -571,6 +571,32 @@ const NUM_FLOORS = 10;                       // 0..9  (0 = Terra)
 const FLOOR_HEIGHT = 3.2;                    // distanza tra i piani (in m)
 const DOOR_TRAVEL = 0.55;                    // corsa porte (m)
 const EYE_HEIGHT = 1.62;                     // altezza occhio
+
+// Polish Pack V2 Step 5a — HOTEL_CONFIG: configurazione hotel centralizzata.
+// Tutte le stringhe brand hardcoded ("BOSS HOTEL", "Via Veneto 142 Roma",
+// "★★★★★ Luxury since 1898", ecc.) sono state refactate per usare questi
+// campi. Modificabili via HUD Step 5b, preset alternativi Step 5c.
+// Dichiarato in CONFIGURAZIONE (in cima al file) per coerenza con state.
+const HOTEL_CONFIG = {
+  name: 'BOSS HOTEL',                        // nome completo (caps per targhe)
+  shortName: 'Boss Hotel',                   // nome friendly (start screen)
+  address: 'Via Veneto 142 \u00b7 Roma',     // indirizzo con middot
+  city: 'Roma',
+  country: 'Italia',
+  stars: 5,
+  established: 1898,
+  tagline: 'Luxury since 1898',
+  motto: 'Dal 1898, eleganza senza tempo.',
+  motto2: 'Una tradizione di ospitalit\u00e0 italiana, rinnovata nel 2019 dallo Studio Fuksas.',
+  systemName: 'BOSS HOTEL ELEVATOR SYSTEM',
+  systemYear: '2026',
+  edition: 'Boss Hotel Edition',
+  // Palette accent (usata da targhe, display, header, hover)
+  accentGold: '#c9a55a',
+  accentGoldDark: '#7a5a20',
+  accentGoldLight: '#f6c945',
+  panelHelpBrand: 'BOSS HOTEL'
+};
 
 // ============================================================
 // STATO GLOBALE (dichiarato in cima per evitare errori TDZ)
@@ -1035,7 +1061,7 @@ function drawClockFace(ctx, w, h) {
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('BOSS HOTEL', w/2, 8);
+  ctx.fillText(HOTEL_CONFIG.name, w/2, 8);
   // quadrante orologio
   const cx = w/2, cy = h/2 + 18;
   const r = Math.min(w, h) * 0.32;
@@ -1194,7 +1220,7 @@ function drawWelcomeScreen(ctx, w, h) {
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#d4a23a';
   ctx.font = 'italic 16px Georgia, serif';
-  ctx.fillText('al Boss Hotel', w/2, 110);
+  ctx.fillText('al ' + HOTEL_CONFIG.shortName, w/2, 110);
   // stelle
   ctx.fillStyle = '#f6c945';
   ctx.font = '20px Arial';
@@ -1205,7 +1231,7 @@ function drawWelcomeScreen(ctx, w, h) {
   ctx.fillText('Dal 1898, eleganza senza tempo.', w/2, 175);
   ctx.fillText('Una tradizione di ospitalità italiana,', w/2, 195);
   ctx.fillText('rinnovata nel 2019 dallo Studio Fuksas.', w/2, 215);
-  ctx.fillText('Via Veneto 142 · Roma', w/2, 250);
+  ctx.fillText(HOTEL_CONFIG.address, w/2, 250);
 }
 
 function drawRestaurantScreen(ctx, w, h) {
@@ -1300,7 +1326,7 @@ function drawWorldClock(ctx, w, h) {
   ctx.fillText('OROLOGIO MONDIALE', w/2, 8);
   ctx.fillStyle = '#a89060';
   ctx.font = '10px Arial';
-  ctx.fillText('BOSS HOTEL INTERNATIONAL', w/2, 28);
+  ctx.fillText(HOTEL_CONFIG.name + ' INTERNATIONAL', w/2, 28);
   // linea separatrice
   ctx.strokeStyle = '#c9a55a';
   ctx.lineWidth = 1;
@@ -1690,16 +1716,16 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
     ctx.font = 'bold 30px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#c9a55a';
+    ctx.shadowColor = HOTEL_CONFIG.accentGold;
     ctx.shadowBlur = 8;
-    ctx.fillText('BOSS HOTEL', 192, 38);
+    ctx.fillText(HOTEL_CONFIG.name, 192, 38);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#d4a23a';
     ctx.font = 'italic 14px Georgia, serif';
-    ctx.fillText('★★★★★ Luxury since 1898', 192, 72);
+    ctx.fillText('★'.repeat(HOTEL_CONFIG.stars) + ' ' + HOTEL_CONFIG.tagline, 192, 72);
     ctx.font = '11px Arial';
     ctx.fillStyle = '#a89060';
-    ctx.fillText('Via Veneto 142 · Roma', 192, 96);
+    ctx.fillText(HOTEL_CONFIG.address, 192, 96);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     return new THREE.MeshBasicMaterial({ map: tex });
@@ -1921,7 +1947,7 @@ function drawFloorSign(floor) {
   g.shadowBlur = 0;
   g.fillStyle = '#d4a23a';
   g.font = 'italic 17px Georgia, serif';
-  g.fillText('— BOSS HOTEL ELEVATOR —', 256, 88);
+  g.fillText('— ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 256, 88);
   signTex.needsUpdate = true;
 }
 drawFloorSign(0);
@@ -1989,7 +2015,7 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
   g.fillStyle = '#d4a23a';
   g.font = 'italic 16px Georgia, serif';
   g.textAlign = 'center';
-  g.fillText('— IN VIAGGIO · BOSS HOTEL ELEVATOR —', 300, 95);
+  g.fillText('— IN VIAGGIO · ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 300, 95);
   signTex.needsUpdate = true;
 }
 
@@ -2173,7 +2199,7 @@ function drawExternalFloorIndicator() {
   // piccola label ausiliaria "BOSS HOTEL" sul fondo
   ctx.fillStyle = '#808898';
   ctx.font = '12px Arial, sans-serif';
-  ctx.fillText('BOSS HOTEL', c.width / 2, c.height - 14);
+  ctx.fillText(HOTEL_CONFIG.shortName, c.width / 2, c.height - 14);
   externalCallFloorTex.needsUpdate = true;
 }
 let _lastExternalFloorShown = -999;
@@ -2235,7 +2261,7 @@ function addExternalCallPanel(floor) {
   hctx.font = 'bold 22px Georgia, serif';
   hctx.textAlign = 'center';
   hctx.textBaseline = 'middle';
-  hctx.fillText('BOSS HOTEL', 128, 24);
+  hctx.fillText(HOTEL_CONFIG.panelHelpBrand, 128, 24);
   const headerTex = new THREE.CanvasTexture(headerCanvas);
   headerTex.colorSpace = THREE.SRGBColorSpace;
   const headerPlate = new THREE.Mesh(
@@ -3136,7 +3162,7 @@ exitBtn.userData.action = 'exit'; panel.add(exitBtn); buttonList.push(exitBtn);
   ctx.font = 'bold italic 26px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('BOSS HOTEL', 128, 32);
+  ctx.fillText(HOTEL_CONFIG.shortName.toUpperCase(), 128, 32);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex });
@@ -3454,8 +3480,8 @@ const ONBOARDED_KEY = 'bossHotelOnboarded';
 const ONBOARDED_VERSION = 1;
 const TUTORIAL_STEPS = [
   {
-    text: 'Benvenuto al <b>BOSS HOTEL</b>. Sei nella cabina al piano Terra. Premi <kbd>1</kbd>–<kbd>9</kbd> per chiamare un piano, oppure tocca il display touchscreen sulla destra.',
-    voice: 'Benvenuto al Boss Hotel. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.'
+    text: 'Benvenuto al <b>' + HOTEL_CONFIG.shortName + '</b>. Sei nella cabina al piano Terra. Premi <kbd>1</kbd>–<kbd>9</kbd> per chiamare un piano, oppure tocca il display touchscreen sulla destra.',
+    voice: 'Benvenuto al ' + HOTEL_CONFIG.shortName + '. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.'
   },
   {
     text: 'Premi <kbd>E</kbd> per <b>uscire</b> dalla cabina ed esplorare il corridoio. Verrai riposizionato di fronte alle porte.',
@@ -3653,7 +3679,7 @@ function renderDisplayStaticLayer(ctx) {
   ctx.fillStyle = '#6a5a40';
   ctx.font = '10px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('BOSS HOTEL ELEVATOR SYSTEM · 2026', W/2, 1080);
+  ctx.fillText(HOTEL_CONFIG.systemName + ' · ' + HOTEL_CONFIG.systemYear, W/2, 1080);
 }
 
 function renderDisplaySemistaticLayer(ctx, animT) {
@@ -3663,8 +3689,8 @@ function renderDisplaySemistaticLayer(ctx, animT) {
   ctx.font = 'bold 22px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.shadowColor = '#c9a55a'; ctx.shadowBlur = 6;
-  ctx.fillText('BOSS HOTEL', W/2, 18);
+  ctx.shadowColor = HOTEL_CONFIG.accentGold; ctx.shadowBlur = 6;
+  ctx.fillText(HOTEL_CONFIG.name, W/2, 18);
   ctx.shadowBlur = 0;
   const now = new Date();
   ctx.fillStyle = '#a89060';
@@ -5828,6 +5854,16 @@ function savePrefs() {
 }
 
 loadPrefs();
+// Polish Pack V2 Step 5a: aggiorna elementi HTML della start screen con HOTEL_CONFIG
+(function applyHotelConfigToStartScreen() {
+  const nameEl = document.getElementById('startHotelName');
+  if (nameEl) {
+    // ricostruisci: "<shortName> · <b>Ascensore 3D</b>"
+    nameEl.innerHTML = HOTEL_CONFIG.shortName + ' &middot; <b>Ascensore 3D</b>';
+  }
+  const edEl = document.getElementById('startEdition');
+  if (edEl) edEl.textContent = HOTEL_CONFIG.edition;
+})();
 
 placeCameraInCabin();
 updateFloorDisplay();
