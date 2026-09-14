@@ -333,7 +333,19 @@
     color: #6a6a78;
     font-size: 10px;
     letter-spacing: 1px;
+    line-height: 1.5;
   }
+  .hc-status {
+    text-align: center;
+    color: var(--hc-accent, #f0d878);
+    font-size: 13px;
+    font-weight: bold;
+    min-height: 18px;
+    margin-bottom: 6px;
+    transition: opacity 0.2s;
+  }
+  .hc-status.hc-status-active { opacity: 1; }
+  .hc-status.hc-status-empty { opacity: 0; }
 
   /* Overlay manutentore (Polish Pack v1.4 #19) */
   #maint-overlay {
@@ -645,7 +657,8 @@
       <button id="hc-close" class="hc-btn">Chiudi</button>
       <button id="hc-apply" class="hc-btn hc-primary">Applica e salva</button>
     </div>
-    <div class="hc-hint">H per aprire/chiudere · Esc per chiudere · preset per cambiare hotel</div>
+    <div class="hc-status" id="hc-status"></div>
+    <div class="hc-hint">H per aprire/chiudere · Esc per chiudere · preset per cambiare hotel.<br>Applica e salva riavvia la pagina per aggiornare tutte le texture 3D.</div>
   </div>
 </div>
 
@@ -899,6 +912,22 @@ function applyHotelCustomizerForm() {
   HOTEL_CONFIG.accentGold = document.getElementById('hc-color').value || HOTEL_CONFIG_DEFAULTS.accentGold;
   applyHotelConfigToUI();
   saveHotelConfig();
+}
+// Polish Pack V2 Step 5 fix: dopo 'Applica e salva' o selezione preset
+// le canvas texture statiche della cabina non vengono ridisegnate live.
+// Soluzione: salva localStorage + mostra status + auto-reload della pagina.
+// L'utente vede la conferma del salvataggio e poi la simulazione riparte
+// con tutte le texture (targa principale, citofono, header pulsantiera, ecc.)
+// rigenerate con il nuovo HOTEL_CONFIG.
+function hcShowStatus(text, thenReload) {
+  const stEl = document.getElementById('hc-status');
+  if (stEl) {
+    stEl.textContent = text;
+    stEl.className = 'hc-status hc-status-active';
+  }
+  if (thenReload) {
+    setTimeout(() => { location.reload(); }, 800);
+  }
 }
 
 // ============================================================
@@ -6234,19 +6263,31 @@ document.getElementById('tt-skip').addEventListener('click', () => {
 document.getElementById('hc-close').addEventListener('click', closeHotelCustomizer);
 document.getElementById('hc-reset').addEventListener('click', () => {
   for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = HOTEL_CONFIG_DEFAULTS[k];
-  openHotelCustomizer(); // ripopola i campi
+  // ripopola i campi con i valori resettati
+  document.getElementById('hc-name').value = HOTEL_CONFIG.name;
+  document.getElementById('hc-short').value = HOTEL_CONFIG.shortName;
+  document.getElementById('hc-addr').value = HOTEL_CONFIG.address;
+  document.getElementById('hc-city').value = HOTEL_CONFIG.city;
+  document.getElementById('hc-stars').value = HOTEL_CONFIG.stars;
+  document.getElementById('hc-year').value = HOTEL_CONFIG.established;
+  document.getElementById('hc-tag').value = HOTEL_CONFIG.tagline;
+  document.getElementById('hc-motto').value = HOTEL_CONFIG.motto;
+  document.getElementById('hc-color').value = HOTEL_CONFIG.accentGold;
   applyHotelConfigToUI();
   saveHotelConfig();
+  hcShowStatus('Default ripristinati · Riavvio...', true);
 });
 document.getElementById('hc-apply').addEventListener('click', () => {
   applyHotelCustomizerForm();
-  closeHotelCustomizer();
+  // Auto-reload per aggiornare le canvas texture statiche della cabina
+  hcShowStatus('Configurazione salvata · Riavvio in corso...', true);
 });
 document.querySelectorAll('.hc-preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     applyHotelPreset(btn.dataset.preset);
-    openHotelCustomizer(); // ripopola i campi con i nuovi valori del preset
     saveHotelConfig();
+    const presetName = HOTEL_CONFIG.shortName;
+    hcShowStatus('Preset ' + presetName + ' applicato · Riavvio...', true);
   });
 });
 // carica config custom salvata (se presente) PRIMA del primo frame
