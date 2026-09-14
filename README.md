@@ -252,6 +252,18 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - **Placca di acciaio spazzolato** sulla parete sinistra del corridoio, vicino alle porte della cabina
 - Header dorato "BOSS HOTEL" + 2 pulsanti rotondi verdi: **▲** (salita) e **▼** (discesa)
 - Al piano Terra solo ▲; al piano 9 (attico) solo ▼
+
+### 🏨 Personalizzazione hotel (`HOTEL_CONFIG` + 4 preset)
+- **HOTEL_CONFIG**: oggetto centralizzato in cima al codice con 17 campi brand (`name`, `shortName`, `address`, `city`, `stars`, `established`, `tagline`, `motto`, `accentGold`, ecc.). Tutte le stringhe "BOSS HOTEL", "Via Veneto 142 Roma", "★★★★★ Luxury since 1898" sono state refactate per usare questi campi
+- **Tasto `H`**: apre overlay fullscreen "PERSONALIZZA HOTEL" con 9 campi editabili (nome, nome corto, indirizzo, città, stelle 1-5, anno fondazione, tagline, motto, color picker) + 4 preset + 3 bottoni (Applica e salva / Ripristina default / Chiudi)
+- **4 preset alternativi** con palette e temi corridoio dedicati:
+  - **Boss Hotel** (default) — Via Veneto 142 Roma, oro `#c9a55a`, colori caldi marrone/beige
+  - **Sky Tower Tokyo** — Oshiage Tokyo, blu `#4a9eff`, futuristico azzurro/luminoso
+  - **Hôtel de Paris** — Place du Casino Monte Carlo, oro classico `#d4af37`, stile dorato/crema
+  - **Burj Al Arab** — Umm Suqeim Dubai, oro Dubai `#e0b973`, lusso oro/blu navy
+- **Persistenza** in `localStorage.bossHotelConfig@v1` (versionata)
+- **Reload automatico** dopo "Applica e salva" per aggiornare tutte le canvas texture statiche della cabina (targa principale, citofono, header pulsantiera) che sono baked al boot
+- **Live preview**: click su preset popola i campi del form + ricostruisce il corridoio con i nuovi colori senza rilocare
 - **Click su ▲/▼**: chiama la cabina a quel piano (se è già lì, apre le porte gentilmente)
   - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
@@ -288,6 +300,8 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 | **Comando vocale** | `K` (toggle speech-to-text) |
 | **Apri / rivedi tutorial** | `?` (5 step contestuali al primo avvio) |
 | **Modalità manutentore** | `Shift+M` (debug + wireframe + teletrasporto) |
+| **Apri / rivedi tutorial** | `?` (5 step contestuali al primo avvio) |
+| **Personalizza hotel** | `H` (9 campi editabili + 4 preset, salvataggio in `localStorage`) |
 
 ### Flusso tipico
 1. Click su "Entra nell'ascensore" → il mouse viene "catturato" (pointer lock)
@@ -372,14 +386,37 @@ const state = {
   doorsOpen: false,       // porte aperte
   doorsActual: 0,         // 0 = chiuso, 1 = aperto (per animazione fluida)
   alarmOn: false,         // allarme attivo
+  outOfOrder: false,      // fuori servizio (toggle O)
   requestedFloors: Set,   // coda piani richiesti
   playerInCabin: true,    // true = prima persona nella cabina
   nightMode: false,       // Fase 8
   passengers: 1,          // indicatore carico
   vibration: 0,           // offset vibrazione cabina
-  muted: false            // mute effetti audio
+  muted: false,           // mute effetti audio
+  // Polish Pack V2 Step 1c/2a/2b/3: nuovi state fields
+  DEBUG: false,           // assert runtime contratti state (dev only)
+  irObstacleActive: false,// sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
+  irObstacleStart: 0,     // performance.now() inizio ostacolo
+  irNudgingActive: false, // true dopo 15s di ostruzione (nudging mode)
+  onboarded: false,       // true dopo tutorial contestuale prima volta
+  tutorialActive: false,  // true durante overlay tutorial
+  tutorialStep: 0,        // step corrente del tutorial
+  lastInteractionTs: 0    // timestamp ultima interazione (per prompt 30s)
+};
+
+const HOTEL_CONFIG = {
+  name: 'BOSS HOTEL', shortName: 'Boss Hotel',
+  address: 'Via Veneto 142 \u00b7 Roma', city: 'Roma', country: 'Italia',
+  stars: 5, established: 1898, tagline: 'Luxury since 1898',
+  motto: 'Dal 1898, eleganza senza tempo.',
+  systemName: 'BOSS HOTEL ELEVATOR SYSTEM', systemYear: '2026',
+  edition: 'Boss Hotel Edition',
+  accentGold: '#c9a55a', accentGoldDark: '#7a5a20', accentGoldLight: '#f6c945',
+  panelHelpBrand: 'BOSS HOTEL'
 };
 ```
+
+Per il dettaglio completo di tutti i 26+ campi di `state` con `scritto da` / `letto da` / contratti, vedi `STATE.md`.
 
 ---
 
@@ -501,6 +538,13 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
       automatica in `tickPlayer()` (~`elevator.html:4681`) è ora l'unica a gestire
       le porte fuori dalla cabina.~~ **Sostituito dal comportamento più realistico
       di v1.7** (auto-close + prenotazione lobby-only).
+
+### 🎉 Polish Pack V2 — in corso (branch `feature/polish-pack-v2-step-N`)
+- [x] **Step 1** Salute del codice — CI GitHub Actions + `AGENTS.md` + audit `state` (STATE.md, 26+ campi) + mini event bus homemade
+- [x] **Step 2** UX invisibile — sensore IR anti-ostacolo (ASME A17.1 §2.13.5) + tutorial contestuale prima volta (5 step, tasto `?`, prompt inattività 30s)
+- [x] **Step 3** Audio contestuale corridoi + musica ristorante — 4 temi corridoio (3 layer ciascuno) + chitarra classica + piatti al piano 8
+- [x] **Step 4** Meteo evoluto — stagionalità mensile (clima Roma) + 3 nuove condizioni (grandine, foschia, vento) + slide 24h con previsioni
+- [x] **Step 5** Personalizzazione hotel — `HOTEL_CONFIG` (17 campi, refactor 23 stringhe hardcoded) + HUD overlay tasto `H` + 4 preset (Boss Hotel / Sky Tower Tokyo / Hôtel de Paris / Burj Al Arab) + persistenza `localStorage.bossHotelConfig@v1`
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

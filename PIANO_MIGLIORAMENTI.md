@@ -2,9 +2,22 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 1.8 — Hotfix v1.8: porte camere hotel/attico corrette (no più "porte a 90°")** · Aggiornato 2026-09-12
+**Versione 2.5 — Polish Pack V2 Step 5: personalizzazione hotel (HOTEL_CONFIG + 4 preset)** · Aggiornato 2026-09-14
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
+
+## Roadmap V2 (post-implementation)
+
+Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato step:
+
+| # | Step | Stato |
+|---|---|---|
+| 1 | Salute del codice (CI + AGENTS.md + audit state + event bus) | ✅ |
+| 2 | UX invisibile (sensore IR + tutorial contestuale) | ✅ |
+| 3 | Audio contestuale corridoi + musica ristorante | ✅ |
+| 4 | Meteo evoluto (stagionalità + 3 condizioni) | ✅ |
+| 5 | Personalizzazione hotel (HOTEL_CONFIG + 4 preset) | ✅ |
+| 6-14 | Altri step (PWA, ▲/▼ semantica, i18n, shaft, eventi speciali, L-block, test, WebXR) | ⏳ |
 
 ---
 
@@ -29,7 +42,12 @@ Documento di design e implementation log.
 | Hotfix v1.8 (porte) | ✅ Porte camere hotel/attico ricostruite: telaio rettangolare (4 barrette) invece di blocco solido, e aggiunte porte suite ai piani 7-9 |
 | Documentazione | ✅ README.md + questo file |
 | Deploy pubblico | ✅ Live |
-| File di progetto | `elevator.html` (~178KB, 4.770 righe, single file) |
+| Polish Pack V2 Step 1 | ✅ Salute del codice (CI GitHub Actions + AGENTS.md + STATE.md 26+ campi + mini event bus homemade) |
+| Polish Pack V2 Step 2 | ✅ UX invisibile (sensore IR anti-ostacolo ASME A17.1 §2.13.5 + tutorial contestuale prima volta con 5 step) |
+| Polish Pack V2 Step 3 | ✅ Audio contestuale corridoi (4 temi con 2-3 layer ciascuno) + musica ristorante La Terrazza al piano 8 |
+| Polish Pack V2 Step 4 | ✅ Meteo evoluto (stagionalità mensile clima Roma + 3 nuove condizioni: grandine/foschia/vento + slide 24h) |
+| Polish Pack V2 Step 5 | ✅ Personalizzazione hotel (HOTEL_CONFIG 17 campi + refactor 23 stringhe hardcoded + HUD overlay tasto H + 4 preset alternativi + persistenza localStorage) |
+| File di progetto | `elevator.html` (~213KB, 6.343 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
@@ -923,24 +941,234 @@ prima privi di porte. Totale funzionalità implementate: **22/22 (100%)** invari
 
 ---
 
+## Fase 20 — Polish Pack V2 Step 1: salute del codice ✅ (2026-09-13)
+
+### Sintomo
+Il progetto aveva 3 bug storici TDZ (Temporal Dead Zone) ed era vulnerabile a regressioni
+di sintassi per via dell'assenza di CI. Nessun audit formale dello state globale.
+
+### Fix implementato
+4 sotto-step atomici, ciascuno con commit separato:
+
+**1a. CI GitHub Actions** — workflow `.github/workflows/ci.yml` che gira `node --check` su
+ogni push/PR. Script helper `scripts/extract-js.js` (estrae `<script type=module>`) e
+`scripts/check-balance.js` (verifica sintassi + brace balance).
+
+**1b. AGENTS.md** — documento di 89 righe per agenti di coding con layout sezioni del file
+elevator.html, convenzioni codice, comandi build/verifica, decisioni D-key, lezione
+"state in cima" con i 3 bug TDZ storici.
+
+**1c. STATE.md** — tabella completa di 26 campi di `state` con colonne
+`campo | tipo | scritto da | letto da | contratti`. Funzione `assertStateInvariants()`
+chiamata alla fine del LOOP, no-op se `state.DEBUG=false`, altrimenti `console.warn`
+per ogni contratto violato.
+
+**1d. Mini event bus homemade** — ~15 righe, zero dipendenze. API: `bus.on(event, fn)` /
+`bus.off(event, fn)` / `bus.emit(event, payload)`. Refactor di 3 catene di polling
+(scheduleAutoClose, markDisplayDirty, updateFloorDisplay) per usare gli eventi
+`door:opened/closed`, `floor:arrived`, `alarm:on/off`, `ooo:on/off`,
+`cabin:entered/exited` invece di polling su `state.doorsActual`.
+
+### Acceptance
+- [x] `node --check --input-type=module`: OK
+- [x] Brace balance: 0/0 (autorevole)
+- [x] AGENTS.md ≤ 200 righe
+- [x] STATE.md copre 26 campi
+- [x] Bus homemade zero dipendenze
+- [x] 3 catene polling → eventi
+
+### Branch
+`feature/polish-pack-v2-step-1` mergiato su `main` (commit `b6bc890`).
+
+---
+
+## Fase 21 — Polish Pack V2 Step 2: UX invisibile ✅ (2026-09-13)
+
+### 2a. Sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
+Rileva quando il giocatore è sulla soglia della cabina mentre le porte stanno chiudendo:
+annulla chiusura, riapre, annuncio vocale, beep 880Hz. Dopo 15s di ostruzione continua
+entra in "nudging mode" (chiusura forzata + beep 1200Hz continuo). Safety gates su
+`alarmOn`/`outOfOrder`/`maintenanceMode`/`isMoving`. Hook in LOOP dopo `tickPlayer`.
+
+### 2b. Tutorial contestuale prima volta
+5 step tutorial con testo + voce TTS. Tasto `?` apre/riapre in qualsiasi momento.
+Bottoni "Avanti" e "Salta tutorial" nell'overlay. Auto-start al primo avvio (dopo
+click su `startBtn`, ritardo 600ms). Prompt vocale "Premi ? per aiuto" dopo 30s
+di inattività in cabina (max 1 ogni 5 min). Persistenza in `localStorage.bossHotelOnboarded@v1`.
+
+### Acceptance
+- [x] Sensore IR blocca chiusura + riapre + annuncio
+- [x] TTS disabilitato → annuncio sostituito da beep + subtitle
+- [x] `localStorage.bossHotelOnboarded@v1` salvato
+- [x] Tasto `?` in-game e corridoio
+- [x] Nudging dopo 15s
+- [x] `node --check`: OK
+- [x] Brace balance: 337/337
+
+### Branch
+`feature/polish-pack-v2-step-2` mergiato su `main` (commit `17d2079`).
+
+### Bug fix collaterali durante playtest
+- **Audio tintinnio tazzine (lobby) silenzioso**: `oscGain.gain.value=0` + LFO ampiezza 0.012
+  causava gain clampa a 0. Fix: base 0.012, LFO 0.006.
+- **Volume audio corridoio ~3-8x troppo basso**: masterGain 0.5 + layer 0.008-0.025.
+  Fix: master 0.8 (corridoio) / 0.9 (ristorante), layer 2-3x.
+- **Pulsanti fisici ◄| |► STOP ! restano "pressed"**: setTimeout di release portava a
+  scale(0.9) z=0 invece di scale(1) z=0.012. Fix: ripristino allo stato iniziale.
+
+---
+
+## Fase 22 — Polish Pack V2 Step 3: audio contestuale ✅ (2026-09-13)
+
+### 3a. Loop audio contestuale corridoio
+4 temi distinti che partono quando il giocatore esce dalla cabina (porte aperte >50%,
+cabina ferma) e si fermano al rientro. Ogni tema ha 2-3 layer sintetizzati (no asset
+esterni).
+
+| Tema | Piano | Layer 1 | Layer 2 |
+|---|---|---|---|
+| `lobby` | T | Brusio bandpass 600Hz | Tintinnio tazzine square 1200Hz + tremolo 4Hz |
+| `office` | 1-3 | Brusio lowpass 400Hz | Ticchettio tastiere impulsivo 250ms |
+| `hotel` | 4-6 | Drone ovattato sine 60Hz | Ticchettio orologio 1Hz |
+| `penthouse` | 7-9 | Pianoforte sine 220Hz (LFO pitch) | Vento highpass 800Hz |
+
+### 3b. Musica ristorante "La Terrazza"
+Quando `state.currentFloor === 8 && !playerInCabin`: chitarra classica (4 oscillatori
+triangle, arpeggio C-Am-F-G ogni 800ms con seq [0,1,2,3,2,1]) + piatti lontani
+(white noise highpass 8kHz). Master fade-in 1.5s.
+
+### Acceptance
+- [x] 4 temi corridoio distinti
+- [x] Rispetta `state.muted`
+- [x] Piano 8 = ristorante, solo in corridoio
+- [x] Nessuna regressione su `tickMusic`
+- [x] `node --check`: OK
+- [x] Brace balance: 337/337
+
+### Branch
+`feature/polish-pack-v2-step-3` mergiato su `main` (commit `dbcb173`).
+
+### Step 14 aggiunto a `PIANO_V2.md` (citofono interattivo)
+Su richiesta dell'utente, aggiunto Step 14 — Citofono interattivo + pairing con tasto SOS
+per le fasi future.
+
+---
+
+## Fase 23 — Polish Pack V2 Step 4: meteo evoluto ✅ (2026-09-13)
+
+### 4a. Stagionalità mensile
+Nuova `WEATHER_MONTHLY_WEIGHTS[12]` con pesi per tutte e 10 le condizioni meteo,
+calibrati sul clima di Roma (emisfero nord): GEN/FEB poca neve molta nebbia, LUG/AGO
+sole pieno 50% temporali vento, SET transizione, OTT/NOV/DIC nebbia pioggia neve.
+
+### 4b. 3 nuove condizioni meteo
+- **Grandine** (`hail`): nuvola grigia + 8 cerchi grigi che cadono veloci (animT×3)
+- **Foschia** (`mist`): 12 particelle bianche piccole che fluttuano lente (animT×0.5)
+- **Vento** (`wind`): 2 nuvole + 5 linee orizzontali animate di lunghezza variabile
+
+### 4c. Frequenza cambio meteo
+50% → 30% (meno cambio, più persistente)
+
+### 4d. Slide meteo ricca con previsioni 24h
+Riscrittura di `drawWeatherScreen()`: header con icona grande + temperatura + condizione,
+dettagli atm (umidità, vento, visibilità, mese), 6 blocchi previsioni 4h con icona/ora/temperatura,
+footer con timestamp ultimo aggiornamento.
+
+### Acceptance
+- [x] Tabella mensile influenza pesi (es. LUG: 50% sole)
+- [x] 10 condizioni meteo supportate
+- [x] Frequenza 30%
+- [x] Slide 24h con 6 blocchi
+- [x] `node --check`: OK
+- [x] Brace balance: 867/867
+
+### Branch
+`feature/polish-pack-v2-step-4` mergiato su `main` (commit `af51708`).
+
+---
+
+## Fase 24 — Polish Pack V2 Step 5: personalizzazione hotel ✅ (2026-09-14)
+
+### 5a. HOTEL_CONFIG + refactor
+Oggetto `HOTEL_CONFIG` in cima al codice (CONFIGURAZIONE, prima di `state`) con 17 campi:
+`name`, `shortName`, `address`, `city`, `country`, `stars`, `established`, `tagline`,
+`motto`, `motto2`, `systemName`, `systemYear`, `edition`, `accentGold`,
+`accentGoldDark`, `accentGoldLight`, `panelHelpBrand`. Refactor di 23 stringhe
+hardcoded sparse (targa cabina, cartello piano, display touch, pannello pubblicitario,
+citofono, header pulsantiera, TUTORIAL_STEPS, start screen). Risultato: `grep`
+"BOST HOTEL" / "Via Veneto" / "Boss Hotel" restituisce solo la definizione della config.
+
+### 5b. HUD personalizza hotel (tasto H)
+Overlay fullscreen con 9 campi editabili + 4 preset + 3 bottoni (Applica e salva /
+Ripristina default / Chiudi) + Esc per chiudere. Persistenza `localStorage.bossHotelConfig@v1`
+(versionata). Caricamento al boot prima del primo frame tramite `loadHotelConfig()`
+chiamato immediatamente dopo la sua definizione, PRIMA delle IIFE che creano le
+canvas texture della cabina (targa principale, header pulsantiera esterna).
+
+### 5c. 4 preset alternativi + custom
+- **Boss Hotel** (default) — Roma, oro `#c9a55a`, colori caldi
+- **Sky Tower Tokyo** — Tokyo, blu `#4a9eff`, futuristico azzurro
+- **Hôtel de Paris** — Monte Carlo, oro classico `#d4af37`, dorato/crema
+- **Burj Al Arab** — Dubai, oro Dubai `#e0b973`, oro/blu navy
+
+Ogni preset ha palette dedicata anche per i colori del corridoio (lobby/office/hotel/penthouse)
+tramite `applyHotelThemeOverride()`. Cambio visibilmente la hall e la targa della cabina.
+
+### Acceptance
+- [x] 23 stringhe hardcoded sostituite
+- [x] 4 preset disponibili + 9 campi custom
+- [x] `localStorage.bossHotelConfig@v1` persiste
+- [x] Cambi visibili su start screen + cabin textures + corridoio
+- [x] `node --check`: OK
+- [x] Brace balance: 951/951
+
+### Bug fix durante playtest Step 5
+1. **Click "Applica e salva" non rispondeva** (CSS overlay): `.hc-hidden` usava
+   `opacity:0 + pointer-events:none`. Fix: `display:none/flex`.
+2. **localStorage silenzioso in caso di errore**: aggiunto try/catch con ritorno
+   `{ok, error}` + feedback esplicito all'utente.
+3. **Save prima del reload verificato**: `saveHotelConfig()` è sincrono, il reload
+   viene schedulato DOPO.
+4. **Preset rilocava subito impedendo modifiche**: refactor — preset popola SOLO i
+   campi del form (no save, no reload), solo "Applica e salva" salva + riloca.
+5. **Cabin textures baked con valori originali**: `loadHotelConfig()` chiamato
+   alla fine del modulo. Spostato a subito dopo la sua definizione, PRIMA delle IIFE
+   delle cabin texture. Risultato: dopo aver salvato Sky Tower, le texture della
+   cabina mostrano "SKY TOWER TOKYO" invece di "BOSS HOTEL".
+6. **TDZ su `applyHotelThemeOverride`**: la funzione accedeva a `themeConfig` che
+   era dichiarato dopo. Spostata la chiamata dopo la definizione della funzione e
+   di themeConfig.
+7. **Preset non visibilmente diversi**: refactor di molti `ctx.strokeStyle =
+   '#c9a55a'` hardcoded per usare `HOTEL_CONFIG.accentGold`/`accentGoldLight`/
+   `accentGoldDark`. Aggiunto `applyHotelThemeOverride()` che cambia i colori del
+   corridoio per preset (Sky Tower = blu, Paris = crema/dorato, Burj = oro/blu navy).
+
+### Branch
+`feature/polish-pack-v2-step-5` mergiato su `main` (commit `bb87238` finale + fix TDZ `ddf16bd`).
+
+---
+
 ## 7. Statistiche finali del progetto
 
 | Metrica | Valore |
 |---|---|
 | File principale | `elevator.html` |
-| Dimensione | ~178 KB |
-| Linee di codice | ~4.770 |
-| Sezioni di codice | 25+ numerate e commentate |
+| Dimensione | ~213 KB |
+| Linee di codice | ~6.343 |
+| Sezioni di codice | 30+ numerate e commentate |
 | Tasti interattivi | 14 (10 celle piano + 4 tasti fisici) |
-| Texture dinamiche | 9 canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio) |
-| Temi corridoio | 4 (lobby, uffici, hotel, attico) |
-| Condizioni meteo | 7 |
+| Texture dinamiche | 10+ canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio, citofono, header pulsantiera esterna) |
+| Temi corridoio | 4 base × 4 preset alternativi = 16 palette |
+| Condizioni meteo | 10 (7 base + grandine, foschia, vento) |
 | Piani | 10 (T + 1..9) |
 | Arredi 3D | ~30 tipi diversi (piante, divani, scrivanie, porte camere, vetrata, ecc.) |
-| Audio effetti | ~7 tipi (beep, chime, allarme, porta, countdown, whoosh loop) |
-| Comandi tastiera | 6 (M, V, N, E, WASD, ESC) |
-| Preferenze persistenti | 3 (muted, tts, nightMode) via localStorage `bossHotelPrefs@v1` |
-| Tempo di sviluppo | ~3 sessioni |
+| Audio effetti | ~10 tipi (beep, chime, allarme, porta, countdown, whoosh loop, audio corridoio 4 temi, audio ristorante piano 8) |
+| Comandi tastiera | 14 (M, V, N, O, K, E, H, ?, Shift+M, 1-9, 0, WASD, ESC, Enter/Space) |
+| Preferenze persistenti | 4 (muted, tts, nightMode, HOTEL_CONFIG) via localStorage `bossHotelPrefs@v1` + `bossHotelConfig@v1` |
+| Tutorial state | 1 (`bossHotelOnboarded@v1`) |
+| File di build | `dist/index.html` (copia deploy-ready) |
+| Documentazione | `README.md`, `PIANO_MIGLIORAMENTI.md`, `PIANO_V2.md`, `AGENTS.md`, `STATE.md` |
+| Tempo di sviluppo | ~5 sessioni |
 
 ---
 
