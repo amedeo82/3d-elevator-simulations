@@ -966,7 +966,10 @@ const state = {
   doorsTarget: 0,
   doorsActual: 0,
   alarmOn: false,
-  requestedFloors: new Set(),
+  // Polish Pack V2 Step 7: coda come Array<{floor, direction}> invece di Set<int>
+  // per supportare la semantica "intenzione viaggio" della pulsantiera ▲/▼.
+  // direction: 'up' | 'down' | null. FIFO con dedup per piano (ultimo input vince).
+  requestedFloors: [],
   muted: false,
   playerInCabin: true,
   nightMode: false,
@@ -2308,6 +2311,26 @@ function drawFloorSign(floor) {
   g.fillStyle = HOTEL_CONFIG.accentGoldLight;
   g.font = 'italic 17px Georgia, serif';
   g.fillText('— ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 256, 88);
+  // Polish Pack V2 Step 7c: freccia intenzione in basso a destra
+  // Mostra direzione della prossima richiesta in coda (verde = up, ambra = down)
+  // solo se ci sono richieste pendenti.
+  if (typeof queueNext === 'function') {
+    const nextEntry = queueNext();
+    if (nextEntry && nextEntry.direction) {
+      const intentionUp = nextEntry.direction === 'up';
+      const intentionColor = intentionUp ? '#7fff7f' : '#ff8c5a';
+      g.fillStyle = intentionColor;
+      g.shadowColor = intentionColor; g.shadowBlur = 12;
+      g.font = 'bold 28px Georgia, serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(intentionUp ? '▲' : '▼', 480, 30);
+      g.shadowBlur = 0;
+      g.fillStyle = intentionColor;
+      g.font = 'bold 9px Georgia, serif';
+      g.fillText(intentionUp ? 'IN SALITA' : 'IN DISCESA', 480, 50);
+    }
+  }
   signTex.needsUpdate = true;
 }
 drawFloorSign(0);
@@ -2555,6 +2578,7 @@ function makeCallButton(direction, x, y, z) {
   group.add(body);
   group.position.set(x, y, z);
   group.userData.action = direction === 'up' ? 'callUp' : 'callDown';
+  group.userData.direction = direction;     // Polish Pack V2 Step 7b: direzione esposta per query
   group.userData.isCallButton = true;
   group.userData.buttonTop = body; // per compatibilità con getButtonAtPointer/pressButton
   return group;
@@ -2613,10 +2637,39 @@ function drawExternalFloorIndicator() {
   ctx.fillStyle = '#ffeb3b';
   ctx.font = 'bold 96px Arial Black, Helvetica, sans-serif';
   ctx.fillText(txt, c.width / 2, c.height / 2 + 22);
-  // piccola label ausiliaria "BOSS HOTEL" sul fondo
+  // piccola label ausiliaria hotel sul fondo
   ctx.fillStyle = '#808898';
   ctx.font = '12px Arial, sans-serif';
   ctx.fillText(HOTEL_CONFIG.shortName, c.width / 2, c.height - 14);
+  // Polish Pack V2 Step 7c: icona "↻ IN ARRIVO" se la cabina sta arrivando a questo piano
+  // Mostra freccia circolare verde in alto a sinistra quando la cabina sta
+  // muovendosi verso questo piano (requestedFloors contiene questo piano).
+  const isArriving = typeof queueHas === 'function' && queueHas(state.currentFloor)
+                     && state.isMoving;
+  if (isArriving) {
+    ctx.save();
+    // cerchio verde semitrasparente in alto a sinistra
+    ctx.fillStyle = 'rgba(109, 255, 124, 0.85)';
+    ctx.beginPath();
+    ctx.arc(c.width - 24, 24, 18, 0, Math.PI * 2);
+    ctx.fill();
+    // icona ↻ (freccia circolare) bianca
+    ctx.strokeStyle = '#0a0a18';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(c.width - 24, 24, 9, -Math.PI / 2, Math.PI);
+    ctx.stroke();
+    // freccia
+    ctx.beginPath();
+    ctx.moveTo(c.width - 24, 15);
+    ctx.lineTo(c.width - 19, 19);
+    ctx.lineTo(c.width - 19, 11);
+    ctx.closePath();
+    ctx.fillStyle = '#0a0a18';
+    ctx.fill();
+    ctx.restore();
+  }
   externalCallFloorTex.needsUpdate = true;
 }
 let _lastExternalFloorShown = -999;
@@ -4138,7 +4191,7 @@ function renderDisplaySemistaticLayer(ctx, animT) {
   for (let f = 9; f >= 0; f--) {
     const y = mapY0 + (9 - f) * (mapH + mapGap);
     const isCurrent = f === state.currentFloor;
-    const isInQueue = state.requestedFloors.has(f);
+    const isInQueue = queueHas(f);
     let color = '#2a2a30';
     if (isCurrent) {
       color = state.isMoving ? '#ffaa00' : '#6dff7c';
@@ -4170,7 +4223,7 @@ function renderDisplaySemistaticLayer(ctx, animT) {
       const x = gridX0 + c * (cellW + cellGap);
       const y = gridY0 + r * (cellH + cellGap);
       const isCurrent = floor === state.currentFloor;
-      const isInQueue = state.requestedFloors.has(floor);
+      const isInQueue = queueHas(floor);
       const isHovered = (hoveredBtn.current && hoveredBtn.current.isCell &&
                          hoveredBtn.current.userData.cellRow === r &&
                          hoveredBtn.current.userData.cellCol === c);
@@ -4432,7 +4485,7 @@ function updateFloorDisplay() {
   if (state.alarmOn) sub = 'ALLARME ATTIVO';
   else if (state.isMoving) sub = state.targetFloor > state.currentFloor ? 'IN SALITA' : 'IN DISCESA';
   else if (state.doorsOpen) sub = 'PORTE APERTE';
-  else if (state.requestedFloors.size > 0) sub = 'PIANO IN Coda';
+  else if (queueSize() > 0) sub = 'PIANO IN Coda';
   else sub = 'PRONTO';
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   document.getElementById('floorNum').textContent = txt;
@@ -5185,7 +5238,7 @@ function tickMaintenance(now) {
   }
   document.getElementById('m-floor').textContent = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
   document.getElementById('m-target').textContent = state.targetFloor === 0 ? 'T' : String(state.targetFloor);
-  document.getElementById('m-queue').textContent = String(state.requestedFloors.size);
+  document.getElementById('m-queue').textContent = String(queueSize());
   document.getElementById('m-pax').textContent = `${state.passengers}/8`;
   document.getElementById('m-mode').textContent = state.playerInCabin ? 'cabina' : 'corridoio';
   document.getElementById('m-ooo').textContent = state.outOfOrder ? 'SÌ' : 'no';
@@ -5283,7 +5336,70 @@ let moveDuration = 0;
 let moveElapsed = 0;
 let movePaused = false;
 
-function requestFloor(floor) {
+// ============================================================
+// POLISH PACK V2 STEP 7a — Coda con direzione (intenzione viaggio)
+// Helper per gestire `state.requestedFloors: Array<{floor, direction}>`.
+// direction: 'up' | 'down' | null. FIFO con dedup (ultimo input vince).
+// Esposte come funzioni per coprire i 9 call site sostituendo .add/.delete/.has/.size.
+// ============================================================
+function queueAdd(direction, floor) {
+  // Rimuovi eventuali entry esistenti per lo stesso piano (ultimo input vince)
+  state.requestedFloors = state.requestedFloors.filter(r => r.floor !== floor);
+  state.requestedFloors.push({ floor, direction });
+}
+function queueRemove(floor) {
+  state.requestedFloors = state.requestedFloors.filter(r => r.floor !== floor);
+}
+function queueNext() {
+  return state.requestedFloors.length > 0 ? state.requestedFloors[0] : null;
+}
+function queueNextSmart(currentFloor, lastDirection) {
+  // Polish Pack V2 Step 7d: routing intelligente.
+  // Dato l'ultima direzione del movimento, sceglie la prossima richiesta:
+  // 1. Cerca richieste con stessa direzione o null (no specifica): prendi la piu' lontana
+  // 2. Se non ci sono: inversione, prendi la piu' lontana nella direzione opposta
+  // 3. Fallback FIFO
+  const cu = state.requestedFloors;
+  if (cu.length === 0) return null;
+  if (lastDirection === 'up' || lastDirection === 'down') {
+    const sameDir = cu.filter(r => r.direction === lastDirection || r.direction === null);
+    if (sameDir.length > 0) {
+      // Prendi il piano piu' lontano nella direzione
+      if (lastDirection === 'up') {
+        return sameDir.reduce((m, r) => r.floor > m.floor ? r : m);
+      } else {
+        return sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
+      }
+    }
+    // Inversione
+    const oppDir = lastDirection === 'up' ? 'down' : 'up';
+    const opp = cu.filter(r => r.direction === oppDir);
+    if (opp.length > 0) {
+      return oppDir === 'up'
+        ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
+        : opp.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+  }
+  // Fallback FIFO
+  return cu[0];
+}
+function queueSize() {
+  return state.requestedFloors.length;
+}
+function queueHas(floor) {
+  return state.requestedFloors.some(r => r.floor === floor);
+}
+function queueClear() {
+  state.requestedFloors.length = 0;
+}
+function queueNextDirection() {
+  // Restituisce la direzione del prossimo elemento ('up'|'down'|null).
+  // Usato per la visualizzazione dell'intenzione sul cartello.
+  const n = queueNext();
+  return n ? n.direction : null;
+}
+
+function requestFloor(floor, directionHint) {
   if (state.alarmOn) return;
   // Polish Pack v1.3 #6: rifiuta selezione piani in modalità "fuori servizio"
   if (state.outOfOrder && floor !== state.currentFloor) {
@@ -5292,24 +5408,39 @@ function requestFloor(floor) {
   }
   cancelAutoClose(); // l'utente ha appena fatto qualcosa
   floor = Math.max(0, Math.min(NUM_FLOORS - 1, floor));
+  // Polish Pack V2 Step 7b: rifiuto difensivo se la direzione non ha senso
+  // (es. ▲ al piano piu' alto, ▼ al piano Terra). Il tasto non dovrebbe esistere
+  // gia' (disabilitazione visiva Q7.2=C in addExternalCallPanel), ma questo
+  // check previene chiamate anomale via tastiera (1-9 senza direzione).
+  if (directionHint === 'up' && floor >= NUM_FLOORS - 1) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    if (typeof showSubtitle === 'function') showSubtitle('Sei al piano piu\' alto', 2000);
+    return;
+  }
+  if (directionHint === 'down' && floor <= 0) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    if (typeof showSubtitle === 'function') showSubtitle('Sei al piano Terra', 2000);
+    return;
+  }
   if (floor === state.currentFloor && !state.isMoving) {
     // già qui, apri le porte
     setDoors(true);
     return;
   }
   if (state.isMoving) {
-    // metti in coda
-    state.requestedFloors.add(floor);
+    // metti in coda con directionHint (Polish Pack V2 Step 7a)
+    queueAdd(directionHint || null, floor);
     lightFloorButton(floor, true);
     return;
   }
-  startMoveTo(floor);
+  startMoveTo(floor, directionHint || null);
 }
 
-function startMoveTo(floor) {
+function startMoveTo(floor, directionHint) {
   state.isMoving = true;
   state.targetFloor = floor;
-  state.requestedFloors.add(floor);
+  // Polish Pack V2 Step 7a: coda memorizza direzione ('up'|'down'|null)
+  queueAdd(directionHint || null, floor);
   lightFloorButton(floor, true);
   moveFrom = state.currentFloor;
   moveTo = floor;
@@ -5387,9 +5518,9 @@ function tickMove(dt) {
     state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
     state.isMoving = false;
     lightFloorButton(moveTo, false);
-    state.requestedFloors.delete(moveTo);
+    state.requestedFloors = state.requestedFloors.filter(r => r.floor !== moveTo);
     // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
-    playChime(state.requestedFloors.size > 0 ? 'intermediate' : 'final');
+    playChime(queueSize() > 0 ? 'intermediate' : 'final');
     // annuncio vocale all'arrivo
     if (typeof announceArrival === 'function') announceArrival(moveTo);
     // rigenera meteo al piano raggiunto
@@ -5403,11 +5534,13 @@ function tickMove(dt) {
     bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
     refreshHudButtons();
-    // processa la coda
-    if (state.requestedFloors.size > 0) {
-      const next = state.requestedFloors.values().next().value;
-      state.requestedFloors.delete(next);
-      setTimeout(() => requestFloor(next), 1200);
+    // processa la coda (Polish Pack V2 Step 7a+7d: smart routing con direction)
+    // Determina la direzione del movimento appena concluso per scegliere il prossimo.
+    const lastDirection = moveTo > moveFrom ? 'up' : 'down';
+    const nextEntry = queueNextSmart(moveTo, lastDirection);
+    if (nextEntry) {
+      queueRemove(nextEntry.floor);
+      setTimeout(() => requestFloor(nextEntry.floor, nextEntry.direction), 1200);
     }
   }
 }
@@ -5697,7 +5830,7 @@ function pressButton(btn) {
       movePaused = true;
       moveT = 0; moveElapsed = 0;
       lightFloorButton(state.targetFloor, false);
-      state.requestedFloors.clear();
+      queueClear();
       updateFloorDisplay();
       playBeep(440, 0.18, 'square', 0.1);
     }
@@ -5709,8 +5842,9 @@ function pressButton(btn) {
     // Se la cabina è già qui, requestFloor apre le porte gentilmente (no countdown).
     // Se la cabina è in viaggio, il piano va in coda (la cabina ci tornerà).
     // Se OOO/allarme, requestFloor rifiuta con beep 220Hz.
+    // Polish Pack V2 Step 7b: passa directionHint ('up'/'down') per semantica coda.
     if (!state.playerInCabin) {
-      requestFloor(state.currentFloor);
+      requestFloor(state.currentFloor, btn.userData.direction);
     }
   }
 }
@@ -5916,7 +6050,7 @@ addEventListener('keydown', e => {
       // blocca movimento e coda, chiudi porte
       state.isMoving = false;
       movePaused = true;
-      state.requestedFloors.clear();
+      queueClear();
       state.prenotationActive = false; // annulla prenotazione automatica
       setDoors(false);
       if (typeof speak === 'function') speak('Ascensore fuori servizio.');
