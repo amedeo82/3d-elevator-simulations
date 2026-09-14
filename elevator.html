@@ -893,11 +893,8 @@ function applyHotelConfigToUI() {
 // della creazione delle cabin texture) garantisce che HOTEL_CONFIG abbia i
 // valori salvati al momento del baking delle texture.
 loadHotelConfig();
-// Polish Pack V2 Step 5: applica override tema corridoio per hotel preset.
-// Cambia wall/carpet/accent della hall cosi' Sky Tower ha pareti blu,
-// Paris ha dorato classico, Burj ha oro su blu, Boss ha colori originali.
-// Viene chiamato anche dopo Apply/Save per refresh live (vedi handlers).
-applyHotelThemeOverride();
+// NB: applyHotelThemeOverride() NON viene chiamato qui perche' themeConfig
+// e' definito piu' avanti (riga ~2407). Vedi chiamata dopo la sua definizione.
 function openHotelCustomizer() {
   const el = document.getElementById('hotel-customizer');
   if (!el) return;
@@ -2478,6 +2475,12 @@ function applyHotelThemeOverride() {
   Object.assign(themeConfig.hotel, base.hotel);
   Object.assign(themeConfig.penthouse, base.penthouse);
 }
+
+// Polish Pack V2 Step 5: applica override tema corridoio per hotel preset.
+// Chiamato QUI (subito dopo la definizione della funzione + themeConfig
+// definito sopra) per evitare TDZ. Cosi' la prima buildCorridor(0)
+// (riga ~3389) usa i colori corretti del hotel salvato.
+applyHotelThemeOverride();
 
 let currentThemeName = null;
 
