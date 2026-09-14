@@ -5353,6 +5353,36 @@ function queueRemove(floor) {
 function queueNext() {
   return state.requestedFloors.length > 0 ? state.requestedFloors[0] : null;
 }
+function queueNextSmart(currentFloor, lastDirection) {
+  // Polish Pack V2 Step 7d: routing intelligente.
+  // Dato l'ultima direzione del movimento, sceglie la prossima richiesta:
+  // 1. Cerca richieste con stessa direzione o null (no specifica): prendi la piu' lontana
+  // 2. Se non ci sono: inversione, prendi la piu' lontana nella direzione opposta
+  // 3. Fallback FIFO
+  const cu = state.requestedFloors;
+  if (cu.length === 0) return null;
+  if (lastDirection === 'up' || lastDirection === 'down') {
+    const sameDir = cu.filter(r => r.direction === lastDirection || r.direction === null);
+    if (sameDir.length > 0) {
+      // Prendi il piano piu' lontano nella direzione
+      if (lastDirection === 'up') {
+        return sameDir.reduce((m, r) => r.floor > m.floor ? r : m);
+      } else {
+        return sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
+      }
+    }
+    // Inversione
+    const oppDir = lastDirection === 'up' ? 'down' : 'up';
+    const opp = cu.filter(r => r.direction === oppDir);
+    if (opp.length > 0) {
+      return oppDir === 'up'
+        ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
+        : opp.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+  }
+  // Fallback FIFO
+  return cu[0];
+}
 function queueSize() {
   return state.requestedFloors.length;
 }
@@ -5504,8 +5534,10 @@ function tickMove(dt) {
     bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
     refreshHudButtons();
-    // processa la coda (Polish Pack V2 Step 7a: FIFO con direction)
-    const nextEntry = queueNext();
+    // processa la coda (Polish Pack V2 Step 7a+7d: smart routing con direction)
+    // Determina la direzione del movimento appena concluso per scegliere il prossimo.
+    const lastDirection = moveTo > moveFrom ? 'up' : 'down';
+    const nextEntry = queueNextSmart(moveTo, lastDirection);
     if (nextEntry) {
       queueRemove(nextEntry.floor);
       setTimeout(() => requestFloor(nextEntry.floor, nextEntry.direction), 1200);
