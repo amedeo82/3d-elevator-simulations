@@ -213,6 +213,128 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
   }
 
+  /* Polish Pack V2 Step 5b: overlay personalizzazione hotel */
+  #hotel-customizer {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 10, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    transition: opacity 0.25s;
+    pointer-events: auto;
+  }
+  #hotel-customizer.hc-hidden { opacity: 0; pointer-events: none; }
+  #hotel-customizer.hc-shown { opacity: 1; }
+  .hc-panel {
+    background: linear-gradient(180deg, #1a1a24, #0a0a10);
+    border: 2px solid var(--hc-accent, #c9a55a);
+    border-radius: 16px;
+    padding: 24px 30px;
+    color: #f0e8d8;
+    font-family: Georgia, serif;
+    box-shadow: 0 0 32px var(--hc-accent, #c9a55a), 0 12px 32px rgba(0,0,0,0.8);
+    min-width: 460px;
+    max-width: 540px;
+  }
+  .hc-title {
+    color: var(--hc-accent, #c9a55a);
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .hc-presets {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .hc-presets-label {
+    color: #a89060;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    margin-right: 4px;
+  }
+  .hc-preset-btn {
+    background: rgba(40, 40, 50, 0.8);
+    border: 1px solid #6a5a40;
+    color: #d8c8a0;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .hc-preset-btn:hover {
+    background: rgba(60, 60, 70, 0.9);
+    border-color: var(--hc-accent, #c9a55a);
+  }
+  .hc-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    margin-bottom: 16px;
+  }
+  .hc-fields label {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    color: #a89060;
+    letter-spacing: 1px;
+  }
+  .hc-fields input {
+    background: rgba(20, 20, 28, 0.9);
+    border: 1px solid #4a4a5a;
+    color: #f0e8d8;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    margin-top: 3px;
+  }
+  .hc-fields input:focus {
+    outline: none;
+    border-color: var(--hc-accent, #c9a55a);
+  }
+  .hc-fields input[type="color"] {
+    height: 36px;
+    cursor: pointer;
+  }
+  .hc-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+  .hc-btn {
+    background: rgba(40, 40, 50, 0.9);
+    border: 1px solid #6a5a40;
+    color: #d8c8a0;
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  .hc-btn:hover { background: rgba(60, 60, 70, 0.9); }
+  .hc-btn.hc-primary {
+    background: linear-gradient(180deg, var(--hc-accent, #c9a55a), color-mix(in srgb, var(--hc-accent, #c9a55a) 50%, #000));
+    border-color: var(--hc-accent, #c9a55a);
+    color: #1a1a1a;
+    font-weight: bold;
+  }
+  .hc-hint {
+    text-align: center;
+    color: #6a6a78;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
   /* Overlay manutentore (Polish Pack v1.4 #19) */
   #maint-overlay {
     position: absolute;
@@ -457,6 +579,7 @@
     <div class="row"><span><kbd>O</kbd></span><span>fuori servizio</span></div>
     <div class="row"><span><kbd>K</kbd></span><span>comando vocale</span></div>
     <div class="row"><span><kbd>?</kbd></span><span>apri / rivedi tutorial</span></div>
+    <div class="row"><span><kbd>H</kbd></span><span>personalizza hotel</span></div>
     <div class="row"><span><kbd>Shift+M</kbd></span><span>manutentore</span></div>
   </div>
   <div id="status">
@@ -495,6 +618,37 @@
   </div>
 </div>
 
+<!-- Polish Pack V2 Step 5b: overlay personalizzazione hotel (tasto H) -->
+<div id="hotel-customizer" class="hc-hidden">
+  <div class="hc-panel">
+    <div class="hc-title">PERSONALIZZA HOTEL</div>
+    <div class="hc-presets">
+      <div class="hc-presets-label">Preset:</div>
+      <button class="hc-preset-btn" data-preset="boss">Boss Hotel</button>
+      <button class="hc-preset-btn" data-preset="sky">Sky Tower Tokyo</button>
+      <button class="hc-preset-btn" data-preset="paris">Hôtel de Paris</button>
+      <button class="hc-preset-btn" data-preset="burj">Burj Al Arab</button>
+    </div>
+    <div class="hc-fields">
+      <label>Nome hotel <input type="text" id="hc-name" maxlength="30"></label>
+      <label>Nome corto <input type="text" id="hc-short" maxlength="20"></label>
+      <label>Indirizzo <input type="text" id="hc-addr" maxlength="50"></label>
+      <label>Città <input type="text" id="hc-city" maxlength="30"></label>
+      <label>Stelle (1-5) <input type="number" id="hc-stars" min="1" max="5" step="1"></label>
+      <label>Anno fondazione <input type="number" id="hc-year" min="1800" max="2100" step="1"></label>
+      <label>Tagline <input type="text" id="hc-tag" maxlength="40"></label>
+      <label>Motivo <input type="text" id="hc-motto" maxlength="60"></label>
+      <label>Colore accent <input type="color" id="hc-color"></label>
+    </div>
+    <div class="hc-actions">
+      <button id="hc-reset" class="hc-btn">Ripristina default</button>
+      <button id="hc-close" class="hc-btn">Chiudi</button>
+      <button id="hc-apply" class="hc-btn hc-primary">Applica e salva</button>
+    </div>
+    <div class="hc-hint">H per aprire/chiudere · Esc per chiudere · preset per cambiare hotel</div>
+  </div>
+</div>
+
 <div id="startscreen">
   <h1 id="startHotelName">Boss Hotel · <b>Ascensore 3D</b></h1>
   <p>Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch,
@@ -513,6 +667,7 @@
     <div>O</div><div>Fuori servizio (manutenzione)</div>
     <div>K</div><div>Comando vocale (speech-to-text)</div>
     <div>?</div><div>Apri / rivedi tutorial contestuale</div>
+    <div>H</div><div>Personalizza hotel (nome, indirizzo, preset)</div>
     <div>Shift+M</div><div>Modalità manutentore (debug)</div>
   </div>
   <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
@@ -597,6 +752,154 @@ const HOTEL_CONFIG = {
   accentGoldLight: '#f6c945',
   panelHelpBrand: 'BOSS HOTEL'
 };
+
+// Polish Pack V2 Step 5b: HOTEL_CONFIG_DEFAULTS = valori originali, HOTEL_CONFIG
+// = copia runtime modificabile dall'utente via HUD personalizza (tasto H).
+const HOTEL_CONFIG_DEFAULTS = Object.freeze(Object.assign({}, HOTEL_CONFIG));
+
+// ============================================================
+// POLISH PACK V2 STEP 5c — PRESET ALTERNATIVI (4 hotel)
+// ============================================================
+const HOTEL_PRESETS = {
+  boss: HOTEL_CONFIG_DEFAULTS,
+  sky: {
+    name: 'SKY TOWER TOKYO',
+    shortName: 'Sky Tower',
+    address: 'Oshiage 1-1-2 \u00b7 Tokyo',
+    city: 'Tokyo',
+    country: 'Giappone',
+    stars: 5,
+    established: 2012,
+    tagline: 'The future, elevated',
+    motto: 'L\u0027orizzonte del futuro, oggi.',
+    motto2: 'Torre panoramica con ascensori al grattacielo piu\' alto del Giappone.',
+    systemName: 'SKY TOWER ELEVATOR SYSTEM',
+    systemYear: '2026',
+    edition: 'Sky Tower Edition',
+    accentGold: '#4a9eff',
+    accentGoldDark: '#1a4a8a',
+    accentGoldLight: '#90c8ff',
+    panelHelpBrand: 'SKY TOWER'
+  },
+  paris: {
+    name: 'H\u00d4TEL DE PARIS',
+    shortName: 'H\u00f4tel de Paris',
+    address: 'Place du Casino \u00b7 Monte Carlo',
+    city: 'Monte Carlo',
+    country: 'Monaco',
+    stars: 5,
+    established: 1864,
+    tagline: 'L\u00e9gance fran\u00e7aise depuis 1864',
+    motto: 'Dal 1864, l\u0027eleganza senza tempo.',
+    motto2: 'Storico hotel di fronte al Casino di Monte Carlo. Suite principesche.',
+    systemName: 'H\u00d4TEL DE PARIS ASCENSEUR',
+    systemYear: '2026',
+    edition: 'H\u00f4tel de Paris Edition',
+    accentGold: '#d4af37',
+    accentGoldDark: '#6a5a20',
+    accentGoldLight: '#f0d878',
+    panelHelpBrand: 'H\u00d4TEL DE PARIS'
+  },
+  burj: {
+    name: 'BURJ AL ARAB',
+    shortName: 'Burj Al Arab',
+    address: 'Umm Suqeim 3 \u00b7 Dubai',
+    city: 'Dubai',
+    country: 'EAU',
+    stars: 5,
+    established: 1999,
+    tagline: 'The world\u0027s only 7-star hotel',
+    motto: 'L\u0027eccellenza assoluta, oltre ogni aspettativa.',
+    motto2: 'Icona di Dubai su isola artificiale. Suite Reale a 780 m\u00b2.',
+    systemName: 'BURJ AL ARAB ELEVATOR SYSTEM',
+    systemYear: '2026',
+    edition: 'Burj Al Arab Edition',
+    accentGold: '#e0b973',
+    accentGoldDark: '#8a5a20',
+    accentGoldLight: '#ffd88a',
+    panelHelpBrand: 'BURJ AL ARAB'
+  }
+};
+
+// Polish Pack V2 Step 5b: persistenza localStorage per HOTEL_CONFIG custom
+const HOTEL_CONFIG_KEY = 'bossHotelConfig';
+const HOTEL_CONFIG_VERSION = 1;
+function loadHotelConfig() {
+  try {
+    const raw = localStorage.getItem(HOTEL_CONFIG_KEY);
+    if (!raw) return false;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== HOTEL_CONFIG_VERSION) return false;
+    for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) {
+      if (typeof p[k] === typeof HOTEL_CONFIG_DEFAULTS[k]) HOTEL_CONFIG[k] = p[k];
+    }
+    return true;
+  } catch(e) { return false; }
+}
+function saveHotelConfig() {
+  try {
+    localStorage.setItem(HOTEL_CONFIG_KEY, JSON.stringify(Object.assign(
+      { v: HOTEL_CONFIG_VERSION }, HOTEL_CONFIG
+    )));
+  } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
+}
+function applyHotelPreset(key) {
+  const p = HOTEL_PRESETS[key];
+  if (!p) return;
+  for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = p[k];
+  applyHotelConfigToUI();
+}
+function applyHotelConfigToUI() {
+  // start screen
+  const nameEl = document.getElementById('startHotelName');
+  if (nameEl) nameEl.innerHTML = HOTEL_CONFIG.shortName + ' &middot; <b>Ascensore 3D</b>';
+  const edEl = document.getElementById('startEdition');
+  if (edEl) edEl.textContent = HOTEL_CONFIG.edition;
+  // accent CSS variable per l'overlay customizer
+  const hcEl = document.getElementById('hotel-customizer');
+  if (hcEl) hcEl.style.setProperty('--hc-accent', HOTEL_CONFIG.accentGold);
+  // invalida display touch (header ridisegnato + footer con systemName)
+  if (typeof markDisplaySemistaticDirty === 'function') markDisplaySemistaticDirty();
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  // ridisegna targa piano (label hotel)
+  if (typeof drawFloorSign === 'function') drawFloorSign(state.currentFloor);
+  // Nota: canvas texture statiche della cabina (targa principale, citofono,
+  // pulsantiera) sono create una volta. Per vederle aggiornate serve reload.
+}
+function openHotelCustomizer() {
+  const el = document.getElementById('hotel-customizer');
+  if (!el) return;
+  document.getElementById('hc-name').value = HOTEL_CONFIG.name;
+  document.getElementById('hc-short').value = HOTEL_CONFIG.shortName;
+  document.getElementById('hc-addr').value = HOTEL_CONFIG.address;
+  document.getElementById('hc-city').value = HOTEL_CONFIG.city;
+  document.getElementById('hc-stars').value = HOTEL_CONFIG.stars;
+  document.getElementById('hc-year').value = HOTEL_CONFIG.established;
+  document.getElementById('hc-tag').value = HOTEL_CONFIG.tagline;
+  document.getElementById('hc-motto').value = HOTEL_CONFIG.motto;
+  document.getElementById('hc-color').value = HOTEL_CONFIG.accentGold;
+  el.className = 'hc-shown';
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closeHotelCustomizer() {
+  const el = document.getElementById('hotel-customizer');
+  if (el) el.className = 'hc-hidden';
+}
+function applyHotelCustomizerForm() {
+  HOTEL_CONFIG.name = document.getElementById('hc-name').value || HOTEL_CONFIG_DEFAULTS.name;
+  HOTEL_CONFIG.shortName = document.getElementById('hc-short').value || HOTEL_CONFIG_DEFAULTS.shortName;
+  HOTEL_CONFIG.address = document.getElementById('hc-addr').value || HOTEL_CONFIG_DEFAULTS.address;
+  HOTEL_CONFIG.city = document.getElementById('hc-city').value || HOTEL_CONFIG_DEFAULTS.city;
+  const stars = parseInt(document.getElementById('hc-stars').value);
+  HOTEL_CONFIG.stars = (stars >= 1 && stars <= 5) ? stars : 5;
+  const year = parseInt(document.getElementById('hc-year').value);
+  HOTEL_CONFIG.established = (year >= 1800 && year <= 2100) ? year : 1898;
+  HOTEL_CONFIG.tagline = document.getElementById('hc-tag').value || HOTEL_CONFIG_DEFAULTS.tagline;
+  HOTEL_CONFIG.motto = document.getElementById('hc-motto').value || HOTEL_CONFIG_DEFAULTS.motto;
+  HOTEL_CONFIG.accentGold = document.getElementById('hc-color').value || HOTEL_CONFIG_DEFAULTS.accentGold;
+  applyHotelConfigToUI();
+  saveHotelConfig();
+}
 
 // ============================================================
 // STATO GLOBALE (dichiarato in cima per evitare errori TDZ)
@@ -5464,6 +5767,19 @@ addEventListener('keydown', e => {
     // Deve essere prima del ramo KeyV/N/O/etc perche KeyM matcha qualsiasi combinazione
     e.preventDefault();
     toggleMaintenance();
+  } else if (e.code === 'KeyH') {
+    // Polish Pack V2 Step 5b: toggle HUD personalizza hotel
+    e.preventDefault();
+    const el = document.getElementById('hotel-customizer');
+    if (el && el.classList.contains('hc-shown')) closeHotelCustomizer();
+    else openHotelCustomizer();
+  } else if (e.code === 'Escape') {
+    // Esc chiude l'overlay personalizza (se attivo)
+    const el = document.getElementById('hotel-customizer');
+    if (el && el.classList.contains('hc-shown')) {
+      e.preventDefault();
+      closeHotelCustomizer();
+    }
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
     if (ttsEnabled) speak('Annunci vocali attivati');
@@ -5913,6 +6229,28 @@ document.getElementById('tt-skip').addEventListener('click', () => {
   noteInteraction();
   endTutorial();
 });
+
+// Polish Pack V2 Step 5b/5c: hook bottoni personalizzazione hotel
+document.getElementById('hc-close').addEventListener('click', closeHotelCustomizer);
+document.getElementById('hc-reset').addEventListener('click', () => {
+  for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = HOTEL_CONFIG_DEFAULTS[k];
+  openHotelCustomizer(); // ripopola i campi
+  applyHotelConfigToUI();
+  saveHotelConfig();
+});
+document.getElementById('hc-apply').addEventListener('click', () => {
+  applyHotelCustomizerForm();
+  closeHotelCustomizer();
+});
+document.querySelectorAll('.hc-preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyHotelPreset(btn.dataset.preset);
+    openHotelCustomizer(); // ripopola i campi con i nuovi valori del preset
+    saveHotelConfig();
+  });
+});
+// carica config custom salvata (se presente) PRIMA del primo frame
+loadHotelConfig();
 
 requestAnimationFrame(loop);
 </script>
