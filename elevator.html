@@ -632,10 +632,10 @@
     <div class="events" id="m-events"></div>
     <div class="hint">Shift+M esce · 1-9 teletrasporto</div>
   </div>
-  <div id="mode-badge"><span class="dot"></span><span id="modeText">Dentro la cabina</span></div>
-  <button id="hud-exit-btn" class="hud-action" style="display:none;">↗ Esci dalla cabina</button>
-  <button id="hud-reenter-btn" class="hud-action" style="display:none;">↙ Rientra in cabina</button>
-  <div id="pointerhint">Clicca per attivare il puntatore</div>
+  <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
+  <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
+  <button id="hud-reenter-btn" class="hud-action" style="display:none;"></button>
+  <div id="pointerhint"></div>
 </div>
 
 <!-- Polish Pack V2 Step 2b: overlay tooltip contestuale per il tutorial prima volta -->
@@ -813,6 +813,28 @@ const STRINGS = {
     outOfOrder: 'Fuori servizio',
     cabinMode: 'In cabina',
     corridorMode: 'Nel corridoio',
+    // Polish Pack V2 Step 8: HUD labels bilingue
+    inCabinBadge: 'Dentro la cabina',
+    inCorridorBadge: 'Nel corridoio',
+    exitCabinBtn: '\u2197 Esci dalla cabina',
+    reenterCabinBtn: '\u2199 Rientra in cabina',
+    pointerHint: 'Clicca per attivare il puntatore',
+    clickToResume: 'Clicca per riprendere',
+    audioOn: 'Audio: ON',
+    audioOff: 'Audio: OFF',
+    voiceOn: 'Voce: ON',
+    voiceOff: 'Voce: OFF',
+    nightModeOn: 'Notte: ON',
+    nightModeOff: 'Notte: OFF',
+    oooOn: 'Fuori servizio: ON',
+    oooOff: 'Servizio ripristinato',
+    calledFloor: (f) => `Chiamato piano ${f}`,
+    voiceNotUnderstood: (t) => `Voce: non ho capito "${t}"`,
+    voiceHeardNotInCabin: (f) => `Voce: "${f}" ricevuto (devi essere in cabina)`,
+    elevatorRestored: 'Ascensore ripristinato',
+    elevatorOutOfService: 'Ascensore in manutenzione',
+    pressORestore: 'Premere O per ripristinare',
+    prenotationLabel: 'PRENOTATA \u00b7 Tieni premuto E per entrare',
     helpTitle: 'Comandi',
     // start screen
     startBtn: 'Entra nell\'ascensore',
@@ -927,6 +949,28 @@ const STRINGS = {
     outOfOrder: 'Out of order',
     cabinMode: 'In cabin',
     corridorMode: 'In corridor',
+    // Polish Pack V2 Step 8: HUD labels bilingue
+    inCabinBadge: 'Inside the cabin',
+    inCorridorBadge: 'In the corridor',
+    exitCabinBtn: '\u2197 Exit the cabin',
+    reenterCabinBtn: '\u2199 Re-enter cabin',
+    pointerHint: 'Click to activate the pointer',
+    clickToResume: 'Click to resume',
+    audioOn: 'Audio: ON',
+    audioOff: 'Audio: OFF',
+    voiceOn: 'Voice: ON',
+    voiceOff: 'Voice: OFF',
+    nightModeOn: 'Night: ON',
+    nightModeOff: 'Night: OFF',
+    oooOn: 'Out of service: ON',
+    oooOff: 'Service restored',
+    calledFloor: (f) => `Floor ${f} called`,
+    voiceNotUnderstood: (t) => `Voice: I did not understand "${t}"`,
+    voiceHeardNotInCabin: (f) => `Voice: "${f}" received (you must be in the cabin)`,
+    elevatorRestored: 'Elevator restored',
+    elevatorOutOfService: 'Elevator under maintenance',
+    pressORestore: 'Press O to restore',
+    prenotationLabel: 'BOOKED \u00b7 Hold E to enter',
     helpTitle: 'Controls',
     startBtn: 'Enter the elevator',
     cabinTitle: '5\u2605 Cabin',
@@ -4656,10 +4700,10 @@ function renderDisplayDynamicLayer(ctx, animT) {
     ctx.shadowBlur = 0;
     ctx.font = 'bold 16px Arial';
     ctx.fillStyle = '#ffaa66';
-    ctx.fillText('Ascensore in manutenzione', W/2, 245);
+    ctx.fillText(STRINGS[state.lang].elevatorOutOfService, W/2, 245);
     ctx.fillStyle = '#a89060';
     ctx.font = '13px Arial';
-    ctx.fillText('Premere O per ripristinare', W/2, 285);
+    ctx.fillText(STRINGS[state.lang].pressORestore, W/2, 285);
   } else if (state.prenotationActive && !state.playerInCabin) {
     // Polish Pack v1.4 #20: overlay prenotazione quando il player è nel corridoio
     ctx.fillStyle = 'rgba(120, 220, 255, 0.10)';
@@ -5439,7 +5483,7 @@ function startVoice() {
     recognition.start();
     state.voiceEnabled = true;
     const status = document.getElementById('statusText');
-    if (status) status.textContent = 'Voce: ON (pronuncia "piano N")';
+    if (status) status.textContent = state.lang === 'en' ? 'Voice: ON (say "floor N")' : 'Voce: ON (pronuncia "piano N")';
     setTimeout(() => updateFloorDisplay(), 2000);
   } catch(e) {
     recognition = null;
@@ -5472,14 +5516,14 @@ function processVoiceCommand(transcript) {
   }
   if (floor < 0 || floor >= NUM_FLOORS) {
     const status = document.getElementById('statusText');
-    if (status) status.textContent = `Voce: non ho capito "${transcript}"`;
+    if (status) status.textContent = STRINGS[state.lang].voiceNotUnderstood(transcript);
     setTimeout(() => updateFloorDisplay(), 1500);
     return;
   }
   // chiama solo se siamo in cabina e fermi (per non confondere con prenotazione)
   if (!state.playerInCabin) {
     const status = document.getElementById('statusText');
-    if (status) status.textContent = `Voce: "${floor}" ricevuto (devi essere in cabina)`;
+    if (status) status.textContent = STRINGS[state.lang].voiceHeardNotInCabin(floor);
     setTimeout(() => updateFloorDisplay(), 1800);
     return;
   }
@@ -5488,7 +5532,9 @@ function processVoiceCommand(transcript) {
   const label = floor === 0 ? 'T' : String(floor);
   const status = document.getElementById('statusText');
   if (status) {
-    status.textContent = `Voce: "${transcript}" → piano ${label}`;
+    status.textContent = state.lang === 'en'
+      ? `Voice: "${transcript}" → floor ${label}`
+      : `Voce: "${transcript}" → piano ${label}`;
     setTimeout(() => updateFloorDisplay(), 1800);
   }
 }
@@ -6018,6 +6064,9 @@ function refreshHudButtons() {
   const reBtn = document.getElementById('hud-reenter-btn');
   const badge = document.getElementById('mode-badge');
   const modeText = document.getElementById('modeText');
+  // Polish Pack V2 Step 8: aggiorna i label dei bottoni HUD con la lingua corrente
+  if (exitBtn) exitBtn.textContent = STRINGS[state.lang].exitCabinBtn;
+  if (reBtn) reBtn.textContent = STRINGS[state.lang].reenterCabinBtn;
   if (state.playerInCabin) {
     // mostra "Esci" solo se le porte sono aperte, cabina ferma, niente allarme
     if (state.doorsOpen && !state.isMoving && !state.alarmOn) {
@@ -6027,12 +6076,12 @@ function refreshHudButtons() {
     }
     reBtn.style.display = 'none';
     badge.classList.remove('corridor');
-    modeText.textContent = 'Dentro la cabina';
+    modeText.textContent = STRINGS[state.lang].inCabinBadge;
   } else {
     exitBtn.style.display = 'none';
     reBtn.style.display = 'flex';
     badge.classList.add('corridor');
-    modeText.textContent = 'Nel corridoio';
+    modeText.textContent = STRINGS[state.lang].inCorridorBadge;
   }
 }
 
@@ -6392,7 +6441,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyM' && !e.shiftKey) {
     state.muted = !state.muted;
     const status = document.getElementById('statusText');
-    if (status) status.textContent = state.muted ? 'Audio: OFF' : 'Audio: ON';
+    if (status) status.textContent = state.muted ? STRINGS[state.lang].audioOff : STRINGS[state.lang].audioOn;
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
   } else if (e.code === 'KeyM' && e.shiftKey) {
@@ -6429,7 +6478,7 @@ addEventListener('keydown', e => {
     if (ttsEnabled) speak('Annunci vocali attivati');
     // piccolo feedback visivo
     const status = document.getElementById('statusText');
-    if (status) status.textContent = ttsEnabled ? 'Voce: ON' : 'Voce: OFF';
+    if (status) status.textContent = ttsEnabled ? STRINGS[state.lang].voiceOn : STRINGS[state.lang].voiceOff;
     setTimeout(() => updateFloorDisplay(), 1500);
     savePrefs();
   } else if (e.code === 'KeyN') {
@@ -6460,7 +6509,7 @@ addEventListener('keydown', e => {
       if (!state.alarmOn && state.playerInCabin && !state.isMoving) {
         setDoors(true);
       }
-      if (typeof speak === 'function') speak('Ascensore ripristinato.');
+      if (typeof speak === 'function') speak(STRINGS[state.lang].elevatorRestored + '.');
       playBeep(660, 0.12, 'sine', 0.1);
     }
     // aggiorna cartello corridoio + display touch
@@ -6470,7 +6519,7 @@ addEventListener('keydown', e => {
     if (typeof markDisplayDirty === 'function') markDisplayDirty();
     const status = document.getElementById('statusText');
     if (status) {
-      status.textContent = state.outOfOrder ? 'Fuori servizio' : 'Ascensore ripristinato';
+      status.textContent = state.outOfOrder ? STRINGS[state.lang].oooOn : STRINGS[state.lang].elevatorRestored;
       setTimeout(() => updateFloorDisplay(), 1500);
     }
   } else if (e.code === 'KeyE') {
@@ -6502,7 +6551,7 @@ addEventListener('keydown', e => {
           requestFloor(floor);
           const status = document.getElementById('statusText');
           if (status) {
-            status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
+status.textContent = STRINGS[state.lang].calledFloor(floor === 0 ? 'T' : floor);
             setTimeout(() => updateFloorDisplay(), 1500);
           }
         }
@@ -6510,7 +6559,7 @@ addEventListener('keydown', e => {
         requestFloor(floor);
         const status = document.getElementById('statusText');
         if (status) {
-          status.textContent = `Chiamato piano ${floor === 0 ? 'T' : floor}`;
+          status.textContent = STRINGS[state.lang].calledFloor(floor === 0 ? 'T' : floor);
           setTimeout(() => updateFloorDisplay(), 1500);
         }
       }
@@ -6847,17 +6896,32 @@ let startSlidesTimer = null;
   }, 2500);
 })();
 
-// Polish Pack V2 Step 8: bottone start con testo dinamico per lingua corrente
+// Polish Pack V2 Step 8: applica testi dinamici a tutti gli elementi HTML
+// che dipendono da state.lang (start button, hud buttons, mode badge,
+// pointer hint, manutentore overlay).
+function applyLangToDOM() {
+  const s = STRINGS[state.lang];
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) startBtn.textContent = s.startBtn;
+  const ph = document.getElementById('pointerhint');
+  if (ph) ph.textContent = s.pointerHint;
+  // modeText e bottoni HUD: aggiornati da refreshHudButtons().
+  // Aggiorniamo comunque per assicurarci siano aggiornati al boot.
+  const mt = document.getElementById('modeText');
+  if (mt) mt.textContent = s.inCabinBadge;
+  const exitBtn = document.getElementById('hud-exit-btn');
+  if (exitBtn) exitBtn.textContent = s.exitCabinBtn;
+  const reBtn = document.getElementById('hud-reenter-btn');
+  if (reBtn) reBtn.textContent = s.reenterCabinBtn;
+}
 (function applyLangToStartScreen() {
-  const btn = document.getElementById('startBtn');
-  if (btn) btn.textContent = state.lang === 'en' ? 'Enter the elevator' : 'Entra nell\'ascensore';
+  applyLangToDOM();
 })();
-// lingua corrente per il bottone: aggiorna ad ogni cambio
+// lingua corrente per tutti gli elementi dinamici: aggiorna ad ogni cambio
 const _setLang_orig = setLang;
 setLang = function(newLang) {
   const r = _setLang_orig(newLang);
-  const btn = document.getElementById('startBtn');
-  if (btn) btn.textContent = state.lang === 'en' ? 'Enter the elevator' : 'Entra nell\'ascensore';
+  applyLangToDOM();
   return r;
 };
 
