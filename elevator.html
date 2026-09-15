@@ -5527,31 +5527,43 @@ function tickMaintenance(now) {
 // ============================================================
 let ttsEnabled = true;
 let italianVoice = null;
-function loadItalianVoice() {
+let englishVoice = null;
+// Polish Pack V2 Step 8c: carica voci IT (priorità it-XX) e EN (en-GB > en-US > en-XX).
+function loadVoices() {
   if (!('speechSynthesis' in window)) return;
   const voices = window.speechSynthesis.getVoices();
-  // cerca una voce italiana
+  // voce italiana
   italianVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('it')) || null;
+  // voce inglese britannica (Q8.2=B: en-GB)
+  englishVoice = voices.find(v => v.lang && v.lang.toLowerCase() === 'en-gb')
+              || voices.find(v => v.lang && v.lang.toLowerCase() === 'en-us')
+              || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'))
+              || null;
 }
 if ('speechSynthesis' in window) {
-  loadItalianVoice();
+  loadVoices();
   // le voci possono essere caricate in modo asincrono
   if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = loadItalianVoice;
+    window.speechSynthesis.onvoiceschanged = loadVoices;
   }
 }
 
+// Polish Pack V2 Step 8c: speak con supporto multilingua.
+// opts: { lang: 'it'|'en' (default: state.lang), rate, pitch, volume }.
+// Se lang !== state.lang, usa la lingua esplicita (utile per i tutorial voice testi).
 function speak(text, opts = {}) {
   if (!ttsEnabled || state.muted) return;
   if (!('speechSynthesis' in window)) return;
+  const lang = opts.lang || state.lang || 'it';
   try {
     window.speechSynthesis.cancel(); // interrompi eventuali annunci precedenti
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'it-IT';
+    u.lang = lang === 'en' ? 'en-GB' : 'it-IT';
     u.rate = opts.rate || 0.95;
     u.pitch = opts.pitch || 1.0;
     u.volume = opts.volume || 0.85;
-    if (italianVoice) u.voice = italianVoice;
+    if (lang === 'en' && englishVoice) u.voice = englishVoice;
+    else if (lang === 'it' && italianVoice) u.voice = italianVoice;
     window.speechSynthesis.speak(u);
   } catch (e) { /* ignore */ }
 }
@@ -5567,26 +5579,46 @@ function showSubtitle(text, durationMs = 3000) {
   _subtitleTimer = setTimeout(() => el.classList.remove('show'), durationMs);
 }
 
-function floorNameIT(f) {
+// Polish Pack V2 Step 8c: floorName per lingua corrente (state.lang).
+// Restituisce il nome parlato del piano per gli annunci TTS.
+function floorName(f) {
+  if (state.lang === 'en') {
+    if (f === 0) return 'ground floor';
+    const ord = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth'];
+    return ord[f] ? `${ord[f]} floor` : `floor ${f}`;
+  }
+  // italiano
   if (f === 0) return 'piano terra';
   const names = ['', 'primo', 'secondo', 'terzo', 'quarto', 'quinto', 'sesto', 'settimo', 'ottavo', 'nono'];
   return names[f] ? `piano ${names[f]}` : `piano ${f}`;
 }
+// Backward-compat: vecchia funzione ancora usata in alcuni punti
+function floorNameIT(f) { return floorName(f); }
 
 function announceArrival(floor) {
-  const txt = `${floorNameIT(floor)}, prego`;
+  // IT: "<piano>, prego"  /  EN: "<floor>, please"
+  let txt;
+  if (state.lang === 'en') {
+    txt = `${floorName(floor)}, please`;
+  } else {
+    txt = `${floorName(floor)}, prego`;
+  }
   speak(txt);
   showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1));
 }
 
 function announceAlarm() {
-  const txt = 'Allarme. Chiamata di soccorsi in corso. Restate calmi.';
+  const txt = state.lang === 'en'
+    ? 'Alarm. Emergency call in progress. Please remain calm.'
+    : 'Allarme. Chiamata di soccorsi in corso. Restate calmi.';
   speak(txt);
   showSubtitle(txt, 5000);
 }
 
 function announceDoorClosing() {
-  const txt = 'Attenzione. Le porte si stanno chiudendo.';
+  const txt = state.lang === 'en'
+    ? 'Caution. Doors are closing.'
+    : 'Attenzione. Le porte si stanno chiudendo.';
   speak(txt);
   showSubtitle(txt, 2500);
 }
