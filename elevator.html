@@ -592,6 +592,7 @@
     <div class="row"><span><kbd>K</kbd></span><span>comando vocale</span></div>
     <div class="row"><span><kbd>?</kbd></span><span>apri / rivedi tutorial</span></div>
     <div class="row"><span><kbd>H</kbd></span><span>personalizza hotel</span></div>
+    <div class="row"><span><kbd>L</kbd></span><span>lingua IT / EN</span></div>
     <div class="row"><span><kbd>Shift+M</kbd></span><span>manutentore</span></div>
   </div>
   <div id="status">
@@ -1140,6 +1141,51 @@ function closeHotelCustomizer() {
   const el = document.getElementById('hotel-customizer');
   if (el) el.className = 'hc-hidden';
 }
+// ============================================================
+// POLISH PACK V2 STEP 8b — i18n: toggle L + persistenza + auto-detect
+// ============================================================
+const LANG_KEY = 'bossHotelLang';
+const LANG_VERSION = 1;
+function detectBrowserLang() {
+  // Auto-detect da navigator.language: 'it*' → 'it', tutto il resto → 'en'.
+  // Default: 'it' (pubblico primario del progetto).
+  const nav = (typeof navigator !== 'undefined' && navigator.language) || '';
+  return /^it/i.test(nav) ? 'it' : 'en';
+}
+function loadLang() {
+  try {
+    const raw = localStorage.getItem(LANG_KEY);
+    if (!raw) return detectBrowserLang();
+    const p = JSON.parse(raw);
+    if (!p || p.v !== LANG_VERSION) return detectBrowserLang();
+    return (p.lang === 'it' || p.lang === 'en') ? p.lang : detectBrowserLang();
+  } catch(e) { return detectBrowserLang(); }
+}
+function saveLang() {
+  try {
+    localStorage.setItem(LANG_KEY, JSON.stringify({
+      v: LANG_VERSION,
+      lang: state.lang
+    }));
+  } catch(e) { /* ignora quota/disabled */ }
+}
+// Polish Pack V2 Step 8b: setLang cambia lingua live e ridisegna canvas/UI.
+// Tollerante: se lang non e' 'it' o 'en', fallback a 'it'.
+function setLang(newLang) {
+  if (newLang !== 'it' && newLang !== 'en') newLang = 'it';
+  if (state.lang === newLang) return;
+  state.lang = newLang;
+  // Invalida display touch e ridisegna cartelli (canvas texture)
+  if (typeof markDisplaySemistaticDirty === 'function') markDisplaySemistaticDirty();
+  if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  if (typeof drawFloorSign === 'function' && state.currentFloor !== undefined) {
+    drawFloorSign(state.currentFloor);
+  }
+  // Aggiorna i testi del display touch (alcuni label dinamici)
+  updateFloorDisplay();
+  saveLang();
+}
+
 function applyHotelCustomizerForm() {
   HOTEL_CONFIG.name = document.getElementById('hc-name').value || HOTEL_CONFIG_DEFAULTS.name;
   HOTEL_CONFIG.shortName = document.getElementById('hc-short').value || HOTEL_CONFIG_DEFAULTS.shortName;
@@ -6252,6 +6298,10 @@ addEventListener('keydown', e => {
     const el = document.getElementById('hotel-customizer');
     if (el && el.classList.contains('hc-shown')) closeHotelCustomizer();
     else openHotelCustomizer();
+  } else if (e.code === 'KeyL') {
+    // Polish Pack V2 Step 8b: toggle lingua IT ↔ EN
+    e.preventDefault();
+    setLang(state.lang === 'it' ? 'en' : 'it');
   } else if (e.code === 'Escape') {
     // Esc chiude l'overlay personalizza (se attivo)
     const el = document.getElementById('hotel-customizer');
@@ -6649,12 +6699,15 @@ function savePrefs() {
 }
 
 loadPrefs();
+// Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
+state.lang = loadLang();
 // Polish Pack V2 Step 5a: aggiorna elementi HTML della start screen con HOTEL_CONFIG
 (function applyHotelConfigToStartScreen() {
   const nameEl = document.getElementById('startHotelName');
   if (nameEl) {
     // ricostruisci: "<shortName> · <b>Ascensore 3D</b>"
-    nameEl.innerHTML = HOTEL_CONFIG.shortName + ' &middot; <b>Ascensore 3D</b>';
+    const ascender3d = state.lang === 'en' ? '3D Elevator' : 'Ascensore 3D';
+    nameEl.innerHTML = HOTEL_CONFIG.shortName + ' &middot; <b>' + ascender3d + '</b>';
   }
   const edEl = document.getElementById('startEdition');
   if (edEl) edEl.textContent = HOTEL_CONFIG.edition;
