@@ -600,7 +600,7 @@
   <div id="panel-help"></div>
   <div id="status">
     <div class="dot"></div>
-    <div id="statusText">In attesa</div>
+    <div id="statusText"></div>
   </div>
   <div id="subtitle"></div>
   <div id="maint-overlay">
@@ -866,7 +866,7 @@ const STRINGS = {
     startHint2: 'Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina.',
     // tutorial
     tutorialStep1Text: 'Benvenuto al <strong></strong>. Sei nella cabina al piano Terra.',
-    tutorialStep1Voice: 'Benvenuto al hotel. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.',
+    tutorialStep1Voice: 'Benvenuto a {}. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.',
     tutorialStep2Text: 'Premi <kbd>E</kbd> per <strong>uscire</strong> dalla cabina ed esplorare il corridoio.',
     tutorialStep2Voice: 'Premi E per uscire dalla cabina.',
     tutorialStep3Text: 'Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Premi di nuovo <kbd>E</kbd> vicino alle porte per rientrare.',
@@ -1082,7 +1082,7 @@ const STRINGS = {
     startHint: 'You are about to enter a luxury 5-star elevator cabin.',
     startHint2: 'Select a floor from the touch panel, or exit into the corridor to re-enter the cabin.',
     tutorialStep1Text: 'Welcome to <strong></strong>. You are in the cabin at the ground floor.',
-    tutorialStep1Voice: 'Welcome to the hotel. Press one, two, three, four, five, six, seven, eight or nine to call a floor.',
+    tutorialStep1Voice: 'Welcome to {}. Press one, two, three, four, five, six, seven, eight or nine to call a floor.',
     tutorialStep2Text: 'Press <kbd>E</kbd> to <strong>exit</strong> the cabin and explore the corridor.',
     tutorialStep2Voice: 'Press E to exit the cabin.',
     tutorialStep3Text: 'In the corridor use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move. Press <kbd>E</kbd> again near the doors to re-enter.',
@@ -1385,7 +1385,7 @@ function hcShowStatus(text, tone) {
   }
 }
 function hcScheduleReload(delayMs, message) {
-  hcShowStatus(message || 'Riavvio in corso...', 'success');
+  hcShowStatus(message || (state.lang === 'en' ? 'Reloading...' : 'Riavvio in corso...'), 'success');
   // Disabilita tutti i bottoni durante il reload per evitare doppio click
   document.querySelectorAll('#hotel-customizer button').forEach(b => { b.disabled = true; });
   setTimeout(() => { location.reload(); }, delayMs || 800);
@@ -4845,13 +4845,18 @@ function renderDisplayDynamicLayer(ctx, animT) {
       ctx.fillText(`${fromLabel} → ${toLabel}`, W/2, 145);
     }
     let arrowChar = '·';
-    let arrowLabel = 'FERMO';
-    if (state.alarmOn) { arrowChar = '!'; arrowLabel = 'ALLARME'; }
+    let arrowLabel = state.lang === 'en' ? 'IDLE' : 'FERMO';
+    if (state.alarmOn) { arrowChar = '!'; arrowLabel = state.lang === 'en' ? 'ALARM' : 'ALLARME'; }
     else if (state.isMoving) {
-      if (state.targetFloor > state.currentFloor) { arrowChar = '▲'; arrowLabel = 'IN SALITA'; }
-      else { arrowChar = '▼'; arrowLabel = 'IN DISCESA'; }
+      if (state.targetFloor > state.currentFloor) {
+        arrowChar = '▲';
+        arrowLabel = state.lang === 'en' ? 'GOING UP' : 'IN SALITA';
+      } else {
+        arrowChar = '▼';
+        arrowLabel = state.lang === 'en' ? 'GOING DOWN' : 'IN DISCESA';
+      }
     } else if (state.doorsOpen) {
-      arrowLabel = 'PORTE APERTE';
+      arrowLabel = state.lang === 'en' ? 'DOORS OPEN' : 'PORTE APERTE';
     } else {
       arrowLabel = 'IN ATTESA';
     }
@@ -4991,14 +4996,20 @@ function updateFloorDisplay() {
   const status = document.getElementById('status');
   const statusText = document.getElementById('statusText');
   status.classList.remove('alarm', 'moving');
+  const lang = state.lang;
   if (state.alarmOn) {
     status.classList.add('alarm');
-    statusText.textContent = 'ALLARME — Soccorsi in arrivo';
+    statusText.textContent = lang === 'en'
+      ? 'ALARM — Help is on the way'
+      : 'ALLARME \u2014 Soccorsi in arrivo';
   } else if (state.isMoving) {
     status.classList.add('moving');
-    statusText.textContent = `Diretto al piano ${state.targetFloor === 0 ? 'T' : state.targetFloor}`;
+    const target = state.targetFloor === 0 ? (lang === 'en' ? 'G' : 'T') : String(state.targetFloor);
+    statusText.textContent = lang === 'en'
+      ? `Going to floor ${target}`
+      : `Diretto al piano ${target}`;
   } else {
-    statusText.textContent = 'In attesa';
+    statusText.textContent = lang === 'en' ? 'Waiting' : 'In attesa';
   }
 }
 
@@ -5546,7 +5557,7 @@ function checkVoiceSupport() {
 function startVoice() {
   if (!checkVoiceSupport()) {
     const status = document.getElementById('statusText');
-    if (status) status.textContent = 'Comando vocale non supportato in questo browser';
+    if (status) status.textContent = state.lang === 'en' ? 'Voice command not supported in this browser' : 'Comando vocale non supportato in questo browser';
     setTimeout(() => updateFloorDisplay(), 1500);
     return;
   }
@@ -5566,7 +5577,7 @@ function startVoice() {
   recognition.onerror = e => {
     if (e.error === 'no-speech' || e.error === 'aborted') return; // non segnalare
     const status = document.getElementById('statusText');
-    if (status) status.textContent = `Voce errore: ${e.error}`;
+    if (status) status.textContent = state.lang === 'en' ? `Voice error: ${e.error}` : `Voce errore: ${e.error}`;
     setTimeout(() => updateFloorDisplay(), 1500);
   };
   recognition.onend = () => {
@@ -5681,16 +5692,16 @@ function toggleMaintenance() {
   if (state.maintenanceMode) {
     overlay.classList.add('show');
     applyWireframe(true);
-    logEvent('Maint ON');
+    logEvent(state.lang === 'en' ? 'Maint ON' : 'Manut ON');
     const status = document.getElementById('statusText');
-    if (status) status.textContent = 'Modalità manutentore ON (Shift+M per uscire)';
+    if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode ON (Shift+M to exit)' : 'Modalità manutentore ON (Shift+M per uscire)';
     setTimeout(() => updateFloorDisplay(), 2000);
   } else {
     overlay.classList.remove('show');
     applyWireframe(false);
-    logEvent('Maint OFF');
+    logEvent(state.lang === 'en' ? 'Maint OFF' : 'Manut OFF');
     const status = document.getElementById('statusText');
-    if (status) status.textContent = 'Modalità manutentore OFF';
+    if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode OFF' : 'Modalità manutentore OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
   }
 }
@@ -7243,7 +7254,7 @@ document.getElementById('hc-reset').addEventListener('click', () => {
   // se l'utente modifica e clicca Applica).
   for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = HOTEL_CONFIG_DEFAULTS[k];
   applyHotelConfigToUI();
-  hcShowStatus('Default ripristinati nei campi. Premi "Applica e salva" per confermare.', 'success');
+  hcShowStatus(t('customizeResetDone'), 'success');
 });
 document.getElementById('hc-apply').addEventListener('click', () => {
   // 1) Leggi i campi e applica a HOTEL_CONFIG nell'ordine:
@@ -7254,7 +7265,7 @@ document.getElementById('hc-apply').addEventListener('click', () => {
   const result = saveHotelConfig();
   if (!result.ok) {
     // Es: localStorage pieno, modalita' privata, storage disabilitato
-    hcShowStatus('ERRORE salvataggio: ' + result.error + ' (annullato)', 'error');
+    hcShowStatus((state.lang === 'en' ? 'Save error: ' : 'ERRORE salvataggio: ') + result.error + (state.lang === 'en' ? ' (cancelled)' : ' (annullato)'), 'error');
     console.error('[hotel-config] save error:', result.error);
     return;
   }
