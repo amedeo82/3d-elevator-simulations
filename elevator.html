@@ -766,6 +766,232 @@ const HOTEL_CONFIG = {
   panelHelpBrand: 'BOSS HOTEL'
 };
 
+// Polish Pack V2 Step 8a — STRINGS dictionary per i18n (IT/EN).
+// Ogni chiave ha una traduzione italiana e una inglese britannica.
+// Pattern di accesso: STRINGS[lang].cabinIdle, STRINGS[lang].doorClosing, ecc.
+// Le stringhe HOTEL_CONFIG.name / address / city / ecc. NON sono qui
+// (gestite da HOTEL_CONFIG, sovrascritte dal customizer).
+const STRINGS = {
+  it: {
+    // HUD / status
+    cabinIdle: 'Cabina ferma',
+    doorClosing: 'Porta in chiusura',
+    floorInQueue: 'PIANO IN Coda',
+    outOfService: 'FUORI SERVIZIO',
+    floorClosing: 'CHIUSURA',
+    floorOpening: 'APERTURA',
+    moving: 'IN VIAGGIO',
+    movingUp: 'IN SALITA',
+    movingDown: 'IN DISCESA',
+    direction: 'Direzione',
+    queue: 'Coda',
+    passengers: 'Passeggeri',
+    audio: 'Audio',
+    tts: 'TTS',
+    nightMode: 'Modalita\' notte',
+    outOfOrder: 'Fuori servizio',
+    cabinMode: 'In cabina',
+    corridorMode: 'Nel corridoio',
+    helpTitle: 'Comandi',
+    // start screen
+    startBtn: 'Entra nell\'ascensore',
+    cabinTitle: 'Cabina 5\u2605',
+    cabinSubtitle: 'Boss Hotel Edition',
+    citySubtitle: 'Roma in tempo reale',
+    featureCabin: 'Cabina 5\u2605 Boss Hotel Edition',
+    featureTouchscreen: 'Touch screen Display 540\u00d71100',
+    featureWeather: 'Meteo live Roma in tempo reale',
+    featureTTS: 'Annunci vocali Web Speech API',
+    featureThemes: '4 temi corridoio (lobby, uffici, hotel, attico)',
+    startHint: 'Stai per entrare nella cabina di un ascensore di lusso a 5 stelle.',
+    startHint2: 'Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina.',
+    // tutorial
+    tutorialStep1Text: 'Benvenuto al <strong></strong>. Sei nella cabina al piano Terra.',
+    tutorialStep1Voice: 'Benvenuto al hotel. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.',
+    tutorialStep2Text: 'Premi <kbd>E</kbd> per <strong>uscire</strong> dalla cabina ed esplorare il corridoio.',
+    tutorialStep2Voice: 'Premi E per uscire dalla cabina.',
+    tutorialStep3Text: 'Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Premi di nuovo <kbd>E</kbd> vicino alle porte per rientrare.',
+    tutorialStep3Voice: 'Nel corridoio usa WASD per muoverti. Premi E vicino alle porte per rientrare.',
+    tutorialStep4Text: 'Comandi utili: <kbd>M</kbd> audio, <kbd>V</kbd> annunci, <kbd>K</kbd> vocale, <kbd>N</kbd> notte, <kbd>O</kbd> fuori servizio.',
+    tutorialStep4Voice: 'Comandi utili: M per muto, V per annunci, K per vocale, N per notte, O per fuori servizio.',
+    tutorialStep5Text: 'In qualsiasi momento premi <kbd>?</kbd> per rivedere il tutorial. <kbd>H</kbd> per personalizzare l\'hotel.',
+    tutorialStep5Voice: 'In qualsiasi momento premi punto interrogativo per rivedere il tutorial.',
+    tutorialSkip: 'Salta tutorial',
+    tutorialNext: 'Avanti \u2192',
+    tutorialHelpPrompt: 'Premi ? per aiuto.',
+    // pulsanti
+    skipBtn: 'Salta tutorial',
+    nextBtn: 'Avanti \u2192',
+    // annunci TTS
+    arrivalPrefix: 'Piano',
+    arrivalSuffix: '',
+    inSalita: 'In salita verso piano',
+    inDiscesa: 'In discesa verso piano',
+    soccorso: 'Soccorsi in arrivo',
+    portaChiusa: 'Le porte si stanno chiudendo',
+    arrivalIt: 'Piano',
+    arrivingAtFloor: 'Piano',
+    // ostacolo IR
+    obstacleDetected: 'Attenzione. Le porte rilevano un ostacolo.',
+    nudgingForced: 'Chiusura porte forzata. Attenzione.',
+    obicleDetectedSubtitle: 'Ostacolo rilevato',
+    // pannello pubblicitario laterale
+    welcomeHeadline: 'Benvenuto al',
+    welcomeAddress: 'Via Veneto 142 \u00b7 Roma',
+    welcomeStars: '\u2605 \u2605 \u2605 \u2605 \u2605',
+    welcomeTagline: 'Luxury since 1898',
+    welcomeSubtitle: 'Cinque stelle lusso',
+    welcomeMotto: 'Eleganza senza tempo. Dal 1898.',
+    restaurantMenu: '\u2014 LA TERRAZZA \u2014',
+    restaurantTitle: 'Ristorante panoramico',
+    restaurantMotto1: 'Aperto dalle 19:30 alle 23:00',
+    restaurantMotto2: 'Prenotazioni: concierge al piano 0',
+    restaurantMenuStarters: 'ANTIPASTI',
+    restaurantMenuMains: 'SECONDI',
+    restaurantMenuDesserts: 'DESSERT',
+    spaTitle: 'BOSS HOTEL SPA',
+    spaMotto1: 'Benessere a 360 gradi',
+    spaMotto2: 'Sauna, bagno turco, trattamenti esclusivi',
+    spaService1: 'MASSAGGI',
+    spaService2: 'PISCINA',
+    spaService3: 'WELLNESS',
+    roomInfo: 'Camere 401 \u2013 432',
+    roomFloor: 'Piano',
+    // cartello corridoio (sopra le porte della cabina)
+    floorLabelTerra: 'PIANO  TERRA',
+    elevatorSuffix: 'ELEVATOR',
+    fuoriServizio: 'FUORI SERVIZIO',
+    manutenzione: '\u2014 MANUTENZIONE IN CORSO \u2014',
+    inViaggio: 'IN VIAGGIO \u00b7',
+    inSalitaShort: 'IN SALITA',
+    inDiscesaShort: 'IN DISCESA',
+    // pulsantiera ▲/▼
+    callDisabledTop: 'Sei al piano piu\' alto',
+    callDisabledBottom: 'Sei al piano Terra',
+    // display touch (top header)
+    pass: 'Passeggeri',
+    weatherCard: 'METEO + PREVISIONI 24H',
+    cityHeader: 'ROMA \u00b7',
+    weatherUpdated: 'Aggiornato:',
+    // pulsanti display touch (renderModernDisplayDynamicLayer)
+    interphone: 'CITOFONO',
+    alarm: 'ALLARME',
+    sos: 'SOS',
+    stopAlarm: 'STOP',
+    doorOpen: 'APRI',
+    doorClose: 'CHIUDI',
+    exit: 'ESCI',
+    reenter: 'RIENTRA',
+    operator: 'OPERATORE',
+    systemFooter: 'ELEVATOR SYSTEM \u00b7',
+    // api keys
+    weatherApiKeyRome: 'Roma',
+  },
+  en: {
+    cabinIdle: 'Cabin idle',
+    doorClosing: 'Door closing',
+    floorInQueue: 'FLOOR IN Queue',
+    outOfService: 'OUT OF SERVICE',
+    floorClosing: 'CLOSING',
+    floorOpening: 'OPENING',
+    moving: 'IN TRANSIT',
+    movingUp: 'GOING UP',
+    movingDown: 'GOING DOWN',
+    direction: 'Direction',
+    queue: 'Queue',
+    passengers: 'Passengers',
+    audio: 'Audio',
+    tts: 'TTS',
+    nightMode: 'Night mode',
+    outOfOrder: 'Out of order',
+    cabinMode: 'In cabin',
+    corridorMode: 'In corridor',
+    helpTitle: 'Controls',
+    startBtn: 'Enter the elevator',
+    cabinTitle: '5\u2605 Cabin',
+    cabinSubtitle: 'Boss Hotel Edition',
+    citySubtitle: 'Rome in real time',
+    featureCabin: '5\u2605 Boss Hotel Edition Cabin',
+    featureTouchscreen: 'Touchscreen Display 540\u00d71100',
+    featureWeather: 'Live weather Rome in real time',
+    featureTTS: 'Voice announcements Web Speech API',
+    featureThemes: '4 corridor themes (lobby, offices, hotel, attic)',
+    startHint: 'You are about to enter a luxury 5-star elevator cabin.',
+    startHint2: 'Select a floor from the touch panel, or exit into the corridor to re-enter the cabin.',
+    tutorialStep1Text: 'Welcome to <strong></strong>. You are in the cabin at the ground floor.',
+    tutorialStep1Voice: 'Welcome to the hotel. Press one, two, three, four, five, six, seven, eight or nine to call a floor.',
+    tutorialStep2Text: 'Press <kbd>E</kbd> to <strong>exit</strong> the cabin and explore the corridor.',
+    tutorialStep2Voice: 'Press E to exit the cabin.',
+    tutorialStep3Text: 'In the corridor use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move. Press <kbd>E</kbd> again near the doors to re-enter.',
+    tutorialStep3Voice: 'In the corridor use WASD to move. Press E near the doors to re-enter.',
+    tutorialStep4Text: 'Useful controls: <kbd>M</kbd> audio, <kbd>V</kbd> announcements, <kbd>K</kbd> voice, <kbd>N</kbd> night mode, <kbd>O</kbd> out of order.',
+    tutorialStep4Voice: 'Useful controls: M for mute, V for announcements, K for voice, N for night mode, O for out of order.',
+    tutorialStep5Text: 'Press <kbd>?</kbd> to review the tutorial. <kbd>H</kbd> to customise the hotel.',
+    tutorialStep5Voice: 'Press question mark at any time to review the tutorial.',
+    tutorialSkip: 'Skip tutorial',
+    tutorialNext: 'Next \u2192',
+    tutorialHelpPrompt: 'Press ? for help.',
+    skipBtn: 'Skip tutorial',
+    nextBtn: 'Next \u2192',
+    arrivalPrefix: 'Floor',
+    arrivalSuffix: '',
+    inSalita: 'Going up to floor',
+    inDiscesa: 'Going down to floor',
+    soccorso: 'Help is on the way',
+    portaChiusa: 'Doors are closing',
+    arrivalIt: 'Floor',
+    arrivingAtFloor: 'Floor',
+    obstacleDetected: 'Caution. Doors detecting an obstacle.',
+    nudgingForced: 'Door forced close. Caution.',
+    obicleDetectedSubtitle: 'Obstacle detected',
+    welcomeHeadline: 'Welcome to',
+    welcomeAddress: '420 Park Avenue \u00b7 New York',
+    welcomeStars: '\u2605 \u2605 \u2605 \u2605 \u2605',
+    welcomeTagline: 'Luxury redefined',
+    welcomeSubtitle: 'Five star luxury',
+    welcomeMotto: 'Timeless elegance. Since 1898.',
+    restaurantMenu: '\u2014 THE TERRACE \u2014',
+    restaurantTitle: 'Panoramic restaurant',
+    restaurantMotto1: 'Open from 7:30 PM to 11:00 PM',
+    restaurantMotto2: 'Reservations: concierge at the lobby',
+    restaurantMenuStarters: 'STARTERS',
+    restaurantMenuMains: 'MAINS',
+    restaurantMenuDesserts: 'DESSERTS',
+    spaTitle: 'BOSS HOTEL SPA',
+    spaMotto1: '360-degree wellness',
+    spaMotto2: 'Sauna, steam room, exclusive treatments',
+    spaService1: 'MASSAGES',
+    spaService2: 'POOL',
+    spaService3: 'WELLNESS',
+    roomInfo: 'Rooms 401 \u2013 432',
+    roomFloor: 'Floor',
+    floorLabelTerra: 'GROUND FLOOR',
+    elevatorSuffix: 'ELEVATOR',
+    fuoriServizio: 'OUT OF SERVICE',
+    manutenzione: '\u2014 MAINTENANCE IN PROGRESS \u2014',
+    inViaggio: 'IN TRANSIT \u00b7',
+    inSalitaShort: 'GOING UP',
+    inDiscesaShort: 'GOING DOWN',
+    callDisabledTop: 'You are on the top floor',
+    callDisabledBottom: 'You are on the ground floor',
+    pass: 'Passengers',
+    weatherCard: 'WEATHER + 24H FORECAST',
+    cityHeader: 'ROME \u00b7',
+    weatherUpdated: 'Updated:',
+    interphone: 'INTERPHONE',
+    alarm: 'ALARM',
+    sos: 'SOS',
+    stopAlarm: 'STOP',
+    doorOpen: 'OPEN',
+    doorClose: 'CLOSE',
+    exit: 'EXIT',
+    reenter: 'ENTER',
+    operator: 'OPERATOR',
+    systemFooter: 'ELEVATOR SYSTEM \u00b7',
+    weatherApiKeyRome: 'Rome',
+  }
+};
+
 // Polish Pack V2 Step 5b: HOTEL_CONFIG_DEFAULTS = valori originali, HOTEL_CONFIG
 // = copia runtime modificabile dall'utente via HUD personalizza (tasto H).
 const HOTEL_CONFIG_DEFAULTS = Object.freeze(Object.assign({}, HOTEL_CONFIG));
@@ -1004,6 +1230,9 @@ const state = {
   // Polish Pack V2 Step 1c: debug mode per assert runtime dei contratti state
   // (vedi STATE.md). false in produzione, true in dev per attivare i warning.
   DEBUG: false,
+  // Polish Pack V2 Step 8: lingua corrente dell'interfaccia ('it' | 'en').
+  // Default auto-detect da navigator.language, modificabile via tasto L o flag IT|EN.
+  lang: 'it',
   // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
   irObstacleActive: false,    // true quando il sensore sta rilevando un ostacolo
   irObstacleStart: 0,         // performance.now() in cui l'ostacolo e' iniziato
@@ -2274,11 +2503,11 @@ function drawFloorSign(floor) {
     g.shadowColor = '#ff3030'; g.shadowBlur = 14;
     g.font = 'bold 30px Georgia, serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('FUORI SERVIZIO', 256, 50);
+    g.fillText(STRINGS[state.lang].fuoriServizio, 256, 50);
     g.shadowBlur = 0;
     g.fillStyle = '#ffaa66';
     g.font = 'italic 17px Georgia, serif';
-    g.fillText('— MANUTENZIONE IN CORSO —', 256, 88);
+    g.fillText(STRINGS[state.lang].manutenzione, 256, 88);
     signTex.needsUpdate = true;
     return;
   }
@@ -2305,7 +2534,7 @@ function drawFloorSign(floor) {
   g.textBaseline = 'middle';
   g.shadowColor = HOTEL_CONFIG.accentGold;
   g.shadowBlur = 10;
-  const floorLabel = floor === 0 ? 'PIANO  TERRA' : `PIANO  ${floor}°`;
+  const floorLabel = floor === 0 ? STRINGS[state.lang].floorLabelTerra : `${STRINGS[state.lang].roomFloor}  ${floor}°`;
   g.fillText(floorLabel, 256, 50);
   g.shadowBlur = 0;
   g.fillStyle = HOTEL_CONFIG.accentGoldLight;
@@ -2367,7 +2596,7 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
   g.shadowBlur = 0;
   g.font = 'bold 14px Georgia, serif';
   g.fillStyle = '#d4a23a';
-  g.fillText(up ? 'SALITA' : 'DISCESA', 48, 95);
+  g.fillText(up ? STRINGS[state.lang].inSalitaShort : STRINGS[state.lang].inDiscesaShort, 48, 95);
   // lista piani attraversati (separati da " · "), con quello corrente evidenziato
   const lo = Math.min(fromFloor, toFloor);
   const hi = Math.max(fromFloor, toFloor);
@@ -2399,7 +2628,7 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
   g.fillStyle = '#d4a23a';
   g.font = 'italic 16px Georgia, serif';
   g.textAlign = 'center';
-  g.fillText('— IN VIAGGIO · ' + HOTEL_CONFIG.panelHelpBrand + ' ELEVATOR —', 300, 95);
+  g.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
   signTex.needsUpdate = true;
 }
 
@@ -4481,12 +4710,13 @@ function tickDisplay(now) {
 // aggiorna display piano
 function updateFloorDisplay() {
   const txt = state.currentFloor === 0 ? 'T' : String(state.currentFloor);
-  let sub = 'IN ATTESA';
-  if (state.alarmOn) sub = 'ALLARME ATTIVO';
-  else if (state.isMoving) sub = state.targetFloor > state.currentFloor ? 'IN SALITA' : 'IN DISCESA';
-  else if (state.doorsOpen) sub = 'PORTE APERTE';
-  else if (queueSize() > 0) sub = 'PIANO IN Coda';
-  else sub = 'PRONTO';
+  const s = STRINGS[state.lang];
+  let sub = state.lang === 'en' ? 'WAITING' : 'IN ATTESA';
+  if (state.alarmOn) sub = state.lang === 'en' ? 'ALARM ACTIVE' : 'ALLARME ATTIVO';
+  else if (state.isMoving) sub = state.targetFloor > state.currentFloor ? s.movingUp : s.movingDown;
+  else if (state.doorsOpen) sub = state.lang === 'en' ? 'DOORS OPEN' : 'PORTE APERTE';
+  else if (queueSize() > 0) sub = s.floorInQueue;
+  else sub = state.lang === 'en' ? 'READY' : 'PRONTO';
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   document.getElementById('floorNum').textContent = txt;
   document.getElementById('floorArrow').textContent =
