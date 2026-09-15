@@ -25,7 +25,7 @@
 | 5 | Personalizzazione hotel (`HOTEL_CONFIG`) | 1 sessione | 🔴 | Refactor+Feature | ✅ |
 | 6 | D2 — PWA installabile (manifest inline) | 1 sessione | 🟢 | Feature | ⏳ |
 | 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | 1 sessione | 🟡 | Feature | ✅ |
-| 8 | i18n IT/EN (backlog #12) | 1-2 sessioni | 🔴 | Refactor+Feature | ⏳ |
+| 8 | i18n IT/EN (backlog #12) | 1-2 sessioni | 🔴 | Refactor+Feature | ✅ |
 | 9 | Shaft "dietro le quinte" + animazione micro porte | 1-2 sessioni | 🟢 | Feature | ⏳ |
 | 10 | Eventi speciali hotel (matrimonio, conferenza) | 1 sessione | 🟢 | Feature | ⏳ |
 | 11 | L-block: più piani parametrico + texture HD arredi | 1-2 sessioni | 🟡 | Feature | ⏳ |

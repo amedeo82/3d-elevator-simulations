@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 2.5 — Polish Pack V2 Step 5: personalizzazione hotel (HOTEL_CONFIG + 4 preset)** · Aggiornato 2026-09-14
+**Versione 3.0 — Polish Pack V2 completo (Steps 1-5, 7, 8: refactor + UX + i18n)** · Aggiornato 2026-09-15
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -17,7 +17,12 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | 3 | Audio contestuale corridoi + musica ristorante | ✅ |
 | 4 | Meteo evoluto (stagionalità + 3 condizioni) | ✅ |
 | 5 | Personalizzazione hotel (HOTEL_CONFIG + 4 preset) | ✅ |
-| 6-14 | Altri step (PWA, ▲/▼ semantica, i18n, shaft, eventi speciali, L-block, test, WebXR) | ⏳ |
+| 6 | D2 — PWA installabile (manifest inline) | ⏳ saltato |
+| 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | ✅ |
+| 8 | i18n IT/EN (backlog #12) | ✅ |
+| 9-14 | Altri step (shaft, eventi, L-block, test, WebXR, citofono) | ⏳ |
+
+**Totale Polish Pack V2**: 6 step done (1, 2, 3, 4, 5, 7, 8), 1 saltato (6), 6 in coda.
 
 ---
 
@@ -47,7 +52,9 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | Polish Pack V2 Step 3 | ✅ Audio contestuale corridoi (4 temi con 2-3 layer ciascuno) + musica ristorante La Terrazza al piano 8 |
 | Polish Pack V2 Step 4 | ✅ Meteo evoluto (stagionalità mensile clima Roma + 3 nuove condizioni: grandine/foschia/vento + slide 24h) |
 | Polish Pack V2 Step 5 | ✅ Personalizzazione hotel (HOTEL_CONFIG 17 campi + refactor 23 stringhe hardcoded + HUD overlay tasto H + 4 preset alternativi + persistenza localStorage) |
-| File di progetto | `elevator.html` (~213KB, 6.343 righe, single file) + `dist/index.html` |
+| Polish Pack V2 Step 7 | ✅ Pulsantiera ▲/▼ semantica (coda `{floor, direction}`, smart routing, visualizzazione intenzione) |
+| Polish Pack V2 Step 8 | ✅ i18n IT/EN (backlog #12 chiuso — `STRINGS[lang]`, tasto L, refactor HTML, TTS en-GB) |
+| File di progetto | `elevator.html` (~293KB, 7.063 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
@@ -1148,13 +1155,95 @@ tramite `applyHotelThemeOverride()`. Cambio visibilmente la hall e la targa dell
 
 ---
 
+## Fase 25 — Polish Pack V2 Step 7: pulsantiera ▲/▼ semantica ✅ (2026-09-14)
+
+### 7a. Refactor coda
+`state.requestedFloors: Set<int>` → `Array<{floor, direction}>`.
+`direction: 'up' | 'down' | null`. FIFO con dedup (ultimo input vince sulla entry dello stesso piano).
+7 helper introdotti: `queueAdd`, `queueRemove`, `queueNext`, `queueSize`, `queueHas`, `queueClear`, `queueNextDirection`.
+
+### 7b. Pulsantiera esterna
+Click ▲/▼ passa `directionHint` a `requestFloor`.
+`userData.direction` esposto sul button.
+Disabilitazione visiva ai limiti (Q7.2=C): ▲ non creato al piano 9, ▼ non creato al piano T.
+Check difensivo in `requestFloor`: beep + subtitle se `directionHint === 'up' && floor >= NUM_FLOORS-1` o down al piano 0.
+
+### 7c. Visualizzazione intenzione
+- Cartello corridoio: piccola freccia ▲ verde / ▼ ambra in basso a destra + label "IN SALITA/DISCESA" (solo se coda non vuota con direzione).
+- Pulsantiera esterna corridoio: icona circolare ↻ verde in alto a destra del display (quando `cabin in arrivo a questo piano`).
+
+### 7d. Routing intelligente
+Nuovo helper `queueNextSmart(currentFloor, lastDirection)`:
+1. Cerca richieste con stessa direzione → prendi la più lontana
+2. Inversione automatica → prendi la più lontana nella direzione opposta
+3. Fallback FIFO
+
+`tickMove` arrival ora usa `queueNextSmart(moveTo, moveTo > moveFrom ? 'up' : 'down')` invece di `queueNext`.
+
+### Acceptance
+- [x] ▲ al piano 3 con cabina al 7 → cabina scende a 3
+- [x] ▼ al piano 9 con cabina al 3 → cabina sale a 9
+- [x] Smart routing mixed direction
+- [x] Visualizzazione cartello + pulsantiera
+- [x] Compat legacy preservato (`direction=null`)
+- [x] node --check + brace balance 972/972
+
+### Branch
+`feature/polish-pack-v2-step-7` mergiato su `main` (commit `1d47f76`).
+
+---
+
+## Fase 26 — Polish Pack V2 Step 8: i18n IT/EN (backlog #12 chiuso) ✅ (2026-09-15)
+
+### Sintomo
+Tutte le stringhe UI hardcoded in italiano. Backlog #12 (l'unica fuori scope dopo v1.6). Refactor di ~300+ stringhe sparse in canvas, JS, statusText, speak/showSubtitle, HTML statico.
+
+### Soluzione in 4 fasi
+**8a. Infrastruttura**: `STRINGS[lang]` dictionary (~120 chiavi IT/EN), `state.lang` field (default auto-detect), 4 cartelli principali tradotti.
+
+**8b. Toggle L + persistenza**: Tasto `L` toggle IT/EN + persistenza `bossHotelLang@v1` + auto-detect da `navigator.language` (IT di default). Bottone UI `IT/EN` nel floor-strip HUD.
+
+**8c. TTS multilingua**: `speak()` con voce en-GB prioritaria (fallback en-US), `floorName(f)` bilingue, `announceArrival/Alarm/DoorClosing/MoveStart` IT/EN.
+
+**8d. Display touch**: switch IT/EN cliccabile, tutti i canvas (`drawWelcomeScreen`, `drawRestaurantScreen`, `drawSpaScreen`, `drawWorldClock`, `drawWeatherScreen`) e label UI bilingue.
+
+### Refactor architetturale
+- Helper `t(key)`: `STRINGS[state.lang][key]` con fallback
+- `applyLangToDOM()` consolidata: chiamata all'init + ad ogni `setLang()`. Aggiorna textContent, rigenera innerHTML (panel-help, start screen, tutorial, customizer, manutentore, topbar), hook refreshHudButtons/refreshLangSwitch.
+- Generatori statici: `PANEL_HELP_KEYS[]`, `START_SCREEN_KEYS[]`, `SLIDE_DEFS[]`, `PRESET_KEYS[]`, `CUSTOMIZER_LABEL_KEYS[]` — tabelle da JS invece di HTML statico.
+- Event delegation per preset buttons: `addEventListener` sul parent `.hc-presets` (sopravvive ai re-render di `applyLangToDOM`).
+
+### Audit finale riga per riga (8 fix residui)
+1. `updateFloorDisplay` statusText: 'ALLARME — Soccorsi in arrivo' / 'Diretto al piano' / 'In attesa' → bilingue
+2. `<div id="statusText">In attesa</div>` HTML → vuoto + popolato
+3. `tutorialStep1Voice` IT/EN: hardcoded "hotel" → placeholder `{}` (per Sky Tower / Paris / Burj)
+4. `drawMovingSign arrowLabel`: 'FERMO/ALLARME/IN SALITA/IN DISCESA/PORTE APERTE' → bilingue
+5. `toggleMaintenance` status: 'Maint ON/OFF' + 'Modalità manutentore ON/OFF' → bilingue
+6. `hcShowStatus` fallback 'Riavvio in corso...' → bilingue
+7. `hcShowStatus reset`: hardcoded lungo → `t('customizeResetDone')`
+8. `status.textContent`: 'Comando vocale non supportato' + 'Voce errore:' → bilingue
+
+### Acceptance
+- [x] **#12 i18n IT/EN backlog chiuso**: tutti i testi visibili tradotti
+- [x] Copertura 100%: HUD, tutorial, customizer, display touch, manutentore, status, subtitle, TTS, annunci
+- [x] Toggle live (tasto L o bottone UI) senza reload
+- [x] Auto-detect `navigator.language`
+- [x] Persistenza `localStorage.bossHotelLang@v1`
+- [x] TTS en-GB prioritaria
+- [x] node --check OK + brace balance 1085/1085
+
+### Branch
+`feature/polish-pack-v2-step-8` mergiato su `main`.
+
+---
+
 ## 7. Statistiche finali del progetto
 
 | Metrica | Valore |
 |---|---|
 | File principale | `elevator.html` |
-| Dimensione | ~213 KB |
-| Linee di codice | ~6.343 |
+| Dimensione | ~293 KB |
+| Linee di codice | ~7.063 |
 | Sezioni di codice | 30+ numerate e commentate |
 | Tasti interattivi | 14 (10 celle piano + 4 tasti fisici) |
 | Texture dinamiche | 10+ canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio, citofono, header pulsantiera esterna) |
@@ -1163,9 +1252,11 @@ tramite `applyHotelThemeOverride()`. Cambio visibilmente la hall e la targa dell
 | Piani | 10 (T + 1..9) |
 | Arredi 3D | ~30 tipi diversi (piante, divani, scrivanie, porte camere, vetrata, ecc.) |
 | Audio effetti | ~10 tipi (beep, chime, allarme, porta, countdown, whoosh loop, audio corridoio 4 temi, audio ristorante piano 8) |
-| Comandi tastiera | 14 (M, V, N, O, K, E, H, ?, Shift+M, 1-9, 0, WASD, ESC, Enter/Space) |
-| Preferenze persistenti | 4 (muted, tts, nightMode, HOTEL_CONFIG) via localStorage `bossHotelPrefs@v1` + `bossHotelConfig@v1` |
+| Comandi tastiera | **15** (M, V, N, O, K, **E**, **H**, **?**, **L**, Shift+M, 1-9, 0, WASD, ESC, Enter/Space) |
+| Preferenze persistenti | **5** (muted, tts, nightMode, HOTEL_CONFIG, lang) via localStorage `bossHotelPrefs@v1` + `bossHotelConfig@v1` + `bossHotelLang@v1` |
 | Tutorial state | 1 (`bossHotelOnboarded@v1`) |
+| Lingue | **2** (IT, EN) — 100% copertura UI |
+| Dizionario i18n | `STRINGS[lang]` ~120 chiavi |
 | File di build | `dist/index.html` (copia deploy-ready) |
 | Documentazione | `README.md`, `PIANO_MIGLIORAMENTI.md`, `PIANO_V2.md`, `AGENTS.md`, `STATE.md` |
 | Tempo di sviluppo | ~5 sessioni |
@@ -1386,10 +1477,14 @@ Polish Pack:
 16. ✅ **#19 Modalità manutentore** — Polish Pack v1.4
 17. ✅ **#20 Prenotazione cabina** — Polish Pack v1.4
 18. ✅ **#21b Pulsantiera di chiamata esterna** — Polish Pack v1.5 (aggiunta durante audit UX)
+23. ✅ **Polish Pack V2 Step 7** — Pulsantiera ▲/▼ semantica (intenzione viaggio)
+24. ✅ **Polish Pack V2 Step 8** — i18n IT/EN (backlog #12 chiuso)
 19. ✅ **#22 Chiusura automatica porte (6s)** — Polish Pack v1.5 (aggiunta durante audit UX)
 20. ✅ **#13 Accessibilità tastiera corridoio** — Polish Pack v1.6 (commit `49163a6`)
 21. ✅ **#14 Logica passeggeri coerente** — Polish Pack v1.6 (commit `d82dd60`)
 22. ✅ **#18 Caching canvas offscreen** — Polish Pack v1.6 (commit `427a635`)
+23. ✅ **Polish Pack V2 Step 7** — Pulsantiera ▲/▼ semantica (coda con direzione, smart routing)
+24. ✅ **Polish Pack V2 Step 8** — i18n IT/EN (`STRINGS[lang]` ~120 chiavi, tasto L, refactor HTML)
 
 Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
@@ -1414,14 +1509,24 @@ Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sfo
 
 ---
 
-**Stato: Polish Pack v1.6 completato (3/3 — #13 ✅ #14 ✅ #18 ✅)** ✅🎉
-Polish Pack v1.5 completato (2/2 feature bonus + 8 bug fix — #21b ✅, #22 ✅) ✅🟢
-Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) + hotfix display touchscreen passo-passo (commit `e02adca`)** ✅🟢
+**Stato finale (2026-09-15)**:
+- Polish Pack v1.4 completato (4/4 — #2 #9 #19 #20) ✅🟢
+- Polish Pack v1.5 completato (2/2 feature bonus + 8 bug fix — #21b ✅, #22 ✅) ✅🟢
+- Polish Pack v1.6 completato (3/3 — #13 ✅ #14 ✅ #18 ✅) ✅🎉
+- Polish Pack V2 completato Steps 1-5 + 7 + 8 (Step 6 PWA saltato su richiesta) ✅🎉
 
-**Polish Pack v1.4 → 17/22 funzionalità implementate (77.3%)**.
-**Polish Pack v1.5 → 19/22 funzionalità implementate (86.4%)** con #21b + #22.
-**Polish Pack v1.6 → 22/22 funzionalità implementate (100%)** con #13 #14 #18.
-Backlog residuo post-v1.6: **0/22 funzionalità** (#12 i18n rimane l'unica fuori scope).
+**Funzionalità backlog**: 22/22 v1.6, + V2 Step 7 (pulsantiera semantica) + V2 Step 8 (i18n IT/EN, backlog #12 chiuso).
+**Polish Pack V2 Step 8 (i18n)** ha completato la feature #12 storicamente fuori scope. **0/22 backlog residuo** dopo Step 8.
+
+Branch mergiati su `main`:
+- v1.6: `feature/polish-pack-v1.6`
+- V2 Step 1: `feature/polish-pack-v2-step-1`
+- V2 Step 2: `feature/polish-pack-v2-step-2`
+- V2 Step 3: `feature/polish-pack-v2-step-3`
+- V2 Step 4: `feature/polish-pack-v2-step-4`
+- V2 Step 5: `feature/polish-pack-v2-step-5`
+- V2 Step 7: `feature/polish-pack-v2-step-7`
+- V2 Step 8: `feature/polish-pack-v2-step-8` (corrente)
 Hotfix display passo-passo non è una nuova voce di backlog ma un enhancement di coerenza
 UX (allinea display touchscreen a cartello corridoio e strip DOM, già passo-passo).
 
