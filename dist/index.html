@@ -1876,7 +1876,7 @@ function drawWeatherScreen(ctx, w, h) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 11px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('PREVISIONI PROSSIME 24 ORE', w/2, 110);
+  ctx.fillText(state.lang === 'en' ? 'NEXT 24H FORECAST' : 'PREVISIONI PROSSIME 24 ORE', w/2, 110);
   // genera 6 previsioni sintetiche (temperature coerenti con mese)
   const month = new Date().getMonth();
   const monthMid = [3, 6, 10, 13, 17, 21, 25, 25, 22, 17, 11, 5][month]; // temp media mese
@@ -1902,7 +1902,7 @@ function drawWeatherScreen(ctx, w, h) {
   // footer
   ctx.fillStyle = '#7a8a9a';
   ctx.font = '9px Arial';
-  ctx.fillText('Aggiornato: ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }), w/2, h - 8);
+  ctx.fillText(state.lang === 'en' ? 'Updated: ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }), w/2, h - 8);
 }
 
 function drawWelcomeScreen(ctx, w, h) {
@@ -2049,7 +2049,7 @@ function drawWorldClock(ctx, w, h) {
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('OROLOGIO MONDIALE', w/2, 8);
+  ctx.fillText(state.lang === 'en' ? 'WORLD CLOCK' : 'OROLOGIO MONDIALE', w/2, 8);
   ctx.fillStyle = '#a89060';
   ctx.font = '10px Arial';
   ctx.fillText(HOTEL_CONFIG.name + ' INTERNATIONAL', w/2, 28);
@@ -2994,7 +2994,7 @@ function drawExternalFloorIndicator() {
   ctx.font = 'bold 22px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('PIANO', c.width / 2, 22);
+  ctx.fillText(state.lang === 'en' ? 'FLOOR' : 'PIANO', c.width / 2, 22);
   // linea separatrice sotto "PIANO"
   ctx.strokeStyle = '#d4a23a';
   ctx.lineWidth = 2;
@@ -4440,7 +4440,7 @@ function tickInactivityPrompt() {
   if (idleMs > 30000 && performance.now() - lastInactivityPromptTs > 300000) {
     lastInactivityPromptTs = performance.now();
     if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-      speak('Premi punto interrogativo per aiuto.');
+      speak(state.lang === 'en' ? 'Press question mark for help.' : 'Premi punto interrogativo per aiuto.');
     }
   }
 }
@@ -4573,7 +4573,7 @@ function renderDisplaySemistaticLayer(ctx, animT) {
     ctx.fillText(currentWeather.label, 170, 455);
     ctx.fillStyle = '#88aacc';
     ctx.font = '12px Arial';
-    ctx.fillText('ROMA', 170, 475);
+    ctx.fillText(state.lang === 'en' ? 'ROME' : 'ROMA', 170, 475);
   }
 
   // ---- MAPPA EDIFICIO (10 quadratini, uno per piano) ----
@@ -4581,7 +4581,7 @@ function renderDisplaySemistaticLayer(ctx, animT) {
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#a89060';
   ctx.font = 'bold 12px Arial';
-  ctx.fillText('POSIZIONE CABINA', 50, 520);
+  ctx.fillText(state.lang === 'en' ? 'CABIN POSITION' : 'POSIZIONE CABINA', 50, 520);
   const mapX = 70, mapY0 = 545, mapW = 14, mapH = 14, mapGap = 3;
   for (let f = 9; f >= 0; f--) {
     const y = mapY0 + (9 - f) * (mapH + mapGap);
@@ -4696,7 +4696,7 @@ function renderDisplayDynamicLayer(ctx, animT) {
     ctx.font = 'bold 42px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('FUORI SERVIZIO', W/2, 195);
+    ctx.fillText(state.lang === 'en' ? 'OUT OF SERVICE' : 'FUORI SERVIZIO', W/2, 195);
     ctx.shadowBlur = 0;
     ctx.font = 'bold 16px Arial';
     ctx.fillStyle = '#ffaa66';
@@ -4716,14 +4716,14 @@ function renderDisplayDynamicLayer(ctx, animT) {
     ctx.font = 'bold 36px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('PRENOTATA', W/2, 200);
+    ctx.fillText(state.lang === 'en' ? 'BOOKED' : 'PRENOTATA', W/2, 200);
     ctx.shadowBlur = 0;
     ctx.font = 'bold 16px Arial';
     ctx.fillStyle = '#aaeaff';
-    ctx.fillText('Cabina pronta per te', W/2, 245);
+    ctx.fillText(state.lang === 'en' ? 'Cabin ready for you' : 'Cabina pronta per te', W/2, 245);
     ctx.fillStyle = '#a89060';
     ctx.font = '14px Arial';
-    ctx.fillText('Tieni premuto E per entrare', W/2, 285);
+    ctx.fillText(state.lang === 'en' ? 'Hold E to enter' : 'Tieni premuto E per entrare', W/2, 285);
   } else {
     const displayedFloor = state.isMoving ? state.floorShown : state.currentFloor;
     const floorLabel = displayedFloor === 0 ? 'T' : String(displayedFloor);
@@ -4797,7 +4797,7 @@ function renderDisplayDynamicLayer(ctx, animT) {
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#ffaa88';
       ctx.font = 'bold 16px Arial';
-      ctx.fillText('CHIUSURA PORTE', W/2, 500);
+      ctx.fillText(state.lang === 'en' ? 'DOORS CLOSING' : 'CHIUSURA PORTE', W/2, 500);
     }
   }
 }
@@ -5719,28 +5719,35 @@ function floorNameIT(f) { return floorName(f); }
 
 function announceArrival(floor) {
   // IT: "<piano>, prego"  /  EN: "<floor>, please"
-  let txt;
-  if (state.lang === 'en') {
-    txt = `${floorName(floor)}, please`;
-  } else {
-    txt = `${floorName(floor)}, prego`;
-  }
-  speak(txt);
-  showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1));
+  const s = STRINGS[state.lang];
+  const prefix = state.lang === 'en' ? ',' : ',\u00a0';
+  const suffix = state.lang === 'en' ? ', please' : ', prego';
+  const target = floorName(floor);
+  const txt = state.lang === 'en'
+    ? `${state.lang === 'en' ? 'Floor ' : 'Piano '}${target.charAt(0).toUpperCase() + target.slice(1)}`
+    : `${target.charAt(0).toUpperCase() + target.slice(1)}`;
+  // plain text senza virgola finale per chiarezza
+  const finalTxt = state.lang === 'en'
+    ? `Arriving at ${target}, please`
+    : `${target}, prego`;
+  speak(finalTxt);
+  showSubtitle(finalTxt.charAt(0).toUpperCase() + finalTxt.slice(1));
 }
 
 function announceAlarm() {
-  const txt = state.lang === 'en'
+  const s = STRINGS[state.lang];
+  const txt = s.alarmActive || (state.lang === 'en'
     ? 'Alarm. Emergency call in progress. Please remain calm.'
-    : 'Allarme. Chiamata di soccorsi in corso. Restate calmi.';
+    : 'Allarme. Chiamata di soccorsi in corso. Restate calmi.');
   speak(txt);
   showSubtitle(txt, 5000);
 }
 
 function announceDoorClosing() {
-  const txt = state.lang === 'en'
+  const s = STRINGS[state.lang];
+  const txt = s.doorClosing || (state.lang === 'en'
     ? 'Caution. Doors are closing.'
-    : 'Attenzione. Le porte si stanno chiudendo.';
+    : 'Attenzione. Le porte si stanno chiudendo.');
   speak(txt);
   showSubtitle(txt, 2500);
 }
@@ -5749,9 +5756,11 @@ function announceDoorClosing() {
 // Chiamato in actuallyStartMove() dopo i beep di partenza. Rispetta
 // ttsEnabled e state.muted (controllo già in speak()).
 function announceMoveStart(fromFloor, toFloor) {
-  const direction = toFloor > fromFloor ? 'salita' : 'discesa';
-  const target = floorNameIT(toFloor);
-  const txt = `In ${direction} verso ${target}`;
+  const direction = toFloor > fromFloor
+    ? (state.lang === 'en' ? 'Going up to' : 'In salita verso')
+    : (state.lang === 'en' ? 'Going down to' : 'In discesa verso');
+  const target = floorName(toFloor);
+  const txt = `${direction} ${target}`;
   speak(txt);
   showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1), 2500);
 }
@@ -5844,12 +5853,12 @@ function requestFloor(floor, directionHint) {
   // check previene chiamate anomale via tastiera (1-9 senza direzione).
   if (directionHint === 'up' && floor >= NUM_FLOORS - 1) {
     if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
-    if (typeof showSubtitle === 'function') showSubtitle('Sei al piano piu\' alto', 2000);
+    if (typeof showSubtitle === 'function') showSubtitle(state.lang === 'en' ? 'You are on the top floor' : 'Sei al piano piu\' alto', 2000);
     return;
   }
   if (directionHint === 'down' && floor <= 0) {
     if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
-    if (typeof showSubtitle === 'function') showSubtitle('Sei al piano Terra', 2000);
+    if (typeof showSubtitle === 'function') showSubtitle(state.lang === 'en' ? 'You are on the ground floor' : 'Sei al piano Terra', 2000);
     return;
   }
   if (floor === state.currentFloor && !state.isMoving) {
@@ -6337,10 +6346,10 @@ function tickIRSensor() {
       // Annuncio vocale + beep IR (stile ascensore reale)
       playBeep(880, 0.15, 'square', 0.15);
       if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-        speak('Attenzione. Le porte rilevano un ostacolo.');
+        speak(state.lang === 'en' ? 'Caution. Doors detect an obstacle.' : 'Attenzione. Le porte rilevano un ostacolo.');
       }
       if (typeof showSubtitle === 'function') {
-        showSubtitle('Ostacolo rilevato', 2000);
+        showSubtitle(state.lang === 'en' ? 'Obstacle detected' : 'Ostacolo rilevato', 2000);
       }
       bus.emit('door:obstacle', { source: 'ir-sensor' });
     }
@@ -6372,7 +6381,7 @@ function tickIRSensor() {
       playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2);
       setTimeout(() => playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2), 280);
       if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-        speak('Chiusura porte forzata. Attenzione.');
+        speak(state.lang === 'en' ? 'Forced door closing. Caution.' : 'Chiusura porte forzata. Attenzione.');
       }
       // Forza chiusura ignorando l'ostacolo
       state.irObstacleActive = false;
@@ -6475,7 +6484,7 @@ addEventListener('keydown', e => {
     }
   } else if (e.code === 'KeyV') {
     ttsEnabled = !ttsEnabled;
-    if (ttsEnabled) speak('Annunci vocali attivati');
+    if (ttsEnabled) speak(state.lang === 'en' ? 'Voice announcements enabled' : 'Annunci vocali attivati');
     // piccolo feedback visivo
     const status = document.getElementById('statusText');
     if (status) status.textContent = ttsEnabled ? STRINGS[state.lang].voiceOn : STRINGS[state.lang].voiceOff;
@@ -6497,7 +6506,7 @@ addEventListener('keydown', e => {
       queueClear();
       state.prenotationActive = false; // annulla prenotazione automatica
       setDoors(false);
-      if (typeof speak === 'function') speak('Ascensore fuori servizio.');
+      if (typeof speak === 'function') speak(state.lang === 'en' ? 'Elevator out of service.' : 'Ascensore fuori servizio.');
       playBeep(440, 0.15, 'square', 0.1);
       setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
     } else {
