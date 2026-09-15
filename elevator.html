@@ -736,7 +736,7 @@
     </div>
   </div>
 
-  <button id="startBtn">Entra nell'ascensore</button>
+  <button id="startBtn"></button>
 </div>
 
 <script type="importmap">
@@ -1799,7 +1799,7 @@ function drawWeatherScreen(ctx, w, h) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('ROMA · METEO + PREVISIONI 24H', w/2, 8);
+  ctx.fillText(state.lang === 'en' ? 'ROME \u00b7 WEATHER + 24H FORECAST' : 'ROMA \u00b7 METEO + PREVISIONI 24H', w/2, 8);
   // icona grande corrente + temperatura
   if (currentWeather) {
     drawWeatherIconBig(ctx, 80, 70, 30, currentWeather.type, Date.now() / 1000);
@@ -1818,10 +1818,12 @@ function drawWeatherScreen(ctx, w, h) {
   const humidity = 40 + Math.floor(Math.random() * 40);
   const windKmh = 5 + Math.floor(Math.random() * 25);
   const visibility = 5 + Math.floor(Math.random() * 10);
-  ctx.fillText('Umidita ' + humidity + '%', w - 12, 35);
-  ctx.fillText('Vento ' + windKmh + ' km/h', w - 12, 50);
-  ctx.fillText('Visib. ' + visibility + ' km', w - 12, 65);
-  ctx.fillText('Mese: ' + MESI[new Date().getMonth()], w - 12, 85);
+  ctx.fillText(state.lang === 'en' ? 'Humidity ' + humidity + '%' : 'Umidita ' + humidity + '%', w - 12, 35);
+  ctx.fillText(state.lang === 'en' ? 'Wind ' + windKmh + ' km/h' : 'Vento ' + windKmh + ' km/h', w - 12, 50);
+  ctx.fillText(state.lang === 'en' ? 'Visibility ' + visibility + ' km' : 'Visib. ' + visibility + ' km', w - 12, 65);
+  // MESI hardcoded - traduco solo i nomi dei mesi quando lang=en
+  const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  ctx.fillText(state.lang === 'en' ? 'Month: ' + MONTHS_EN[new Date().getMonth()] : 'Mese: ' + MESI[new Date().getMonth()], w - 12, 85);
   // divider
   ctx.strokeStyle = '#3a6080';
   ctx.lineWidth = 1;
@@ -1873,21 +1875,32 @@ function drawWelcomeScreen(ctx, w, h) {
   ctx.font = 'bold 32px Georgia, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.shadowColor = '#c9a55a'; ctx.shadowBlur = 12;
-  ctx.fillText('BENVENUTI', w/2, 70);
+  ctx.fillText(state.lang === 'en' ? 'WELCOME' : 'BENVENUTI', w/2, 70);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#d4a23a';
   ctx.font = 'italic 16px Georgia, serif';
-  ctx.fillText('al ' + HOTEL_CONFIG.shortName, w/2, 110);
+  // "al Boss Hotel" / "to Boss Hotel" — preposizione cambia per lingua
+  if (state.lang === 'en') {
+    ctx.fillText('to ' + HOTEL_CONFIG.shortName, w/2, 110);
+  } else {
+    ctx.fillText('al ' + HOTEL_CONFIG.shortName, w/2, 110);
+  }
   // stelle
   ctx.fillStyle = '#f6c945';
   ctx.font = '20px Arial';
   ctx.fillText('★ ★ ★ ★ ★', w/2, 140);
-  // corpo testo
+  // corpo testo — Step 8 completo: traduzioni IT/EN
   ctx.fillStyle = '#c9b890';
   ctx.font = '13px Georgia, serif';
-  ctx.fillText('Dal 1898, eleganza senza tempo.', w/2, 175);
-  ctx.fillText('Una tradizione di ospitalità italiana,', w/2, 195);
-  ctx.fillText('rinnovata nel 2019 dallo Studio Fuksas.', w/2, 215);
+  if (state.lang === 'en') {
+    ctx.fillText('Since 1898, timeless elegance.', w/2, 175);
+    ctx.fillText('A tradition of Italian hospitality,', w/2, 195);
+    ctx.fillText('renovated in 2019 by Studio Fuksas.', w/2, 215);
+  } else {
+    ctx.fillText('Dal 1898, eleganza senza tempo.', w/2, 175);
+    ctx.fillText('Una tradizione di ospitalità italiana,', w/2, 195);
+    ctx.fillText('rinnovata nel 2019 dallo Studio Fuksas.', w/2, 215);
+  }
   ctx.fillText(HOTEL_CONFIG.address, w/2, 250);
 }
 
@@ -1900,15 +1913,21 @@ function drawRestaurantScreen(ctx, w, h) {
   ctx.fillStyle = '#ffaa55';
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('🍝 LA TERRAZZA', w/2, 8);
+  ctx.fillText(state.lang === 'en' ? '\ud83c\udf5d THE TERRACE' : '\ud83c\udf5d LA TERRAZZA', w/2, 8);
   ctx.fillStyle = '#d4a23a';
   ctx.font = 'italic 12px Georgia, serif';
-  ctx.fillText('Ristorante panoramico · 8° piano', w/2, 32);
-  // menu del giorno
+  // Polish Pack V2 Step 8: titolo ristorante bilingue
+  ctx.fillText(state.lang === 'en' ? 'Panoramic Restaurant · 8th floor' : 'Ristorante panoramico · 8° piano', w/2, 32);
+  // menu del giorno — bilinguale
   ctx.fillStyle = '#f4e8d0';
   ctx.font = '12px Arial';
   ctx.textAlign = 'left';
-  const items = [
+  const items = state.lang === 'en' ? [
+    ['STARTER',   'Burrata from Andria'],
+    ['FIRST',     'Cacio e pepe by Pellegrino'],
+    ['MAIN',      'Sea bass in salt crust'],
+    ['DESSERT',   'Homemade tiramisu']
+  ] : [
     ['ANTIPASTO', 'Burrata di Andria'],
     ['PRIMO',     'Cacio e pepe di Pellegrino'],
     ['SECONDO',   'Branzino al sale'],
@@ -1927,7 +1946,7 @@ function drawRestaurantScreen(ctx, w, h) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#a89060';
   ctx.font = '11px Arial';
-  ctx.fillText('Prenotazioni: ext. 420', w/2, h - 16);
+  ctx.fillText(state.lang === 'en' ? 'Reservations: ext. 420' : 'Prenotazioni: ext. 420', w/2, h - 16);
 }
 
 function drawSpaScreen(ctx, w, h) {
@@ -1939,19 +1958,25 @@ function drawSpaScreen(ctx, w, h) {
   ctx.fillStyle = '#88ddff';
   ctx.font = 'bold 18px Georgia, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('💧 BOSS SPA & WELLNESS', w/2, 8);
+  ctx.fillText(state.lang === 'en' ? '\ud83d\udca7 BOSS SPA & WELLNESS' : '\ud83d\udca7 BOSS SPA & WELLNESS', w/2, 8);
   ctx.fillStyle = '#aaccdd';
   ctx.font = 'italic 12px Georgia, serif';
-  ctx.fillText('— Lasciati coccolare —', w/2, 32);
-  // trattamenti
+  // Polish Pack V2 Step 8: SPA motto bilingue
+  ctx.fillText(state.lang === 'en' ? '— Let yourself be pampered —' : '— Lasciati coccolare —', w/2, 32);
+  // trattamenti — bilingue
   ctx.fillStyle = '#cce0ee';
   ctx.font = '13px Arial';
   ctx.textAlign = 'left';
-  const items = [
-    ['Sauna finlandese', '€25 / 60min'],
-    ['Massaggio rilassante', '€80 / 50min'],
-    ['Bagno turco', '€20 / 45min'],
-    ['Trattamento viso', '€95 / 75min']
+  const items = state.lang === 'en' ? [
+    ['Finnish sauna',         '\u20ac25 / 60min'],
+    ['Relaxing massage',      '\u20ac80 / 50min'],
+    ['Steam room',            '\u20ac20 / 45min'],
+    ['Facial treatment',      '\u20ac95 / 75min']
+  ] : [
+    ['Sauna finlandese',      '\u20ac25 / 60min'],
+    ['Massaggio rilassante',  '\u20ac80 / 50min'],
+    ['Bagno turco',           '\u20ac20 / 45min'],
+    ['Trattamento viso',      '\u20ac95 / 75min']
   ];
   for (let i = 0; i < items.length; i++) {
     const y = 75 + i * 30;
@@ -1963,7 +1988,7 @@ function drawSpaScreen(ctx, w, h) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#88ddff';
   ctx.font = 'bold 12px Arial';
-  ctx.fillText('OFFERTA: -20% se prenoti oggi', w/2, h - 18);
+  ctx.fillText(state.lang === 'en' ? 'OFFER: -20% if you book today' : 'OFFERTA: -20% se prenoti oggi', w/2, h - 18);
 }
 
 // Polish Pack v1.3 #8 — orologio mondiale sul pannello pubblicitario
@@ -1988,8 +2013,15 @@ function drawWorldClock(ctx, w, h) {
   ctx.strokeStyle = '#c9a55a';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(40, 44); ctx.lineTo(w - 40, 44); ctx.stroke();
-  // elenco città
-  const cities = [
+  // elenco città — Step 8 completo: bilingue IT/EN
+  // Mantengo i nomi propri delle città ma li traduco (Londra → London, ecc.)
+  const cities = state.lang === 'en' ? [
+    { name: 'Rome',     tz: 'Europe/Rome' },
+    { name: 'New York', tz: 'America/New_York' },
+    { name: 'Tokyo',    tz: 'Asia/Tokyo' },
+    { name: 'London',   tz: 'Europe/London' },
+    { name: 'Sydney',   tz: 'Australia/Sydney' }
+  ] : [
     { name: 'Roma',     tz: 'Europe/Rome' },
     { name: 'New York', tz: 'America/New_York' },
     { name: 'Tokyo',    tz: 'Asia/Tokyo' },
@@ -2003,15 +2035,15 @@ function drawWorldClock(ctx, w, h) {
   cities.forEach(c => {
     let timeStr = '--:--';
     try {
-      timeStr = now.toLocaleTimeString('it-IT', {
+      timeStr = now.toLocaleTimeString(state.lang === 'en' ? 'en-GB' : 'it-IT', {
         timeZone: c.tz,
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
       });
     } catch (e) {
-      // timezone non supportata dal browser: fallback
-      timeStr = 'N/D';
+      // timezone non supportata dal browser: fallback bilingue
+      timeStr = state.lang === 'en' ? 'N/A' : 'N/D';
     }
     // nome città a sinistra
     ctx.textAlign = 'left';
@@ -4246,28 +4278,49 @@ const DOOR_COUNTDOWN_DURATION = 3.0;
 // ============================================================
 const ONBOARDED_KEY = 'bossHotelOnboarded';
 const ONBOARDED_VERSION = 1;
+// Polish Pack V2 Step 8: TUTORIAL_STEPS usa chiavi STRINGS invece di stringhe hardcoded.
+// textKey/voiceKey vengono risolte a runtime in renderTutorialStep() per supporto IT/EN.
 const TUTORIAL_STEPS = [
   {
-    text: 'Benvenuto al <b>' + HOTEL_CONFIG.shortName + '</b>. Sei nella cabina al piano Terra. Premi <kbd>1</kbd>–<kbd>9</kbd> per chiamare un piano, oppure tocca il display touchscreen sulla destra.',
-    voice: 'Benvenuto al ' + HOTEL_CONFIG.shortName + '. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.'
+    textKey: 'tutorialStep1Text',
+    textHtml: true,   // contiene HTML (<b>, <kbd>)
+    textExtra: () => HOTEL_CONFIG.shortName,  // placeholder per shortName
+    voiceKey: 'tutorialStep1Voice',
+    voiceExtra: () => HOTEL_CONFIG.shortName
   },
   {
-    text: 'Premi <kbd>E</kbd> per <b>uscire</b> dalla cabina ed esplorare il corridoio. Verrai riposizionato di fronte alle porte.',
-    voice: 'Premi E per uscire dalla cabina.'
+    textKey: 'tutorialStep2Text',
+    textHtml: true,
+    voiceKey: 'tutorialStep2Voice'
   },
   {
-    text: 'Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Per rientrare in cabina premi di nuovo <kbd>E</kbd> vicino alle porte.',
-    voice: 'Nel corridoio usa WASD per muoverti. Premi E vicino alle porte per rientrare.'
+    textKey: 'tutorialStep3Text',
+    textHtml: true,
+    voiceKey: 'tutorialStep3Voice'
   },
   {
-    text: 'Comandi utili: <kbd>M</kbd> audio on/off, <kbd>V</kbd> annunci vocali, <kbd>K</kbd> comando vocale, <kbd>N</kbd> modalita\' notte, <kbd>O</kbd> fuori servizio.',
-    voice: 'Comandi utili: M per muto, V per annunci vocali, K per comando vocale, N per modalita\' notte, O per fuori servizio.'
+    textKey: 'tutorialStep4Text',
+    textHtml: true,
+    voiceKey: 'tutorialStep4Voice'
   },
   {
-    text: 'In qualsiasi momento premi <kbd>?</kbd> per rivedere questo tutorial, oppure <kbd>Shift+M</kbd> per la modalita\' manutentore (FPS, teletrasporto).',
-    voice: 'In qualsiasi momento premi punto interrogativo per rivedere questo tutorial.'
+    textKey: 'tutorialStep5Text',
+    textHtml: true,
+    voiceKey: 'tutorialStep5Voice'
   }
 ];
+function getTutorialText(step) {
+  const s = STRINGS[state.lang];
+  let txt = s[step.textKey];
+  if (step.textExtra) txt = txt.replace(/\{\}/, step.textExtra());
+  return txt;
+}
+function getTutorialVoice(step) {
+  const s = STRINGS[state.lang];
+  let v = s[step.voiceKey];
+  if (step.voiceExtra) v = v.replace(/\{\}/, step.voiceExtra());
+  return v;
+}
 let tutorialTimeout = null;
 
 function loadOnboarded() {
@@ -4321,10 +4374,11 @@ function renderTutorialStep() {
   const stepEl = document.getElementById('tt-step');
   const textEl = document.getElementById('tt-text');
   if (stepEl) stepEl.textContent = (state.tutorialStep + 1) + '/' + TUTORIAL_STEPS.length;
-  if (textEl) textEl.innerHTML = step.text;
+  // Step 8: usa getTutorialText() che risolve la key da STRINGS[state.lang]
+  if (textEl) textEl.innerHTML = getTutorialText(step);
   // Voice: pronuncia solo se TTS attivo, con rate leggermente ridotto
-  if (typeof speak === 'function' && ttsEnabled && !state.muted && step.voice) {
-    speak(step.voice, { rate: 0.95 });
+  if (typeof speak === 'function' && ttsEnabled && !state.muted) {
+    speak(getTutorialVoice(step), { rate: 0.95 });
   }
 }
 
@@ -6792,6 +6846,20 @@ let startSlidesTimer = null;
     startSlideIdx = (startSlideIdx + 1) % slides.length;
   }, 2500);
 })();
+
+// Polish Pack V2 Step 8: bottone start con testo dinamico per lingua corrente
+(function applyLangToStartScreen() {
+  const btn = document.getElementById('startBtn');
+  if (btn) btn.textContent = state.lang === 'en' ? 'Enter the elevator' : 'Entra nell\'ascensore';
+})();
+// lingua corrente per il bottone: aggiorna ad ogni cambio
+const _setLang_orig = setLang;
+setLang = function(newLang) {
+  const r = _setLang_orig(newLang);
+  const btn = document.getElementById('startBtn');
+  if (btn) btn.textContent = state.lang === 'en' ? 'Enter the elevator' : 'Entra nell\'ascensore';
+  return r;
+};
 
 document.getElementById('startBtn').addEventListener('click', () => {
   // ferma il carosello
