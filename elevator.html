@@ -65,6 +65,24 @@
   #floor-strip .label { opacity: 0.6; font-size: 10px; letter-spacing: 1px; }
   #floor-strip .value { font-size: 26px; font-weight: 700; color: #ffd66b; }
   #floor-strip .arrow { font-size: 16px; height: 16px; }
+  /* Polish Pack V2 Step 8d: switch lingua cliccabile sul display HUD */
+  .lang-switch {
+    margin-top: 6px;
+    background: rgba(255, 214, 107, 0.15);
+    border: 1px solid rgba(255, 214, 107, 0.4);
+    border-radius: 4px;
+    color: #ffd66b;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: Georgia, serif;
+    pointer-events: auto;
+  }
+  .lang-switch:hover {
+    background: rgba(255, 214, 107, 0.3);
+  }
 
   #panel-help {
     position: absolute;
@@ -577,6 +595,7 @@
     <div class="label">PIANO</div>
     <div class="value" id="floorNum">T</div>
     <div class="arrow" id="floorArrow">·</div>
+    <button id="langSwitch" class="lang-switch" title="Change language / Cambia lingua">IT</button>
   </div>
   <div id="panel-help">
     <div class="row"><span>Movimento mouse</span><span>guarda intorno</span></div>
@@ -1183,6 +1202,8 @@ function setLang(newLang) {
   }
   // Aggiorna i testi del display touch (alcuni label dinamici)
   updateFloorDisplay();
+  // Aggiorna testo del bottone lingua (Polish Pack V2 Step 8d)
+  if (typeof refreshLangSwitch === 'function') refreshLangSwitch();
   saveLang();
 }
 
@@ -6858,6 +6879,22 @@ document.querySelectorAll('.hc-preset-btn').forEach(btn => {
     hcShowStatus('Preset "' + preset.shortName + '" caricato. Modifica e premi "Applica e salva".', 'success');
   });
 });
+
+// Polish Pack V2 Step 8d: switch lingua cliccabile sul display HUD
+function refreshLangSwitch() {
+  const btn = document.getElementById('langSwitch');
+  if (btn) btn.textContent = state.lang.toUpperCase();
+}
+const langSwitchBtn = document.getElementById('langSwitch');
+if (langSwitchBtn) {
+  langSwitchBtn.addEventListener('click', () => {
+    noteInteraction();
+    setLang(state.lang === 'it' ? 'en' : 'it');
+    refreshLangSwitch();
+    if (typeof playBeep === 'function') playBeep(660, 0.1, 'sine', 0.08);
+  });
+  refreshLangSwitch();
+}
 
 requestAnimationFrame(loop);
 </script>
