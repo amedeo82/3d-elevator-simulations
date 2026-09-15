@@ -589,7 +589,7 @@
 <div id="app"></div>
 
 <div id="hud" style="display:none;">
-  <div id="topbar">Ascensore &nbsp;·&nbsp; <b>Simulazione 3D</b></div>
+  <div id="topbar"></div>
   <div id="crosshair"></div>
   <div id="floor-strip">
     <div class="label">PIANO</div>
@@ -597,40 +597,24 @@
     <div class="arrow" id="floorArrow">·</div>
     <button id="langSwitch" class="lang-switch" title="Change language / Cambia lingua">IT</button>
   </div>
-  <div id="panel-help">
-    <div class="row"><span>Movimento mouse</span><span>guarda intorno</span></div>
-    <div class="row"><span>Clic</span><span>premi un pulsante</span></div>
-    <div class="row"><span><kbd>ESC</kbd></span><span>rilascia il mouse</span></div>
-    <div class="row"><span><kbd>E</kbd></span><span>esci / rientra cabina</span></div>
-    <div class="row"><span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>movimento nel corridoio</span></div>
-    <div class="row"><span><kbd>1</kbd>–<kbd>9</kbd> · <kbd>0</kbd></span><span>chiama un piano</span></div>
-    <div class="row"><span><kbd>M</kbd></span><span>toggle suono</span></div>
-    <div class="row"><span><kbd>V</kbd></span><span>toggle annunci vocali</span></div>
-    <div class="row"><span><kbd>N</kbd></span><span>toggle modalità notte</span></div>
-    <div class="row"><span><kbd>O</kbd></span><span>fuori servizio</span></div>
-    <div class="row"><span><kbd>K</kbd></span><span>comando vocale</span></div>
-    <div class="row"><span><kbd>?</kbd></span><span>apri / rivedi tutorial</span></div>
-    <div class="row"><span><kbd>H</kbd></span><span>personalizza hotel</span></div>
-    <div class="row"><span><kbd>L</kbd></span><span>lingua IT / EN</span></div>
-    <div class="row"><span><kbd>Shift+M</kbd></span><span>manutentore</span></div>
-  </div>
+  <div id="panel-help"></div>
   <div id="status">
     <div class="dot"></div>
     <div id="statusText">In attesa</div>
   </div>
   <div id="subtitle"></div>
   <div id="maint-overlay">
-    <div class="title">🛠 MANUTENZIONE</div>
-    <div class="row"><span class="lbl">FPS:</span><span class="val" id="m-fps">--</span></div>
-    <div class="row"><span class="lbl">Draw calls:</span><span class="val" id="m-dc">--</span></div>
-    <div class="row"><span class="lbl">Piano attuale:</span><span class="val" id="m-floor">--</span></div>
-    <div class="row"><span class="lbl">Piano target:</span><span class="val" id="m-target">--</span></div>
-    <div class="row"><span class="lbl">In coda:</span><span class="val" id="m-queue">--</span></div>
-    <div class="row"><span class="lbl">Passeggeri:</span><span class="val" id="m-pax">--</span></div>
-    <div class="row"><span class="lbl">Modalità:</span><span class="val" id="m-mode">--</span></div>
-    <div class="row"><span class="lbl">Out-of-order:</span><span class="val" id="m-ooo">--</span></div>
+    <div class="title"></div>
+    <div class="row"><span class="lbl" id="m-fps-lbl"></span><span class="val" id="m-fps">--</span></div>
+    <div class="row"><span class="lbl" id="m-dc-lbl"></span><span class="val" id="m-dc">--</span></div>
+    <div class="row"><span class="lbl" id="m-floor-lbl"></span><span class="val" id="m-floor">--</span></div>
+    <div class="row"><span class="lbl" id="m-target-lbl"></span><span class="val" id="m-target">--</span></div>
+    <div class="row"><span class="lbl" id="m-queue-lbl"></span><span class="val" id="m-queue">--</span></div>
+    <div class="row"><span class="lbl" id="m-pax-lbl"></span><span class="val" id="m-pax">--</span></div>
+    <div class="row"><span class="lbl" id="m-mode-lbl"></span><span class="val" id="m-mode">--</span></div>
+    <div class="row"><span class="lbl" id="m-ooo-lbl"></span><span class="val" id="m-ooo">--</span></div>
     <div class="events" id="m-events"></div>
-    <div class="hint">Shift+M esce · 1-9 teletrasporto</div>
+    <div class="hint" id="m-hint"></div>
   </div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
@@ -642,10 +626,10 @@
 <div id="tutorial-tooltip" class="tutorial-hidden">
   <div class="tt-bubble">
     <div class="tt-step" id="tt-step">1/5</div>
-    <div class="tt-text" id="tt-text">Testo del tooltip</div>
+    <div class="tt-text" id="tt-text"></div>
     <div class="tt-actions">
-      <button id="tt-skip" class="tt-btn">Salta tutorial</button>
-      <button id="tt-next" class="tt-btn tt-primary">Avanti →</button>
+      <button id="tt-skip" class="tt-btn"></button>
+      <button id="tt-next" class="tt-btn tt-primary"></button>
     </div>
   </div>
 </div>
@@ -653,87 +637,37 @@
 <!-- Polish Pack V2 Step 5b: overlay personalizzazione hotel (tasto H) -->
 <div id="hotel-customizer" class="hc-hidden">
   <div class="hc-panel">
-    <div class="hc-title">PERSONALIZZA HOTEL</div>
-    <div class="hc-presets">
-      <div class="hc-presets-label">Preset:</div>
-      <button class="hc-preset-btn" data-preset="boss">Boss Hotel</button>
-      <button class="hc-preset-btn" data-preset="sky">Sky Tower Tokyo</button>
-      <button class="hc-preset-btn" data-preset="paris">Hôtel de Paris</button>
-      <button class="hc-preset-btn" data-preset="burj">Burj Al Arab</button>
-    </div>
+    <div class="hc-title"></div>
+    <div class="hc-presets"></div>
     <div class="hc-fields">
-      <label>Nome hotel <input type="text" id="hc-name" maxlength="30"></label>
-      <label>Nome corto <input type="text" id="hc-short" maxlength="20"></label>
-      <label>Indirizzo <input type="text" id="hc-addr" maxlength="50"></label>
-      <label>Città <input type="text" id="hc-city" maxlength="30"></label>
-      <label>Stelle (1-5) <input type="number" id="hc-stars" min="1" max="5" step="1"></label>
-      <label>Anno fondazione <input type="number" id="hc-year" min="1800" max="2100" step="1"></label>
-      <label>Tagline <input type="text" id="hc-tag" maxlength="40"></label>
-      <label>Motivo <input type="text" id="hc-motto" maxlength="60"></label>
-      <label>Colore accent <input type="color" id="hc-color"></label>
+      <label><input type="text" id="hc-name" maxlength="30"></label>
+      <label><input type="text" id="hc-short" maxlength="20"></label>
+      <label><input type="text" id="hc-addr" maxlength="50"></label>
+      <label><input type="text" id="hc-city" maxlength="30"></label>
+      <label><input type="number" id="hc-stars" min="1" max="5" step="1"></label>
+      <label><input type="number" id="hc-year" min="1800" max="2100" step="1"></label>
+      <label><input type="text" id="hc-tag" maxlength="40"></label>
+      <label><input type="text" id="hc-motto" maxlength="60"></label>
+      <label><input type="color" id="hc-color"></label>
     </div>
     <div class="hc-actions">
-      <button id="hc-reset" class="hc-btn">Ripristina default</button>
-      <button id="hc-close" class="hc-btn">Chiudi</button>
-      <button id="hc-apply" class="hc-btn hc-primary">Applica e salva</button>
+      <button id="hc-reset" class="hc-btn"></button>
+      <button id="hc-close" class="hc-btn"></button>
+      <button id="hc-apply" class="hc-btn hc-primary"></button>
     </div>
     <div class="hc-status" id="hc-status"></div>
-    <div class="hc-hint">H per aprire/chiudere · Esc per chiudere · preset per cambiare hotel.<br>Applica e salva riavvia la pagina per aggiornare tutte le texture 3D.</div>
+    <div class="hc-hint"></div>
   </div>
 </div>
 
 <div id="startscreen">
-  <h1 id="startHotelName">Boss Hotel · <b>Ascensore 3D</b></h1>
-  <p>Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch,
-     apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessità,
-     attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.</p>
-  <div class="keys">
-    <div>Mouse</div><div>Ruota la visuale</div>
-    <div>Click</div><div>Premi i pulsanti del pannello</div>
-    <div>ESC</div><div>Rilascia il mouse</div>
-    <div>E</div><div>Esci / Rientra dalla cabina</div>
-    <div>W A S D</div><div>Movimento nel corridoio</div>
-    <div>1 – 9 · 0</div><div>Chiama un piano (anche tastierino)</div>
-    <div>M</div><div>Attiva/disattiva audio</div>
-    <div>V</div><div>Attiva/disattiva annunci vocali</div>
-    <div>N</div><div>Attiva/disattiva modalità notte</div>
-    <div>O</div><div>Fuori servizio (manutenzione)</div>
-    <div>K</div><div>Comando vocale (speech-to-text)</div>
-    <div>?</div><div>Apri / rivedi tutorial contestuale</div>
-    <div>H</div><div>Personalizza hotel (nome, indirizzo, preset)</div>
-    <div>L</div><div>Lingua IT / EN</div>
-    <div>Shift+M</div><div>Modalità manutentore (debug)</div>
-  </div>
+  <h1 id="startHotelName"></h1>
+  <p></p>
+  <div class="keys"></div>
   <!-- Polish Pack v1.3 #22 — carosello feature sulla start screen -->
   <div class="slides-wrap">
-    <div class="slides-label">Caratteristiche</div>
-    <div id="startSlides" class="slides">
-      <div class="slide active">
-        <div class="emoji">🛗</div>
-        <div>Cabina 5★</div>
-        <div class="small" id="startEdition">Boss Hotel Edition</div>
-      </div>
-      <div class="slide">
-        <div class="emoji">📱</div>
-        <div>Touch screen</div>
-        <div class="small">Display 540×1100</div>
-      </div>
-      <div class="slide">
-        <div class="emoji">🌤️</div>
-        <div>Meteo live</div>
-        <div class="small">Roma in tempo reale</div>
-      </div>
-      <div class="slide">
-        <div class="emoji">🗣️</div>
-        <div>Annunci vocali</div>
-        <div class="small">Web Speech API</div>
-      </div>
-      <div class="slide">
-        <div class="emoji">🏨</div>
-        <div>4 temi corridoio</div>
-        <div class="small">Lobby · Uffici · Hotel · Attico</div>
-      </div>
-    </div>
+    <div class="slides-label"></div>
+    <div id="startSlides" class="slides"></div>
   </div>
 
   <button id="startBtn"></button>
@@ -798,6 +732,88 @@ const STRINGS = {
     cabinIdle: 'Cabina ferma',
     doorClosing: 'Porta in chiusura',
     floorInQueue: 'PIANO IN Coda',
+    // HUD - label pannello (#panel-help), start screen (.keys), tooltip, customizer
+    helpLookAround: 'guarda intorno',
+    helpPressButton: 'premi un pulsante',
+    helpReleaseMouse: 'rilascia il mouse',
+    helpExit: 'esci / rientra cabina',
+    helpWASD: 'movimento nel corridoio',
+    helpCall: 'chiama un piano',
+    helpAudio: 'toggle suono',
+    helpVoice: 'toggle annunci vocali',
+    helpNight: 'toggle modalit\u00e0 notte',
+    helpOOO: 'fuori servizio',
+    helpVoiceCmd: 'comando vocale',
+    helpTutorial: 'apri / rivedi tutorial',
+    helpCustomize: 'personalizza hotel',
+    helpLang: 'lingua IT / EN',
+    helpMaint: 'manutentore',
+    helpPlaceholder: '(azione)',
+    // start screen intro paragraph
+    startIntro: 'Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch, apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessit\u00e0, attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.',
+    startIntro2: 'Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina.',
+    // start screen slides features
+    slidesLabel: 'Caratteristiche',
+    slideCabinTitle: 'Cabina 5\u2605',
+    slideCabinDesc: 'Boss Hotel Edition',
+    slideTouchTitle: 'Touch screen',
+    slideTouchDesc: 'Display 540\u00d71100',
+    slideWeatherTitle: 'Meteo live',
+    slideWeatherDesc: 'Roma in tempo reale',
+    slideTTSTitle: 'Annunci vocali',
+    slideTTSDesc: 'Web Speech API',
+    slideThemesTitle: '4 temi corridoio',
+    slideThemesDesc: 'Lobby \u00b7 Uffici \u00b7 Hotel \u00b7 Attico',
+    // topbar
+    topbarTitle: 'Ascensore',
+    topbarSubtitle: 'Simulazione 3D',
+    // floot-strip
+    floorStripLabel: 'PIANO',
+    // tutorial tooltip
+    tooltipSkip: 'Salta tutorial',
+    tooltipNext: 'Avanti \u2192',
+    // hotel customizer
+    customizeTitle: 'PERSONALIZZA HOTEL',
+    customizeHint: 'H per aprire/chiudere \u00b7 Esc per chiudere \u00b7 preset per cambiare hotel.<br>Applica e salva riavvia la pagina per aggiornare tutte le texture 3D.',
+    customizeApply: 'Applica e salva',
+    customizeReset: 'Ripristina default',
+    customizeClose: 'Chiudi',
+    customizeLabelName: 'Nome hotel',
+    customizeLabelShort: 'Nome corto',
+    customizeLabelAddr: 'Indirizzo',
+    customizeLabelCity: 'Citt\u00e0',
+    customizeLabelStars: 'Stelle (1-5)',
+    customizeLabelYear: 'Anno fondazione',
+    customizeLabelTag: 'Tagline',
+    customizeLabelMotto: 'Motivo',
+    customizeLabelColor: 'Colore accent',
+    customizeApplied: 'Configurazione salvata \u00b7 Riavvio in corso...',
+    customizeResetDone: 'Default ripristinati nei campi. Premi "Applica e salva" per confermare.',
+    customizePresetLoaded: 'Preset caricato nei campi. Modifica e premi "Applica e salva".',
+    customizeSaveError: 'ERRORE salvataggio: ',
+    customizeResetMsg: 'Default ripristinati \u00b7 Riavvio in corso...',
+    customizePresetBoss: 'Boss Hotel',
+    customizePresetSky: 'Sky Tower Tokyo',
+    customizePresetParis: 'H\u00f4tel de Paris',
+    customizePresetBurj: 'Burj Al Arab',
+    // maint overlay
+    maintTitle: 'MANUTENZIONE',
+    maintFps: 'FPS',
+    maintCalls: 'Draw calls',
+    maintFloor: 'Piano',
+    maintTarget: 'Target',
+    maintQueue: 'Coda',
+    maintPax: 'Passeggeri',
+    maintMode: 'In cabina',
+    maintOOO: 'Out-of-order',
+    maintEvents: 'Eventi',
+    maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
+    maintEventSeeded: '[seeded]',
+    maintEventReset: '[reset]',
+    maintEventLoop: '[loop]',
+    // subtitle HUD "Lingua" toggle feedback
+    langToggleIT: 'Lingua: Italiano',
+    langToggleEN: 'Lingua: English',
     outOfService: 'FUORI SERVIZIO',
     floorClosing: 'CHIUSURA',
     floorOpening: 'APERTURA',
@@ -933,6 +949,88 @@ const STRINGS = {
   en: {
     cabinIdle: 'Cabin idle',
     doorClosing: 'Door closing',
+    // HUD - pannello comandi + start screen + tooltip + customizer
+    helpLookAround: 'look around',
+    helpPressButton: 'press a button',
+    helpReleaseMouse: 'release the mouse',
+    helpExit: 'exit / re-enter cabin',
+    helpWASD: 'corridor movement',
+    helpCall: 'call a floor',
+    helpAudio: 'toggle audio',
+    helpVoice: 'toggle voice',
+    helpNight: 'toggle night mode',
+    helpOOO: 'out of order',
+    helpVoiceCmd: 'voice command',
+    helpTutorial: 'open / review tutorial',
+    helpCustomize: 'customize hotel',
+    helpLang: 'language IT / EN',
+    helpMaint: 'maintenance',
+    helpPlaceholder: '(action)',
+    // start screen intro
+    startIntro: 'You are about to enter a luxury 5-star elevator cabin. Select a floor from the touch panel, open/close the doors, explore the corridor of the floor reached and, in case of need, activate the emergency call. Move the view with the mouse as in a first-person game.',
+    startIntro2: 'Select a floor from the touch panel, or exit into the corridor to re-enter the cabin.',
+    // start screen slides
+    slidesLabel: 'Features',
+    slideCabinTitle: '5\u2605 Cabin',
+    slideCabinDesc: 'Boss Hotel Edition',
+    slideTouchTitle: 'Touch screen',
+    slideTouchDesc: 'Display 540\u00d71100',
+    slideWeatherTitle: 'Live weather',
+    slideWeatherDesc: 'Rome in real time',
+    slideTTSTitle: 'Voice announcements',
+    slideTTSDesc: 'Web Speech API',
+    slideThemesTitle: '4 corridor themes',
+    slideThemesDesc: 'Lobby \u00b7 Offices \u00b7 Hotel \u00b7 Attic',
+    // topbar
+    topbarTitle: 'Elevator',
+    topbarSubtitle: '3D Simulation',
+    // floor-strip
+    floorStripLabel: 'FLOOR',
+    // tutorial tooltip
+    tooltipSkip: 'Skip tutorial',
+    tooltipNext: 'Next \u2192',
+    // hotel customizer
+    customizeTitle: 'CUSTOMIZE HOTEL',
+    customizeHint: 'H to open/close \u00b7 Esc to close \u00b7 presets to switch hotel.<br>Apply and save reloads the page to update all 3D textures.',
+    customizeApply: 'Apply and save',
+    customizeReset: 'Reset defaults',
+    customizeClose: 'Close',
+    customizeLabelName: 'Hotel name',
+    customizeLabelShort: 'Short name',
+    customizeLabelAddr: 'Address',
+    customizeLabelCity: 'City',
+    customizeLabelStars: 'Stars (1-5)',
+    customizeLabelYear: 'Founded year',
+    customizeLabelTag: 'Tagline',
+    customizeLabelMotto: 'Motto',
+    customizeLabelColor: 'Accent color',
+    customizeApplied: 'Configuration saved \u00b7 Reloading...',
+    customizeResetDone: 'Defaults restored in fields. Press "Apply and save" to confirm.',
+    customizePresetLoaded: 'Preset loaded in fields. Edit and press "Apply and save".',
+    customizeSaveError: 'Save error: ',
+    customizeResetMsg: 'Defaults restored \u00b7 Reloading...',
+    customizePresetBoss: 'Boss Hotel',
+    customizePresetSky: 'Sky Tower Tokyo',
+    customizePresetParis: 'H\u00f4tel de Paris',
+    customizePresetBurj: 'Burj Al Arab',
+    // maint overlay
+    maintTitle: 'MAINTENANCE',
+    maintFps: 'FPS',
+    maintCalls: 'Draw calls',
+    maintFloor: 'Floor',
+    maintTarget: 'Target',
+    maintQueue: 'Queue',
+    maintPax: 'Passengers',
+    maintMode: 'In cabin',
+    maintOOO: 'Out-of-order',
+    maintEvents: 'Events',
+    maintHint: 'Shift+M to exit \u00b7 1-9 to teleport',
+    maintEventSeeded: '[seeded]',
+    maintEventReset: '[reset]',
+    maintEventLoop: '[loop]',
+    // language toggle feedback
+    langToggleIT: 'Language: Italian',
+    langToggleEN: 'Language: English',
     floorInQueue: 'FLOOR IN Queue',
     outOfService: 'OUT OF SERVICE',
     floorClosing: 'CLOSING',
@@ -5620,6 +5718,28 @@ function teleportToFloor(floor) {
 }
 function tickMaintenance(now) {
   if (!state.maintenanceMode) return;
+  // Polish Pack V2 Step 8: aggiorna label dinamici del maintenance overlay
+  const s = STRINGS[state.lang];
+  const titleEl = document.querySelector('#maint-overlay .title');
+  if (titleEl && titleEl.textContent.trim() === '') {
+    titleEl.textContent = '\ud83d\udee0\ufe0f ' + s.maintTitle;
+  }
+  const lblMap = {
+    'm-fps-lbl': s.maintFps + ':',
+    'm-dc-lbl': s.maintCalls + ':',
+    'm-floor-lbl': s.maintFloor + ':',
+    'm-target-lbl': s.maintTarget + ':',
+    'm-queue-lbl': s.maintQueue + ':',
+    'm-pax-lbl': s.maintPax + ':',
+    'm-mode-lbl': s.maintMode + ':',
+    'm-ooo-lbl': s.maintOOO + ':'
+  };
+  for (const [id, txt] of Object.entries(lblMap)) {
+    const el = document.getElementById(id);
+    if (el && el.textContent.trim() === '') el.textContent = txt;
+  }
+  const hintEl = document.getElementById('m-hint');
+  if (hintEl && hintEl.textContent.trim() === '') hintEl.textContent = s.maintHint;
   // aggiorna buffer FPS
   state._fpsBuf.push(now);
   while (state._fpsBuf.length > 2 || (state._fpsBuf.length > 1 && state._fpsBuf[state._fpsBuf.length-1] - state._fpsBuf[0] > 1000)) {
@@ -5638,8 +5758,8 @@ function tickMaintenance(now) {
   document.getElementById('m-target').textContent = state.targetFloor === 0 ? 'T' : String(state.targetFloor);
   document.getElementById('m-queue').textContent = String(queueSize());
   document.getElementById('m-pax').textContent = `${state.passengers}/8`;
-  document.getElementById('m-mode').textContent = state.playerInCabin ? 'cabina' : 'corridoio';
-  document.getElementById('m-ooo').textContent = state.outOfOrder ? 'SÌ' : 'no';
+  document.getElementById('m-mode').textContent = state.playerInCabin ? STRINGS[state.lang].maintMode.toLowerCase() : STRINGS[state.lang].corridorMode.toLowerCase();
+  document.getElementById('m-ooo').textContent = state.outOfOrder ? (state.lang === 'en' ? 'YES' : 'SÌ') : (state.lang === 'en' ? 'no' : 'no');
   document.getElementById('m-events').innerHTML = (state._eventLog || [])
     .map(e => `<div>${e}</div>`).join('');
 }
@@ -6905,23 +7025,172 @@ let startSlidesTimer = null;
   }, 2500);
 })();
 
-// Polish Pack V2 Step 8: applica testi dinamici a tutti gli elementi HTML
-// che dipendono da state.lang (start button, hud buttons, mode badge,
-// pointer hint, manutentore overlay).
+// Polish Pack V2 Step 8: helper `t()` per lookup testi + applyAllI18n() che
+// rigenera TUTTI gli elementi dinamici della UI (panel-help, start screen,
+// tutorial overlay, customizer, manutentore overlay, topbar, ecc.).
+// Chiamata all'init e ad ogni setLang() — copertura completa IT/EN.
+function t(key) {
+  const s = STRINGS[state.lang];
+  return (s && Object.prototype.hasOwnProperty.call(s, key)) ? s[key] : key;
+}
+
+// Dati tabellari per le tabelle HTML statiche (rigenerate come innerHTML)
+const PANEL_HELP_KEYS = [
+  null,                                            // Mouse / look (no key, il primo span è testo libero)
+  { k: 'helpLookAround',   noKbd: true  },       // Mouse: 'guarda intorno'
+  { k: 'helpPressButton',   noKbd: true  },
+  { k: 'helpReleaseMouse',  kbd: 'ESC' },
+  { k: 'helpExit',          kbd: 'E' },
+  { k: 'helpWASD',          kbd: 'W A S D' },
+  { k: 'helpCall',          kbd: '1\u20139 \u00b7 0' },
+  { k: 'helpAudio',         kbd: 'M' },
+  { k: 'helpVoice',         kbd: 'V' },
+  { k: 'helpNight',         kbd: 'N' },
+  { k: 'helpOOO',           kbd: 'O' },
+  { k: 'helpVoiceCmd',      kbd: 'K' },
+  { k: 'helpTutorial',      kbd: '?' },
+  { k: 'helpCustomize',     kbd: 'H' },
+  { k: 'helpLang',          kbd: 'L' },
+  { k: 'helpMaint',         kbd: 'Shift+M' }
+];
+function buildPanelHelpRows() {
+  return PANEL_HELP_KEYS.slice(1).map(({ k, kbd, noKbd }) => {
+    const lbl = t(k);
+    if (noKbd) {
+      // Mouse / Click — span senza <kbd>
+      return `<div class="row"><span>${k === 'helpLookAround' ? 'Movimento mouse' : 'Clic'}</span><span>${lbl}</span></div>`;
+    }
+    return `<div class="row"><span><kbd>${kbd}</kbd></span><span>${lbl}</span></div>`;
+  }).join('');
+}
+
+const START_SCREEN_KEYS = PANEL_HELP_KEYS.slice(1).map(({ k, kbd }) => {
+  // Per lo start screen, il primo span mostra la chiave del tasto (no kbd HTML)
+  const lbl = t(k);
+  let firstSpan;
+  if (k === 'helpLookAround') firstSpan = 'Mouse';
+  else if (k === 'helpPressButton') firstSpan = 'Click';
+  else firstSpan = kbd;
+  return { firstSpan, lbl };
+});
+function buildStartScreenKeys() {
+  return START_SCREEN_KEYS.map(({ firstSpan, lbl }) =>
+    `<div>${firstSpan}</div><div>${lbl}</div>`
+  ).join('');
+}
+
+// Slides del carosello - riga 710-735 di elevator.html
+const SLIDE_DEFS = [
+  { emoji: '\ud83e\udddf', titleKey: 'slideCabinTitle',  descKey: 'slideCabinDesc' },
+  { emoji: '\ud83d\udcf1', titleKey: 'slideTouchTitle', descKey: 'slideTouchDesc' },
+  { emoji: '\u2600\ufe0f', titleKey: 'slideWeatherTitle', descKey: 'slideWeatherDesc' },
+  { emoji: '\ud83c\udf5c', titleKey: 'slideTTSTitle',   descKey: 'slideTTSDesc' },
+  { emoji: '\ud83c\udfe8', titleKey: 'slideThemesTitle', descKey: 'slideThemesDesc' }
+];
+function buildStartSlides() {
+  return SLIDE_DEFS.map((s, i) => `
+    <div class="slide ${i === 0 ? 'active' : ''}">
+      <div class="emoji">${s.emoji}</div>
+      <div>${t(s.titleKey)}</div>
+      <div class="small" id="${i === 0 ? 'startEdition' : 'startEdition' + i}">${t(s.descKey)}</div>
+    </div>
+  `).join('');
+}
+
+// Etichette fields del customizer e bottoni
+const CUSTOMIZER_LABEL_KEYS = [
+  'customizeLabelName', 'customizeLabelShort', 'customizeLabelAddr',
+  'customizeLabelCity', 'customizeLabelStars', 'customizeLabelYear',
+  'customizeLabelTag',  'customizeLabelMotto', 'customizeLabelColor'
+];
+const PRESET_KEYS = ['customizePresetBoss', 'customizePresetSky', 'customizePresetParis', 'customizePresetBurj'];
+const PRESET_DATASET = ['boss', 'sky', 'paris', 'burj'];
+
+// Polish Pack V2 Step 8: applica testi dinamici a TUTTI gli elementi HTML
+// della UI (rigenera innerHTML per tabelle/overlay, setta textContent per
+// elementi singoli). Chiamata all'init e ad ogni setLang().
 function applyLangToDOM() {
   const s = STRINGS[state.lang];
+
+  // Single elements (textContent)
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.textContent = s.startBtn;
   const ph = document.getElementById('pointerhint');
   if (ph) ph.textContent = s.pointerHint;
-  // modeText e bottoni HUD: aggiornati da refreshHudButtons().
-  // Aggiorniamo comunque per assicurarci siano aggiornati al boot.
   const mt = document.getElementById('modeText');
   if (mt) mt.textContent = s.inCabinBadge;
   const exitBtn = document.getElementById('hud-exit-btn');
   if (exitBtn) exitBtn.textContent = s.exitCabinBtn;
   const reBtn = document.getElementById('hud-reenter-btn');
   if (reBtn) reBtn.textContent = s.reenterCabinBtn;
+  const floorStripLabel = document.querySelector('#floor-strip .label');
+  if (floorStripLabel) floorStripLabel.textContent = s.floorStripLabel;
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.innerHTML = s.topbarTitle + ' &nbsp;\u00b7&nbsp; <b>' + s.topbarSubtitle + '</b>';
+  const panelHelp = document.getElementById('panel-help');
+  if (panelHelp) panelHelp.innerHTML = buildPanelHelpRows();
+  // Start screen: genera .keys + .slides + intro paragraph
+  const startKeys = document.querySelector('#startscreen .keys');
+  if (startKeys) startKeys.innerHTML = buildStartScreenKeys();
+  const startSlides = document.getElementById('startSlides');
+  if (startSlides) startSlides.innerHTML = buildStartSlides();
+  const startIntro = document.querySelector('#startscreen p');
+  if (startIntro) startIntro.textContent = s.startIntro;
+  // Tooltip tutorial (renderTutorialStep sovrascrive tt-text al primo step)
+  const ttSkip = document.getElementById('tt-skip');
+  if (ttSkip) ttSkip.textContent = s.tooltipSkip;
+  const ttNext = document.getElementById('tt-next');
+  if (ttNext) ttNext.textContent = s.tooltipNext;
+  // Customizer
+  const hcTitle = document.querySelector('#hotel-customizer .hc-title');
+  if (hcTitle) hcTitle.textContent = s.customizeTitle;
+  const hcHint = document.querySelector('#hotel-customizer .hc-hint');
+  if (hcHint) hcHint.innerHTML = s.customizeHint;
+  const hcApply = document.getElementById('hc-apply');
+  if (hcApply) hcApply.textContent = s.customizeApply;
+  const hcReset = document.getElementById('hc-reset');
+  if (hcReset) hcReset.textContent = s.customizeReset;
+  const hcClose = document.getElementById('hc-close');
+  if (hcClose) hcClose.textContent = s.customizeClose;
+  // Preset buttons: rigenera intera la sezione preset
+  const hcPresets = document.querySelector('#hotel-customizer .hc-presets');
+  if (hcPresets) {
+    const ps = PRESET_KEYS.map((pk, i) => {
+      return `<button class="hc-preset-btn" data-preset="${PRESET_DATASET[i]}">${t(pk)}</button>`;
+    }).join('');
+    hcPresets.innerHTML = `<div class="hc-presets-label">${state.lang === 'en' ? 'Presets:' : 'Preset:'}</div>${ps}`;
+  }
+  // Field labels del form customizer
+  document.querySelectorAll('#hotel-customizer .hc-fields label').forEach((lbl, i) => {
+    const k = CUSTOMIZER_LABEL_KEYS[i];
+    if (k) {
+      const inputId = lbl.querySelector('input')?.id;
+      const baseText = t(k);
+      lbl.firstChild.textContent = baseText + ' ';
+    }
+  });
+  // Maint overlay (se visibile)
+  const maint = document.getElementById('maint-overlay');
+  if (maint) {
+    const html = maint.innerHTML;
+    // Sostituzione test-based del maint overlay header (semplice)
+    // Sovrascriviamo solo se contiene 'MANUTENZIONE' originale o 'MAINTENANCE'
+    let updated = html
+      .replace(/MANUTENZIONE|MAINTENZIONE|MAINTENANCE/g, s.maintTitle)
+      .replace(/<\/div><span class="lbl">FPS<\/span>/g, '</div><span class="lbl">' + s.maintFps + '</span>')
+      .replace(/Out-of-order|Out-of-order/g, s.maintOOO)
+      .replace(/Piano|Floor/g, s.maintFloor)
+      .replace(/Target/g, s.maintTarget)
+      .replace(/Coda|Queue/g, s.maintQueue)
+      .replace(/Passeggeri|Passengers/g, s.maintPax)
+      .replace(/In cabina|In cabin/g, s.maintMode)
+      .replace(/Eventi|Events/g, s.maintEvents)
+      .replace(/Shift\+M esce|Shift\+M to exit/g, s.maintHint);
+    if (updated !== html) maint.innerHTML = updated;
+  }
+  // Refresh anche le derivati (refreshHudButtons, refreshLangSwitch, ecc.)
+  if (typeof refreshHudButtons === 'function') refreshHudButtons();
+  if (typeof refreshLangSwitch === 'function') refreshLangSwitch();
 }
 (function applyLangToStartScreen() {
   applyLangToDOM();
@@ -7009,24 +7278,30 @@ function hcPopulateFormFromConfig(cfg) {
   document.getElementById('hc-motto').value = cfg.motto;
   document.getElementById('hc-color').value = cfg.accentGold;
 }
-document.querySelectorAll('.hc-preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const presetKey = btn.dataset.preset;
-    const preset = HOTEL_PRESETS[presetKey];
-    if (!preset) return;
-    // 1) Popola SOLO i campi del form con i valori del preset
-    hcPopulateFormFromConfig(preset);
-    // 2) Live preview: aggiorna HOTEL_CONFIG temporaneamente per vedere
-    //    subito l'effetto sulla start screen + accent CSS + tema corridoio
-    for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = preset[k];
-    // Polish Pack V2 Step 5: rebuild corridoio live con nuovo tema
-    applyHotelThemeOverride();
-    if (typeof buildCorridor === 'function' && typeof state !== 'undefined') {
-      buildCorridor(state.currentFloor);
-    }
-    applyHotelConfigToUI();
-    hcShowStatus('Preset "' + preset.shortName + '" caricato. Modifica e premi "Applica e salva".', 'success');
-  });
+// Event delegation (sopravvive a applyLangToDOM che rigenera i bottoni)
+document.querySelector('#hotel-customizer .hc-presets').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.hc-preset-btn');
+  if (!btn) return;
+  const presetKey = btn.dataset.preset;
+  const preset = HOTEL_PRESETS[presetKey];
+  if (!preset) return;
+  // 1) Popola SOLO i campi del form con i valori del preset
+  hcPopulateFormFromConfig(preset);
+  // 2) Live preview: aggiorna HOTEL_CONFIG temporaneamente per vedere
+  //    subito l'effetto sulla start screen + accent CSS + tema corridoio
+  for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = preset[k];
+  // Polish Pack V2 Step 5: rebuild corridoio live con nuovo tema
+  applyHotelThemeOverride();
+  if (typeof buildCorridor === 'function' && typeof state !== 'undefined') {
+    buildCorridor(state.currentFloor);
+  }
+  applyHotelConfigToUI();
+  // status bilingue IT/EN
+  const presetName = HOTEL_CONFIG.shortName;
+  hcShowStatus(state.lang === 'en'
+    ? `Preset "${presetName}" loaded. Edit and press "Apply and save".`
+    : `Preset "${presetName}" caricato. Modifica e premi "Applica e salva".`
+  , 'success');
 });
 
 // Polish Pack V2 Step 8d: switch lingua cliccabile sul display HUD
