@@ -79,6 +79,8 @@ CI GitHub Actions: `.github/workflows/ci.yml` gira `check-balance.js` su ogni pu
 | D4 | **Commenti in italiano + sezioni numerate** | Coerenza con codebase esistente; leggibilità. |
 | D5 | **HOTEL_CONFIG centralizzato + HOTEL_CONFIG_DEFAULTS frozen** | Polish Pack V2 Step 5. Refactor di 23 stringhe brand hardcoded in un oggetto unico. `HOTEL_CONFIG_DEFAULTS` è `Object.freeze()` per i reset; `HOTEL_CONFIG` è la copia runtime mutabile. Modificabile via HUD tasto `H`. |
 | D6 | **Carica config PRIMA delle cabin texture IIFE** | Polish Pack V2 Step 5 fix critico. `loadHotelConfig()` deve girare prima delle IIFE che bakano `HOTEL_CONFIG` nelle canvas texture (targa cabina, header pulsantiera). Altrimenti le texture sono baked con valori originali e l'utente vede "BOSS HOTEL" anche dopo aver salvato "Sky Tower". Sintomo: 'non vedo differenze tra preset'. |
+| D7 | **Coda viaggi come `Array<{floor, direction}>` (non `Set`)** | Polish Pack V2 Step 7. La pulsantiera ▲/▼ esprime "intenzione viaggio"; `direction: 'up'\|'down'\|null` viene memorizzata per instradamento intelligente e visualizzazione. `queueNextSmart(currentFloor, lastDirection)` serve stessa direzione, poi inversione automatica. |
+| D8 | **`STRINGS[lang]` + refactor HTML statico → dinamico** | Polish Pack V2 Step 8 (i18n IT/EN). Tutte le stringhe UI in `STRINGS[lang]`. Helper `t(key)` per lookup. `applyLangToDOM()` consolidata chiamata all'init + ad ogni `setLang()`. Le tabelle HTML statiche (`#panel-help`, start screen `.keys`, slides) sono ora rigenerate via JS da array di costanti (`PANEL_HELP_KEYS`, `SLIDE_DEFS`, `PRESET_KEYS`). Event delegation sul parent `.hc-presets` per i bottoni preset (sopravvive ai re-render di `applyLangToDOM`). 100% copertura testi visibili. |
 
 ---
 
