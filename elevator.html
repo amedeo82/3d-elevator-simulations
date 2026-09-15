@@ -6355,7 +6355,14 @@ addEventListener('keydown', e => {
   } else if (e.code === 'KeyL') {
     // Polish Pack V2 Step 8b: toggle lingua IT ↔ EN
     e.preventDefault();
-    setLang(state.lang === 'it' ? 'en' : 'it');
+    const prev = state.lang;
+    setLang(prev === 'it' ? 'en' : 'it');
+    // feedback visibile per debug (subtitle HUD 1.5s)
+    if (typeof showSubtitle === 'function') {
+      showSubtitle(state.lang === 'en' ? 'Language: English' : 'Lingua: Italiano', 1500);
+    }
+    if (typeof playBeep === 'function') playBeep(440, 0.1, 'sine', 0.08);
+    return;
   } else if (e.code === 'Escape') {
     // Esc chiude l'overlay personalizza (se attivo)
     const el = document.getElementById('hotel-customizer');
