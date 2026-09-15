@@ -300,8 +300,8 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 | **Comando vocale** | `K` (toggle speech-to-text) |
 | **Apri / rivedi tutorial** | `?` (5 step contestuali al primo avvio) |
 | **Modalità manutentore** | `Shift+M` (debug + wireframe + teletrasporto) |
-| **Apri / rivedi tutorial** | `?` (5 step contestuali al primo avvio) |
 | **Personalizza hotel** | `H` (9 campi editabili + 4 preset, salvataggio in `localStorage`) |
+| **Lingua IT / EN** | `L` (toggle live, persistenza in `localStorage.bossHotelLang@v1`) |
 
 ### Flusso tipico
 1. Click su "Entra nell'ascensore" → il mouse viene "catturato" (pointer lock)
