@@ -1350,6 +1350,44 @@ function setLang(newLang) {
   saveLang();
 }
 
+// Polish Pack V2 Step 10c · Ciclo giorno/notte automatico
+// Determina il dayPhase in base all'ora locale dell'utente e modula luci + fog.
+// Fasce:
+//   day:     6-18    -> luci piene
+//   evening: 18-22   -> luci ridotte
+//   night:   22-6    -> luci soffuse blu
+// Aggiornato: all'init + ogni 60s via setInterval.
+function getDayPhase(hour) {
+  if (hour === undefined) hour = new Date().getHours();
+  if (hour >= 6 && hour < 18) return 'day';
+  if (hour >= 18 && hour < 22) return 'evening';
+  return 'night';
+}
+function applyTimeOfDayLights(phase) {
+  if (phase === undefined) phase = state.dayPhase;
+  if (phase === 'day') {
+    ceilingLight.intensity = 1.6;
+    fillLight.intensity = 0.25;
+    scene.fog.color.setHex(0x111114);
+  } else if (phase === 'evening') {
+    ceilingLight.intensity = 1.0;
+    fillLight.intensity = 0.18;
+    scene.fog.color.setHex(0x1a1224);   // leggera tinta viola
+  } else if (phase === 'night') {
+    ceilingLight.intensity = 0.55;
+    fillLight.intensity = 0.10;
+    scene.fog.color.setHex(0x05050a);   // molto scuro
+  }
+}
+function tickTimeOfDay() {
+  const newPhase = getDayPhase();
+  if (newPhase !== state.dayPhase) {
+    state.dayPhase = newPhase;
+    // Riapplica solo se nightMode non e' attivo (nightMode override manuale)
+    if (!state.nightMode) applyTimeOfDayLights(newPhase);
+  }
+}
+
 function applyHotelCustomizerForm() {
   HOTEL_CONFIG.name = document.getElementById('hc-name').value || HOTEL_CONFIG_DEFAULTS.name;
   HOTEL_CONFIG.shortName = document.getElementById('hc-short').value || HOTEL_CONFIG_DEFAULTS.shortName;
@@ -1443,6 +1481,11 @@ const state = {
   // Polish Pack V2 Step 8: lingua corrente dell'interfaccia ('it' | 'en').
   // Default auto-detect da navigator.language, modificabile via tasto L o flag IT|EN.
   lang: 'it',
+  // Polish Pack V2 Step 10c: fase del giorno corrente ('day'|'evening'|'night').
+  // Auto-update ogni 60s in base a new Date().getHours(). Modula l'intensità
+  // delle luci della cabina per dare un "feel" realistico diurno/notturno.
+  // day: 6-18, evening: 18-22, night: 22-6
+  dayPhase: 'day',
   // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
   irObstacleActive: false,    // true quando il sensore sta rilevando un ostacolo
   irObstacleStart: 0,         // performance.now() in cui l'ostacolo e' iniziato
@@ -4310,6 +4353,207 @@ function adjustPassengersForFloor(floor) {
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
 }
 
+// Polish Pack V2 Step 10a · Passeggeri NPC
+// Capsule stylizzate che escono dalla cabina quando arriva al piano.
+// Si muovono nel corridoio per 4-7s prima di scomparire.
+// Massimo 5 simultanei per performance. TTS annuncia l'arrivo.
+const NPC_CONTAINER = new THREE.Group();
+NPC_CONTAINER.name = 'npcs';
+scene.add(NPC_CONTAINER);
+const NPC_COLORS = [0xc9a55a, 0x4a90e2, 0xc0392b, 0x27ae60, 0x8e44ad, 0xf39c12];
+const NPC_TTS_BY_FLOOR = {
+  0: state => state.lang === 'en' ? 'Guests in the lobby' : 'Ospiti nella hall',
+  1: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  2: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  3: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  4: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  5: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  6: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  7: state => state.lang === 'en' ? 'Suite guests' : 'Ospiti delle suite',
+  8: state => state.lang === 'en' ? 'Restaurant guests' : 'Ospiti del ristorante',
+  9: state => state.lang === 'en' ? 'Penthouse residents' : 'Residenti dell\'attico'
+};
+function makeNpc() {
+  const npc = new THREE.Group();
+  const skinColor = 0xf5deb3; // wheat / pelle umana stylizzata
+  // Corpo: capsula
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.16, 0.55, 4, 12),
+    new THREE.MeshStandardMaterial({ color: NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)], roughness: 0.7, metalness: 0.05 })
+  );
+  body.position.y = 0.45;
+  body.castShadow = true;
+  npc.add(body);
+  // Testa: sfera
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 12, 12),
+    new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 })
+  );
+  head.position.y = 1.02;
+  head.castShadow = true;
+  npc.add(head);
+  // Braccia: 2 cilindri sottili
+  const armGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.45, 6);
+  const armMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+  const armL = new THREE.Mesh(armGeom, armMat);
+  armL.position.set(-0.18, 0.4, 0);
+  npc.add(armL);
+  const armR = new THREE.Mesh(armGeom, armMat);
+  armR.position.set(0.18, 0.4, 0);
+  npc.add(armR);
+  // Metadata per animazione e lifecycle
+  npc.userData = {
+    born: performance.now(),
+    lifetime: 4000 + Math.random() * 3000, // 4-7 secondi
+    speed: (Math.random() < 0.5 ? -1 : 1) * (0.7 + Math.random() * 0.4), // 0.7-1.1 m/s, direzione random
+    zSpeed: (Math.random() - 0.5) * 0.2, // leggero drift laterale
+    bobPhase: Math.random() * Math.PI * 2  // per bob leggero camminata
+  };
+  return npc;
+}
+function spawnNpcsAtFloor(floor) {
+  // Determina quanti NPC spawnare (1-3 in base al piano, max 5 attivi)
+  if (NPC_CONTAINER.children.length >= 5) return; // limite performance
+  let count;
+  if (floor === 0) count = 2 + Math.floor(Math.random() * 2); // lobby: 2-3
+  else if (floor === 8) count = 2 + Math.floor(Math.random() * 2); // ristorante: 2-3
+  else if (floor >= 1 && floor <= 3) count = 1 + Math.floor(Math.random() * 2); // uffici: 1-2
+  else if (floor >= 4 && floor <= 6) count = 1 + Math.floor(Math.random() * 3); // hotel: 1-3
+  else count = Math.random() < 0.5 ? 1 : 0; // attico: 0-1
+  // Spawn NPC davanti alla cabina
+  for (let i = 0; i < count; i++) {
+    const npc = makeNpc();
+    // Posizione: di fronte alla cabina, leggermente offset per evitare overlap
+    npc.position.set(
+      cabin.position.x + (i - count/2) * 0.3 + (Math.random() - 0.5) * 0.2,
+      cabin.position.y,
+      (Math.random() - 0.5) * 0.4  // drift iniziale in Z
+    );
+    NPC_CONTAINER.add(npc);
+  }
+  // TTS annuncio breve (solo se la cabina non è in allarme/OOO)
+  if (!state.alarmOn && !state.outOfOrder) {
+    const tts = NPC_TTS_BY_FLOOR[floor];
+    if (tts && typeof speak === 'function' && ttsEnabled && !state.muted) {
+      speak(tts(state));
+    }
+  }
+  // Polish Pack V2 Step 10b: suoni contestuali del corridoio (per zona piano)
+  playCorridorAmbient(floor);
+}
+
+// Polish Pack V2 Step 10b · Suoni contestuali del corridoio
+// White noise filtrato + impulsive tick + clock. 3-5s di suono ambientale
+// alla fermata al piano, coerente con la zona (lobby/uffici/hotel/attico).
+const CORRIDOR_AMBIENT = []; // oggetti {osc/gain/freq} attivi da fermare
+function playCorridorAmbient(floor) {
+  if (!audioCtx || state.muted || !audioReady) return;
+  // Stop eventuali suoni precedenti
+  CORRIDOR_AMBIENT.forEach(s => { try { s.stop(); } catch(e) {} });
+  CORRIDOR_AMBIENT.length = 0;
+  const now = audioCtx.currentTime;
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+  // ramp-up 200ms poi attivo per 2s poi fade-out 500ms
+  masterGain.gain.linearRampToValueAtTime(0, now);
+  masterGain.gain.linearRampToValueAtTime(0.04, now + 0.15);
+  masterGain.gain.linearRampToValueAtTime(0.025, now + 2.5);
+  masterGain.gain.linearRampToValueAtTime(0, now + 3.5);
+  // Pattern di suoni per zona
+  let pattern = null;
+  if (floor === 0) pattern = 'lobby';        // brusio
+  else if (floor >= 1 && floor <= 3) pattern = 'office';   // tastiere
+  else if (floor >= 4 && floor <= 6) pattern = 'hotel';    // orologio
+  else if (floor >= 7 && floor <= 9) pattern = 'penthouse'; // vento soft
+  if (!pattern) return;
+  let soundNodes = [];
+  if (pattern === 'lobby') {
+    // Brusio: white noise lowpass + modulazione lenta
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 4.0);
+    noise.loop = true;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1200;
+    filt.Q.value = 0.5;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.7;
+    noise.connect(filt).connect(g).connect(masterGain);
+    noise.start(now);
+    soundNodes.push({ stop: () => noise.stop() });
+  } else if (pattern === 'office') {
+    // Ticchettio tastiere: 4-6 impulsi square 600Hz random in 3s
+    const numClicks = 4 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < numClicks; i++) {
+      const t = now + 0.3 + Math.random() * 2.4;
+      const click = audioCtx.createOscillator();
+      click.type = 'square';
+      click.frequency.value = 600 + Math.random() * 200;
+      const cg = audioCtx.createGain();
+      cg.gain.value = 0;
+      click.connect(cg).connect(masterGain);
+      cg.gain.setValueAtTime(0.2, t);
+      cg.gain.linearRampToValueAtTime(0, t + 0.04);
+      click.start(t);
+      click.stop(t + 0.05);
+    }
+    soundNodes.push({ stop: () => {} });
+  } else if (pattern === 'hotel') {
+    // Ticchettio orologio: 3-4 tick secco
+    const numTicks = 3 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < numTicks; i++) {
+      const t = now + 0.3 + i * 1.0;
+      const tick = audioCtx.createOscillator();
+      tick.type = 'triangle';
+      tick.frequency.value = 1800;
+      const tg = audioCtx.createGain();
+      tg.gain.value = 0;
+      tick.connect(tg).connect(masterGain);
+      tg.gain.setValueAtTime(0.15, t);
+      tg.gain.linearRampToValueAtTime(0, t + 0.05);
+      tick.start(t);
+      tick.stop(t + 0.06);
+    }
+    soundNodes.push({ stop: () => {} });
+  } else if (pattern === 'penthouse') {
+    // Vento soft: white noise + bandpass
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 4.0);
+    noise.loop = true;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = 400;
+    filt.Q.value = 0.4;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.5;
+    noise.connect(filt).connect(g).connect(masterGain);
+    noise.start(now);
+    soundNodes.push({ stop: () => noise.stop() });
+  }
+  // Salva per cleanup
+  CORRIDOR_AMBIENT.push(...soundNodes);
+}
+function tickNpcs(dt, now) {
+  // Muove NPC e rimuove scaduti
+  const toRemove = [];
+  NPC_CONTAINER.children.forEach(npc => {
+    const ud = npc.userData;
+    const age = now - ud.born;
+    if (age > ud.lifetime) {
+      toRemove.push(npc);
+      return;
+    }
+    // Movimento orizzontale + bob camminata
+    npc.position.x += ud.speed * dt;
+    npc.position.z += ud.zSpeed * dt;
+    npc.position.y = cabin.position.y + Math.sin(now * 0.012 + ud.bobPhase) * 0.02;
+    // Z drift rallenta (effetto wander)
+    ud.zSpeed *= 0.98;
+  });
+  toRemove.forEach(npc => NPC_CONTAINER.remove(npc));
+}
+
 // giorni della settimana e mesi
 const GIORNI = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
 const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
@@ -5714,6 +5958,57 @@ function logEvent(label) {
   state._eventLog.unshift(`${ts} ${label}`);
   if (state._eventLog.length > 10) state._eventLog.length = 10;
 }
+
+// Polish Pack V2 Step 10d · Log manutenzione realistica
+// Ogni 30 secondi, il 12% di probabilita' di generare un evento di log
+// tecnico che simula un sistema di manutenzione interno dell'hotel.
+// I log compaiono solo nell'overlay manutentore (Shift+M), non visibili
+// in gameplay normale, ma danno credibilita' al mondo simulato.
+const MAINT_LOG_TEMPLATES = [
+  { it: 'Cuscinetto cabina: micro-attrito rilevato al piano ${floor}, monitoraggio in corso', en: 'Cabin bearing: micro-friction detected at floor ${floor}, monitoring' },
+  { it: 'Sensore porta ${side} ricalibrato automaticamente',                  en: 'Door sensor ${side} auto-recalibrated' },
+  { it: 'Cavo ${cable}: tensione anomala, autocorrezione eseguita',          en: '${cable} cable: tension anomaly, auto-correction applied' },
+  { it: 'Pastiglia freno leggermente usurata, manutenzione tra ~6 mesi',   en: 'Brake pad slightly worn, maintenance in ~6 months' },
+  { it: 'Sensore peso ricalibrato per piano ${floor}',                       en: 'Weight sensor recalibrated for floor ${floor}' },
+  { it: 'Filtro HVAC cabina pulito automaticamente',                          en: 'Cabin HVAC filter auto-cleaned' },
+  { it: 'Ventola di scarico ${side} test routine completato',                en: 'Exhaust fan ${side} routine test completed' },
+  { it: 'Comunicazione interna elevator-controller OK (latenza ${ms}ms)',   en: 'Elevator-controller intercom OK (latency ${ms}ms)' }
+];
+const MAINT_LOG_CABLES = ['primario', 'secondario', 'contromassa', 'freno'];
+const MAINT_LOG_SIDES = ['L (left)', 'R (right)'];
+function tickMaintenanceLog() {
+  if (!state.maintenanceMode) {
+    if (Math.random() < 0.12) {
+      // ~12% probabilita' ad ogni tick (30s) = ~1 log ogni 4 min
+      const tpl = MAINT_LOG_TEMPLATES[Math.floor(Math.random() * MAINT_LOG_TEMPLATES.length)];
+      const floor = Math.floor(Math.random() * 10);
+      const cable = MAINT_LOG_CABLES[Math.floor(Math.random() * MAINT_LOG_CABLES.length)];
+      const side = MAINT_LOG_SIDES[Math.floor(Math.random() * MAINT_LOG_SIDES.length)];
+      const ms = Math.floor(15 + Math.random() * 30);
+      const txt = tpl[state.lang === 'en' ? 'en' : 'it']
+        .replace('${floor}', floor === 0 ? 'T' : String(floor))
+        .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
+        .replace('${cable}', cable)
+        .replace('${ms}', String(ms));
+      logEvent(txt);
+    }
+  } else {
+    // in maintenance mode: genera log piu' frequentemente (33%)
+    if (Math.random() < 0.33) {
+      const tpl = MAINT_LOG_TEMPLATES[Math.floor(Math.random() * MAINT_LOG_TEMPLATES.length)];
+      const floor = Math.floor(Math.random() * 10);
+      const cable = MAINT_LOG_CABLES[Math.floor(Math.random() * MAINT_LOG_CABLES.length)];
+      const side = MAINT_LOG_SIDES[Math.floor(Math.random() * MAINT_LOG_SIDES.length)];
+      const ms = Math.floor(15 + Math.random() * 30);
+      const txt = tpl[state.lang === 'en' ? 'en' : 'it']
+        .replace('${floor}', floor === 0 ? 'T' : String(floor))
+        .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
+        .replace('${cable}', cable)
+        .replace('${ms}', String(ms));
+      logEvent(txt);
+    }
+  }
+}
 function applyWireframe(on) {
   // salva o ripristina lo stato wireframe dei materiali della cabina
   if (on) {
@@ -5768,9 +6063,11 @@ function teleportToFloor(floor) {
   corridor.position.y = cabin.position.y;
   if (typeof buildCorridor === 'function') buildCorridor(floor);
   if (typeof drawFloorSign === 'function') drawFloorSign(floor);
-  setDoors(true);
-  // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
-  if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(floor);
+setDoors(true);
+    // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
+    if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(floor);
+    // Polish Pack V2 Step 10a: spawn NPC passeggeri (anche su teleport)
+    if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(floor);
   markDisplayDirty();
   logEvent(`Teleport piano ${floor === 0 ? 'T' : floor}`);
   const status = document.getElementById('statusText');
@@ -6164,6 +6461,8 @@ function tickMove(dt) {
     setDoors(true);
     // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
     if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
+    // Polish Pack V2 Step 10a: spawn NPC passeggeri che escono nel corridoio
+    if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(moveTo);
     // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
     bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
@@ -6930,8 +7229,12 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
+  tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
   tickArrowFade(now);
+  // Polish Pack V2 Step 10c: re-check dayPhase (ogni 60s via setInterval, ma ridondante sicuro)
+  tickTimeOfDay();
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
   // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)
@@ -7071,6 +7374,12 @@ function savePrefs() {
 loadPrefs();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
+// Polish Pack V2 Step 10c: determina dayPhase iniziale (giorno/sera/notte) e applica luci
+state.dayPhase = getDayPhase();
+applyTimeOfDayLights(state.dayPhase);
+setInterval(tickTimeOfDay, 60000); // re-check ogni 60s per alba/tramonto/notte
+// Polish Pack V2 Step 10d: log manutenzione realistica ogni 30s
+setInterval(tickMaintenanceLog, 30000);
 // Polish Pack V2 Step 5a: aggiorna elementi HTML della start screen con HOTEL_CONFIG
 (function applyHotelConfigToStartScreen() {
   const nameEl = document.getElementById('startHotelName');

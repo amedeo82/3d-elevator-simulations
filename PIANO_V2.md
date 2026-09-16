@@ -27,7 +27,7 @@
 | 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | 1 sessione | 🟡 | Feature | ✅ |
 | 8 | i18n IT/EN (backlog #12) | 1-2 sessioni | 🔴 | Refactor+Feature | ✅ |
 | 9 | Sensazioni realistiche cabina (vibrazione + crossfade + frenata) | 1 sessione | 🟢 | Polish | ✅ |
-| 10 | Eventi speciali hotel (matrimonio, conferenza) | 1 sessione | 🟢 | Feature | ⏳ |
+| 10 | Vita dell'hotel (NPC + suoni contestuali + giorno/notte + log manutenzione) | 1 sessione | 🟢 | Polish | ✅ |
 | 11 | L-block: più piani parametrico + texture HD arredi | 1-2 sessioni | 🟡 | Feature | ⏳ |
 | 12 | Test framework leggero (unit test funzioni pure) | 1 sessione | 🟡 | DX | ⏳ |
 | 13 | Long-term: WebXR, multi-cabina, multiplayer | future | 🟢 | Vision | ⏳ |
@@ -580,7 +580,90 @@ Step 9 viene quindi **riscritto** per focalizzarsi su feature che migliorano il
 
 ---
 
-# STEP 10 · Eventi speciali hotel (matrimonio, conferenza)
+# STEP 10 · Vita dell'hotel — NPC passeggeri + suoni contestuali + giorno/notte + log manutenzione
+
+## Contesto (riscrittura dello scope originale)
+Lo scope originale "Eventi speciali hotel" (matrimonio/conferenza/gala) è stato
+scartato dopo discussione con l'utente: il giocatore è l'**operatore dell'ascensore**
+in prima persona, non un invitato al matrimonio. Decorazioni corridoio sarebbero
+visibili solo entrando nella cabina, con trigger narrativo debole e impatto di
+gameplay nullo.
+
+Step 10 viene quindi **riscritto** per dare "vita" al simulatore con 4 feature
+che aggiungono **realismo percepibile** durante il gameplay first-person,
+anche restando nel concept "operatore che usa l'ascensore".
+
+## Scope proposto
+- **10a**. **Passeggeri NPC**: quando la cabina arriva al piano, 1-3 NPC escono e
+  camminano nel corridoio (3-8s prima di scomparire). Capsule umanoidi colorate
+  con annuncio vocale breve al piano (es. "Pranzo al ristorante, prego").
+  Massimo 5 NPC simultanei per performance.
+- **10b**. **Suoni contestuali del corridoio**: quando la cabina si ferma, suono
+  ambientale coerente con il piano (lobby: brusio clienti, uffici: rumore tastiere,
+  hotel: silenzio con ticchettio orologio, attico: silenzio con vento panoramico,
+  ristorante: musica soft, spa: acqua che scorre).
+- **10c**. **Ciclo giorno/notte**: l'ora corrente influenza luci della scena (THREE.js
+  ambient intensity), finestra panoramica dell'attico (alba/tramonto notturna),
+  audio (più silenzioso di notte), e "presenze" NPC (più gente di giorno).
+- **10d**. **Log manutenzione realistica**: occasionali piccoli "anomali" della cabina
+  (rumore metallico sottile, leggera vibrazione extra) con messaggio log nel
+  maintenance overlay (es. "Bearig log 14:23:42 - slight creak detected, monitoring").
+
+## Decision Questions
+
+### Q10.1 — Scope
+
+- **A. Solo NPC passeggeri (10a)** — impatto game value più alto *(Recommended)*
+- **B. Solo suoni + giorno/notte** — atmosfera
+- **C. Tutto (10a + 10b + 10c + 10d)** — esperienza completa *(Recommended per sinergie)*
+
+### Q10.2 — NPC modello 3D
+
+- **A. Capsule stylizzata**: testa ovale + corpo capsula + 2 braccia — semplice, performante *(Recommended)*
+- **B. Low-poly umanoide**: 8-12 vertici per arto, più dettagliato
+- **C. Solo sagome 2D billboard**: piatto, no 3D, no animazioni
+
+### Q10.3 — Suoni contestuali
+
+- **A. Web Audio API + noise filtrato** (procedurali, ~20 righe per suono) *(Recommended)*
+- **B. Sample audio registrati**: asset esterni, rompono vincolo single-file
+- **C. Nessun suono ambientale** (solo TTS annunci)
+
+### Q10.4 — Giorno/notte: impatto luci
+
+- **A. Solo attenuation ambient intensity** + finestra panoramica — leggero, visibile *(Recommended)*
+- **B. Anche tonalità colore**: blu di notte, ambra di sera, bianco di giorno
+- **C. Completo con cicli stagionali** (alba/tramonto/notte/giorno)
+
+### Q10.5 — Manutenzione realistica
+
+- **A. Log-only**: solo entry nel maintenance overlay, no glitch audio *(Recommended per credibilità)*
+- **B. Log + glitch audio**: occasionali rumori metallici quando la cabina vibra
+- **C. Tutto + possibili "fail"**: la cabina ha X% di possibilità di bloccarsi
+
+## Acceptance criteria
+- [ ] (se 10a) alla fermata di un piano con NPC abilitati, 1-3 NPC escono
+- [ ] (se 10a) TTS annuncia l'arrivo ("Pranzo al ristorante, prego")
+- [ ] (se 10b) suoni ambientali distinti per lobby/uffici/hotel/attico/ristorante/spa
+- [ ] (se 10c) luci più scure di sera (18:00-6:00) vs giorno (6:00-18:00)
+- [ ] (se 10c) finestra panoramica dell'attico mostra variazione giorno/notte
+- [ ] (se 10d) log "bearing creak" occasionale nel maintenance overlay
+- [ ] Nessuna regressione FPS (target ≥40 con 5 NPC attivi)
+- [ ] `node --check` + brace balance
+
+## Effort stimato
+**1 sessione** (4 feature coordinate, scope C).
+
+## Trade-off / sinergie
+- Le 4 feature si rinforzano: NPC che escono al piano + suono ambientale + luce del momento + log realistico = simulatore "vivo".
+- Tutte impatto performance trascurabile (1-5% FPS) se gestite correttamente (max 5 NPC, suoni breve durata, luci una tantum).
+- Compat con tutte le feature esistenti: riguardano solo il "contorno" del simulatore.
+
+## Note implementative
+- NPC hanno bisogno di `spawnAtFloor(floor, count)` e `despawn(model)` per il lifecycle
+- Suoni contestuali richiedono `floorRoom(floor)` per determinare il contesto
+- Giorno/notte si basa su `new Date().getHours()` — auto-detect locale dell'utente, no configurazione
+- Log manutenzione: tick ogni 30s, 10% probabilità di generare un evento
 
 ## Scope proposto
 - **10a**. **Stati evento**: 4 preset evento (no evento, matrimonio, conferenza, gala) configurabili via `HOTEL_CONFIG.event` (vedi Step 5). Cambiano aspetto corridoio + annunci + audio contestuale.
