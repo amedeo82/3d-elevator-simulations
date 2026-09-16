@@ -1350,6 +1350,44 @@ function setLang(newLang) {
   saveLang();
 }
 
+// Polish Pack V2 Step 10c · Ciclo giorno/notte automatico
+// Determina il dayPhase in base all'ora locale dell'utente e modula luci + fog.
+// Fasce:
+//   day:     6-18    -> luci piene
+//   evening: 18-22   -> luci ridotte
+//   night:   22-6    -> luci soffuse blu
+// Aggiornato: all'init + ogni 60s via setInterval.
+function getDayPhase(hour) {
+  if (hour === undefined) hour = new Date().getHours();
+  if (hour >= 6 && hour < 18) return 'day';
+  if (hour >= 18 && hour < 22) return 'evening';
+  return 'night';
+}
+function applyTimeOfDayLights(phase) {
+  if (phase === undefined) phase = state.dayPhase;
+  if (phase === 'day') {
+    ceilingLight.intensity = 1.6;
+    fillLight.intensity = 0.25;
+    scene.fog.color.setHex(0x111114);
+  } else if (phase === 'evening') {
+    ceilingLight.intensity = 1.0;
+    fillLight.intensity = 0.18;
+    scene.fog.color.setHex(0x1a1224);   // leggera tinta viola
+  } else if (phase === 'night') {
+    ceilingLight.intensity = 0.55;
+    fillLight.intensity = 0.10;
+    scene.fog.color.setHex(0x05050a);   // molto scuro
+  }
+}
+function tickTimeOfDay() {
+  const newPhase = getDayPhase();
+  if (newPhase !== state.dayPhase) {
+    state.dayPhase = newPhase;
+    // Riapplica solo se nightMode non e' attivo (nightMode override manuale)
+    if (!state.nightMode) applyTimeOfDayLights(newPhase);
+  }
+}
+
 function applyHotelCustomizerForm() {
   HOTEL_CONFIG.name = document.getElementById('hc-name').value || HOTEL_CONFIG_DEFAULTS.name;
   HOTEL_CONFIG.shortName = document.getElementById('hc-short').value || HOTEL_CONFIG_DEFAULTS.shortName;
@@ -1443,6 +1481,11 @@ const state = {
   // Polish Pack V2 Step 8: lingua corrente dell'interfaccia ('it' | 'en').
   // Default auto-detect da navigator.language, modificabile via tasto L o flag IT|EN.
   lang: 'it',
+  // Polish Pack V2 Step 10c: fase del giorno corrente ('day'|'evening'|'night').
+  // Auto-update ogni 60s in base a new Date().getHours(). Modula l'intensità
+  // delle luci della cabina per dare un "feel" realistico diurno/notturno.
+  // day: 6-18, evening: 18-22, night: 22-6
+  dayPhase: 'day',
   // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (ASME A17.1 §2.13.5)
   irObstacleActive: false,    // true quando il sensore sta rilevando un ostacolo
   irObstacleStart: 0,         // performance.now() in cui l'ostacolo e' iniziato
@@ -7139,6 +7182,8 @@ function loop(now) {
   tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
   tickArrowFade(now);
+  // Polish Pack V2 Step 10c: re-check dayPhase (ogni 60s via setInterval, ma ridondante sicuro)
+  tickTimeOfDay();
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
   // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)
@@ -7278,6 +7323,10 @@ function savePrefs() {
 loadPrefs();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
+// Polish Pack V2 Step 10c: determina dayPhase iniziale (giorno/sera/notte) e applica luci
+state.dayPhase = getDayPhase();
+applyTimeOfDayLights(state.dayPhase);
+setInterval(tickTimeOfDay, 60000); // re-check ogni 60s per alba/tramonto/notte
 // Polish Pack V2 Step 5a: aggiorna elementi HTML della start screen con HOTEL_CONFIG
 (function applyHotelConfigToStartScreen() {
   const nameEl = document.getElementById('startHotelName');
