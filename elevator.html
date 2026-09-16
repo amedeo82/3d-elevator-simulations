@@ -4395,6 +4395,101 @@ function spawnNpcsAtFloor(floor) {
       speak(tts(state));
     }
   }
+  // Polish Pack V2 Step 10b: suoni contestuali del corridoio (per zona piano)
+  playCorridorAmbient(floor);
+}
+
+// Polish Pack V2 Step 10b · Suoni contestuali del corridoio
+// White noise filtrato + impulsive tick + clock. 3-5s di suono ambientale
+// alla fermata al piano, coerente con la zona (lobby/uffici/hotel/attico).
+const CORRIDOR_AMBIENT = []; // oggetti {osc/gain/freq} attivi da fermare
+function playCorridorAmbient(floor) {
+  if (!audioCtx || state.muted || !audioReady) return;
+  // Stop eventuali suoni precedenti
+  CORRIDOR_AMBIENT.forEach(s => { try { s.stop(); } catch(e) {} });
+  CORRIDOR_AMBIENT.length = 0;
+  const now = audioCtx.currentTime;
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+  // ramp-up 200ms poi attivo per 2s poi fade-out 500ms
+  masterGain.gain.linearRampToValueAtTime(0, now);
+  masterGain.gain.linearRampToValueAtTime(0.04, now + 0.15);
+  masterGain.gain.linearRampToValueAtTime(0.025, now + 2.5);
+  masterGain.gain.linearRampToValueAtTime(0, now + 3.5);
+  // Pattern di suoni per zona
+  let pattern = null;
+  if (floor === 0) pattern = 'lobby';        // brusio
+  else if (floor >= 1 && floor <= 3) pattern = 'office';   // tastiere
+  else if (floor >= 4 && floor <= 6) pattern = 'hotel';    // orologio
+  else if (floor >= 7 && floor <= 9) pattern = 'penthouse'; // vento soft
+  if (!pattern) return;
+  let soundNodes = [];
+  if (pattern === 'lobby') {
+    // Brusio: white noise lowpass + modulazione lenta
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 4.0);
+    noise.loop = true;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1200;
+    filt.Q.value = 0.5;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.7;
+    noise.connect(filt).connect(g).connect(masterGain);
+    noise.start(now);
+    soundNodes.push({ stop: () => noise.stop() });
+  } else if (pattern === 'office') {
+    // Ticchettio tastiere: 4-6 impulsi square 600Hz random in 3s
+    const numClicks = 4 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < numClicks; i++) {
+      const t = now + 0.3 + Math.random() * 2.4;
+      const click = audioCtx.createOscillator();
+      click.type = 'square';
+      click.frequency.value = 600 + Math.random() * 200;
+      const cg = audioCtx.createGain();
+      cg.gain.value = 0;
+      click.connect(cg).connect(masterGain);
+      cg.gain.setValueAtTime(0.2, t);
+      cg.gain.linearRampToValueAtTime(0, t + 0.04);
+      click.start(t);
+      click.stop(t + 0.05);
+    }
+    soundNodes.push({ stop: () => {} });
+  } else if (pattern === 'hotel') {
+    // Ticchettio orologio: 3-4 tick secco
+    const numTicks = 3 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < numTicks; i++) {
+      const t = now + 0.3 + i * 1.0;
+      const tick = audioCtx.createOscillator();
+      tick.type = 'triangle';
+      tick.frequency.value = 1800;
+      const tg = audioCtx.createGain();
+      tg.gain.value = 0;
+      tick.connect(tg).connect(masterGain);
+      tg.gain.setValueAtTime(0.15, t);
+      tg.gain.linearRampToValueAtTime(0, t + 0.05);
+      tick.start(t);
+      tick.stop(t + 0.06);
+    }
+    soundNodes.push({ stop: () => {} });
+  } else if (pattern === 'penthouse') {
+    // Vento soft: white noise + bandpass
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(audioCtx, 4.0);
+    noise.loop = true;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = 400;
+    filt.Q.value = 0.4;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.5;
+    noise.connect(filt).connect(g).connect(masterGain);
+    noise.start(now);
+    soundNodes.push({ stop: () => noise.stop() });
+  }
+  // Salva per cleanup
+  CORRIDOR_AMBIENT.push(...soundNodes);
 }
 function tickNpcs(dt, now) {
   // Muove NPC e rimuove scaduti
