@@ -54,7 +54,8 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | Polish Pack V2 Step 5 | ✅ Personalizzazione hotel (HOTEL_CONFIG 17 campi + refactor 23 stringhe hardcoded + HUD overlay tasto H + 4 preset alternativi + persistenza localStorage) |
 | Polish Pack V2 Step 7 | ✅ Pulsantiera ▲/▼ semantica (coda `{floor, direction}`, smart routing, visualizzazione intenzione) |
 | Polish Pack V2 Step 8 | ✅ i18n IT/EN (backlog #12 chiuso — `STRINGS[lang]`, tasto L, refactor HTML, TTS en-GB) |
-| File di progetto | `elevator.html` (~293KB, 7.063 righe, single file) + `dist/index.html` |
+| Polish Pack V2 Step 9 | ✅ Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva) |
+| File di progetto | `elevator.html` (~298KB, 7.129 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
@@ -1237,13 +1238,53 @@ Tutte le stringhe UI hardcoded in italiano. Backlog #12 (l'unica fuori scope dop
 
 ---
 
+## Fase 27 — Polish Pack V2 Step 9: sensazioni realistiche cabina ✅ (2026-09-16)
+
+### Contesto
+Step 9 era originariamente "Shaft dietro le quinte" (vano ascensore visibile
+dalle porte aperte). L'utente ha correttamente osservato che il simulatore
+è in **prima persona con mouse-look e pointer-lock**: il giocatore è SEMPRE
+dentro la cabina e aziona l'ascensore, non è uno spettatore che vede la cabina
+arrivare al piano. Lo shaft dietro le quinte non sarebbe mai visibile durante il
+gameplay. Step 9 è stato quindi **riscritto** per focalizzarsi su feature
+che migliorano il "feel" della cabina durante il movimento.
+
+### Soluzione in 3 sotto-step
+**9a · Vibrazione realistica multi-band**: 4 frequenze sovrapposte (X 7.3+11.1Hz, Z
+8.7+13.3Hz, Roll 5.1Hz, Pitch 6.7Hz). Envelope `12*moveT*(1-moveT)` (derivata di
+easeInOutCubic) che modula l'ampiezza: alta in accel/decel, bassa in crociera.
+Aggiunto `CRUISE_AMP = 0.0006` per "presenza" del motore vuoto durante la crociera.
+
+**9b · Crossfade freccia direzione 200ms**: `setArrow(direction)` non fa più lo swap
+istantaneo della texture. Crea una `arrowFadeMesh` sovrapposta che mostra la vecchia
+texture con opacity che lerp 1.0 → 0.0 in ARROW_FADE_MS=200ms. `tickArrowFade(now)` nel loop.
+
+**9c · Frenata/accelerazione progressiva**: `easeInOutCubic(moveT)` già implementato
+in `tickMove()` (Italian Pack v1.3 commit `4f0e3d1`). Si applica a TUTTI i movimenti
+(digit keys, ▲/▼, lobby, manutentore teleporte, coda FIFO) perché convergono su
+`actuallyStartMove()`. Documentato come Step 9c.
+
+### Acceptance
+- [x] Vibrazione diversa in accel/crociera/decel (envelope speed realistico)
+- [x] Cruise aggiunge "presenza" costante del motore (CRUISE_AMP)
+- [x] Freccia direzione non cambia istantaneamente (crossfade 200ms)
+- [x] Frenata/accelerazione progressiva con easeInOutCubic (già esistente)
+- [x] Coerenza weesh audio + vibrazione (speed condivisa)
+- [x] Coerenza architetturale con first-person (no shaft meta-visivo)
+- [x] node --check + brace balance 927/927
+
+### Branch
+`feature/polish-pack-v2-step-9` mergiato su `main`.
+
+---
+
 ## 7. Statistiche finali del progetto
 
 | Metrica | Valore |
 |---|---|
 | File principale | `elevator.html` |
-| Dimensione | ~293 KB |
-| Linee di codice | ~7.063 |
+| Dimensione | ~298 KB |
+| Linee di codice | ~7.129 |
 | Sezioni di codice | 30+ numerate e commentate |
 | Tasti interattivi | 14 (10 celle piano + 4 tasti fisici) |
 | Texture dinamiche | 10+ canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio, citofono, header pulsantiera esterna) |
@@ -1485,6 +1526,7 @@ Polish Pack:
 22. ✅ **#18 Caching canvas offscreen** — Polish Pack v1.6 (commit `427a635`)
 23. ✅ **Polish Pack V2 Step 7** — Pulsantiera ▲/▼ semantica (coda con direzione, smart routing)
 24. ✅ **Polish Pack V2 Step 8** — i18n IT/EN (`STRINGS[lang]` ~120 chiavi, tasto L, refactor HTML)
+25. ✅ **Polish Pack V2 Step 9** — Sensazioni realistiche cabina (vibrazione multi-band + crossfade + easeInOutCubic)
 
 Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
