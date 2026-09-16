@@ -6071,6 +6071,11 @@ function startMoveTo(floor, directionHint) {
   state._lastShownFloor = null;
   const distance = Math.abs(moveTo - moveFrom);
   moveDuration = 1.6 + distance * 0.6; // più piani = più tempo
+  // Polish Pack V2 Step 9c: frenata/accelerazione progressiva. L'easing
+  // easeInOutCubic() applicato in tickMove() (riga sotto) rende il movimento
+  // smooth alle due estremità (no scatti a inizio/fine). Coerente con tutti i
+  // tipi di movimento: digit keys, pulsantiera ▲/▼, prenotazione lobby,
+  // manutentore teleporte, coda FIFO (Q9.5=C).
   // chiudi le porte prima di partire (se non sono già chiuse)
   if (state.doorsActual > 0.05) {
     animateDoorsTo(0, 0.8).then(() => actuallyStartMove());
