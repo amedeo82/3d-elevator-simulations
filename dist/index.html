@@ -4471,18 +4471,30 @@ function spawnNpcsAtFloor(floor) {
   else if (floor >= 1 && floor <= 3) count = 1 + Math.floor(Math.random() * 2); // uffici: 1-2
   else if (floor >= 4 && floor <= 6) count = 1 + Math.floor(Math.random() * 3); // hotel: 1-3
   else count = Math.random() < 0.5 ? 1 : 0; // attico: 0-1
-  // Spawn NPC davanti alle PORTE della cabina (NON al centro della cabina).
-  // Le porte sono a z = +CABIN.d/2 (+1.5), quindi spawniamo leggermente oltre,
-  // dentro il corridoio. Drift laterale (X) per evitare overlap tra NPC.
-  const doorZ = CABIN.d / 2 + 0.4; // +1.9
+  // Spawn NPC dentro la cabina (NON al centro del corridoio).
+  // L'NPC emerge dalla porta della cabina verso il corridoio (animazione
+  // "uscita dalla porta") invece di apparire/sparire dal pavimento.
+  // Questo evita l'effetto "transporter" o "fantasma" che l'utente aveva
+  // segnalato.
+  // - spawnZ: dentro la cabina, prima delle porte (+1.0)
+  // - exitZ: appena fuori dalle porte (+1.7, dentro il corridoio)
+  // - walkZ: inizio della camminata normale (+2.0)
+  const doorZ = CABIN.d / 2;       // soglia porta = +1.5
+  const spawnZ = doorZ - 0.5;       // dentro cabina: +1.0
+  const exitZ = doorZ + 0.2;        // appena fuori: +1.7
+  const walkZ = doorZ + 0.5;        // camminata normale: +2.0
   for (let i = 0; i < count; i++) {
     const npc = makeNpc();
-    // Posizione: appena fuori le porte della cabina, nel corridoio
+    // Posizione iniziale: DENTRO la cabina (prima delle porte)
     npc.position.set(
       cabin.position.x + (i - (count-1)/2) * 0.35 + (Math.random() - 0.5) * 0.15,
       cabin.position.y,
-      doorZ + i * 0.2  // offset progressivo per evitare spawn sovrapposti
+      spawnZ + i * 0.15  // offset progressivo per evitare spawn sovrapposti
     );
+    // Metadata animazione "uscita dalla porta" + "arrivo a fine corridoio"
+    npc.userData.spawnZ = spawnZ;
+    npc.userData.exitZ = exitZ;
+    npc.userData.walkZ = walkZ;
     NPC_CONTAINER.add(npc);
   }
   // TTS annuncio breve (solo se la cabina non è in allarme/OOO)
@@ -4625,8 +4637,29 @@ function tickNpcs(dt, now) {
       toRemove.push(npc);
       return;
     }
-    // Movimento principale: +Z (verso fondo corridoio)
-    npc.position.z += ud.speed * dt;
+    // Polish Pack V2 Step 10a · Fix 4: 3-fasi animazione posizione Z (no spawn fantasma)
+    // - Fase 1 (exit): emerge dalla porta della cabina (spawnZ -> exitZ) nei primi 800ms
+    //   Velocita' ridotta (speed * 0.5) + swing gambe ridotto (no camminata, "esce")
+    // - Fase 2 (walk): cammina normalmente nel corridoio (exitZ -> fine corridoio)
+    //   Velocita' piena + swing completo
+    // - Fase 3 (arrival): rallenta quando si avvicina alla fine del corridoio
+    //   speed *= 0.97/frame quando z > 11 (simula "arriva alla porta")
+    let speedMultiplier = 1.0;
+    if (npc.position.z < ud.exitZ) {
+      // Fase 1: uscita dalla porta. Spawn a spawnZ, deve arrivare a exitZ.
+      // Posizione interpolata con smoothstep per evitare pop iniziale
+      const exitProgress = Math.min(1, age / 800); // 800ms per uscire
+      const easedT = exitProgress * exitProgress * (3 - 2 * exitProgress);
+      npc.position.z = ud.spawnZ + (ud.exitZ - ud.spawnZ) * easedT;
+      speedMultiplier = 0.4; // camminata ridotta durante uscita
+    } else {
+      // Fase 2 + 3: cammina nel corridoio
+      // Rallenta quando vicino a fine corridoio (z > 11) - effetto "arriva alla porta"
+      if (npc.position.z > 11.0) {
+        speedMultiplier = Math.max(0.1, 1.0 - (npc.position.z - 11.0) * 0.6);
+      }
+      npc.position.z += ud.speed * speedMultiplier * dt;
+    }
     // Lieve drift laterale che decresce (effetto wander)
     npc.position.x += ud.xDrift * dt;
     ud.xDrift *= 0.96;
@@ -4641,7 +4674,8 @@ function tickNpcs(dt, now) {
     // Swing camminata: walkTime-based (no Math.sin(now) diretto).
     // 1.6 Hz = frequenza passo umano naturale.
     // Ampiezza 0.65 rad (~37°) = swing realistico ginocchio.
-    const swingAngle = 0.65;
+    // Ridotto durante uscita (fase 1) per simulare "sta uscendo, non corre"
+    const swingAngle = 0.65 * speedMultiplier;
     const legSwing = Math.sin(walkPhase + ud.swingPhase) * swingAngle;
     if (ud.legL) ud.legL.rotation.x = legSwing;
     if (ud.legR) ud.legR.rotation.x = -legSwing;
