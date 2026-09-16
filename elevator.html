@@ -4376,10 +4376,40 @@ const NPC_TTS_BY_FLOOR = {
 function makeNpc() {
   const npc = new THREE.Group();
   const skinColor = 0xf5deb3; // wheat / pelle umana stylizzata
+  const clothingColor = NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)];
+  // Piedi (2 piccoli box scuri)
+  const footGeom = new THREE.BoxGeometry(0.10, 0.05, 0.18);
+  const footMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.8 });
+  // Gamba dx (pivot all'anca, oscillera in X per il passo)
+  const legRPivot = new THREE.Group();
+  legRPivot.position.set(0.08, 0.32, 0);
+  const legRMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 0.32, 6),
+    new THREE.MeshStandardMaterial({ color: 0x2c2c3a, roughness: 0.7 })
+  );
+  legRMesh.position.y = -0.16;
+  legRPivot.add(legRMesh);
+  const footR = new THREE.Mesh(footGeom, footMat);
+  footR.position.set(0, -0.34, 0.04);
+  legRPivot.add(footR);
+  npc.add(legRPivot);
+  // Gamba sx
+  const legLPivot = new THREE.Group();
+  legLPivot.position.set(-0.08, 0.32, 0);
+  const legLMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 0.32, 6),
+    new THREE.MeshStandardMaterial({ color: 0x2c2c3a, roughness: 0.7 })
+  );
+  legLMesh.position.y = -0.16;
+  legLPivot.add(legLMesh);
+  const footL = new THREE.Mesh(footGeom, footMat);
+  footL.position.set(0, -0.34, 0.04);
+  legLPivot.add(footL);
+  npc.add(legLPivot);
   // Corpo: capsula
   const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.16, 0.55, 4, 12),
-    new THREE.MeshStandardMaterial({ color: NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)], roughness: 0.7, metalness: 0.05 })
+    new THREE.MeshStandardMaterial({ color: clothingColor, roughness: 0.7, metalness: 0.05 })
   );
   body.position.y = 0.45;
   body.castShadow = true;
@@ -4392,22 +4422,34 @@ function makeNpc() {
   head.position.y = 1.02;
   head.castShadow = true;
   npc.add(head);
-  // Braccia: 2 cilindri sottili
+  // Braccia: 2 cilindri sottili (pivot spalla per swing camminata)
   const armGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.45, 6);
   const armMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
-  const armL = new THREE.Mesh(armGeom, armMat);
-  armL.position.set(-0.18, 0.4, 0);
-  npc.add(armL);
+  const armRPivot = new THREE.Group();
+  armRPivot.position.set(0.18, 0.65, 0);
   const armR = new THREE.Mesh(armGeom, armMat);
-  armR.position.set(0.18, 0.4, 0);
-  npc.add(armR);
-  // Metadata per animazione e lifecycle
+  armR.position.y = -0.22;
+  armRPivot.add(armR);
+  npc.add(armRPivot);
+  const armLPivot = new THREE.Group();
+  armLPivot.position.set(-0.18, 0.65, 0);
+  const armL = new THREE.Mesh(armGeom, armMat);
+  armL.position.y = -0.22;
+  armLPivot.add(armL);
+  npc.add(armLPivot);
+  // Metadata per animazione e lifecycle. Pivot salvati per swing camminata.
   npc.userData = {
     born: performance.now(),
     lifetime: 4000 + Math.random() * 3000, // 4-7 secondi
-    speed: (Math.random() < 0.5 ? -1 : 1) * (0.7 + Math.random() * 0.4), // 0.7-1.1 m/s, direzione random
-    zSpeed: (Math.random() - 0.5) * 0.2, // leggero drift laterale
-    bobPhase: Math.random() * Math.PI * 2  // per bob leggero camminata
+    speed: 0.55 + Math.random() * 0.35, // 0.55-0.9 m/s (passo umano normale)
+    xDrift: (Math.random() - 0.5) * 0.25, // drift laterale iniziale
+    bobPhase: Math.random() * Math.PI * 2,
+    swingPhase: Math.random() * Math.PI * 2,
+    // Riferimenti ai pivot per animazione swing (impostati dopo aver aggiunto al group)
+    legL: legLPivot,
+    legR: legRPivot,
+    armL: armLPivot,
+    armR: armRPivot
   };
   return npc;
 }
@@ -4420,14 +4462,17 @@ function spawnNpcsAtFloor(floor) {
   else if (floor >= 1 && floor <= 3) count = 1 + Math.floor(Math.random() * 2); // uffici: 1-2
   else if (floor >= 4 && floor <= 6) count = 1 + Math.floor(Math.random() * 3); // hotel: 1-3
   else count = Math.random() < 0.5 ? 1 : 0; // attico: 0-1
-  // Spawn NPC davanti alla cabina
+  // Spawn NPC davanti alle PORTE della cabina (NON al centro della cabina).
+  // Le porte sono a z = +CABIN.d/2 (+1.5), quindi spawniamo leggermente oltre,
+  // dentro il corridoio. Drift laterale (X) per evitare overlap tra NPC.
+  const doorZ = CABIN.d / 2 + 0.4; // +1.9
   for (let i = 0; i < count; i++) {
     const npc = makeNpc();
-    // Posizione: di fronte alla cabina, leggermente offset per evitare overlap
+    // Posizione: appena fuori le porte della cabina, nel corridoio
     npc.position.set(
-      cabin.position.x + (i - count/2) * 0.3 + (Math.random() - 0.5) * 0.2,
+      cabin.position.x + (i - (count-1)/2) * 0.35 + (Math.random() - 0.5) * 0.15,
       cabin.position.y,
-      (Math.random() - 0.5) * 0.4  // drift iniziale in Z
+      doorZ + i * 0.2  // offset progressivo per evitare spawn sovrapposti
     );
     NPC_CONTAINER.add(npc);
   }
@@ -4535,21 +4580,33 @@ function playCorridorAmbient(floor) {
   CORRIDOR_AMBIENT.push(...soundNodes);
 }
 function tickNpcs(dt, now) {
-  // Muove NPC e rimuove scaduti
+  // Muove NPC, anima swing braccia/gambe, rimuove scaduti
   const toRemove = [];
   NPC_CONTAINER.children.forEach(npc => {
     const ud = npc.userData;
     const age = now - ud.born;
-    if (age > ud.lifetime) {
+    // Rimuovi se scaduto O se ha raggiunto fine corridoio (z > 12)
+    if (age > ud.lifetime || npc.position.z > 12.0) {
       toRemove.push(npc);
       return;
     }
-    // Movimento orizzontale + bob camminata
-    npc.position.x += ud.speed * dt;
-    npc.position.z += ud.zSpeed * dt;
-    npc.position.y = cabin.position.y + Math.sin(now * 0.012 + ud.bobPhase) * 0.02;
-    // Z drift rallenta (effetto wander)
-    ud.zSpeed *= 0.98;
+    // Movimento principale: +Z (verso fondo corridoio)
+    npc.position.z += ud.speed * dt;
+    // Lieve drift laterale che decresce (effetto wander)
+    npc.position.x += ud.xDrift * dt;
+    ud.xDrift *= 0.96;
+    // Bob verticale camminata (passo)
+    npc.position.y = cabin.position.y + Math.sin(now * 8 + ud.bobPhase) * 0.025;
+    // Swing camminata: 8 rad/s = ~1.3 Hz (passo umano normale).
+    // Gambe opposte (L avanti quando R indietro), braccia opposte alle gambe.
+    const swingAngle = 0.65; // ~37 gradi max swing
+    const t = now * 8 + ud.swingPhase;
+    const legSwing = Math.sin(t) * swingAngle;
+    if (ud.legL) ud.legL.rotation.x = legSwing;
+    if (ud.legR) ud.legR.rotation.x = -legSwing;
+    const armSwing = Math.sin(t) * swingAngle;
+    if (ud.armL) ud.armL.rotation.x = -armSwing;  // braccio sx opposto a gamba sx
+    if (ud.armR) ud.armR.rotation.x = armSwing;
   });
   toRemove.forEach(npc => NPC_CONTAINER.remove(npc));
 }
