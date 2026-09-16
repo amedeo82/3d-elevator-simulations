@@ -4310,6 +4310,112 @@ function adjustPassengersForFloor(floor) {
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
 }
 
+// Polish Pack V2 Step 10a · Passeggeri NPC
+// Capsule stylizzate che escono dalla cabina quando arriva al piano.
+// Si muovono nel corridoio per 4-7s prima di scomparire.
+// Massimo 5 simultanei per performance. TTS annuncia l'arrivo.
+const NPC_CONTAINER = new THREE.Group();
+NPC_CONTAINER.name = 'npcs';
+scene.add(NPC_CONTAINER);
+const NPC_COLORS = [0xc9a55a, 0x4a90e2, 0xc0392b, 0x27ae60, 0x8e44ad, 0xf39c12];
+const NPC_TTS_BY_FLOOR = {
+  0: state => state.lang === 'en' ? 'Guests in the lobby' : 'Ospiti nella hall',
+  1: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  2: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  3: state => state.lang === 'en' ? 'Office workers' : 'Impiegati',
+  4: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  5: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  6: state => state.lang === 'en' ? 'Hotel guests' : 'Ospiti dell\'hotel',
+  7: state => state.lang === 'en' ? 'Suite guests' : 'Ospiti delle suite',
+  8: state => state.lang === 'en' ? 'Restaurant guests' : 'Ospiti del ristorante',
+  9: state => state.lang === 'en' ? 'Penthouse residents' : 'Residenti dell\'attico'
+};
+function makeNpc() {
+  const npc = new THREE.Group();
+  const skinColor = 0xf5deb3; // wheat / pelle umana stylizzata
+  // Corpo: capsula
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.16, 0.55, 4, 12),
+    new THREE.MeshStandardMaterial({ color: NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)], roughness: 0.7, metalness: 0.05 })
+  );
+  body.position.y = 0.45;
+  body.castShadow = true;
+  npc.add(body);
+  // Testa: sfera
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 12, 12),
+    new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 })
+  );
+  head.position.y = 1.02;
+  head.castShadow = true;
+  npc.add(head);
+  // Braccia: 2 cilindri sottili
+  const armGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.45, 6);
+  const armMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+  const armL = new THREE.Mesh(armGeom, armMat);
+  armL.position.set(-0.18, 0.4, 0);
+  npc.add(armL);
+  const armR = new THREE.Mesh(armGeom, armMat);
+  armR.position.set(0.18, 0.4, 0);
+  npc.add(armR);
+  // Metadata per animazione e lifecycle
+  npc.userData = {
+    born: performance.now(),
+    lifetime: 4000 + Math.random() * 3000, // 4-7 secondi
+    speed: (Math.random() < 0.5 ? -1 : 1) * (0.7 + Math.random() * 0.4), // 0.7-1.1 m/s, direzione random
+    zSpeed: (Math.random() - 0.5) * 0.2, // leggero drift laterale
+    bobPhase: Math.random() * Math.PI * 2  // per bob leggero camminata
+  };
+  return npc;
+}
+function spawnNpcsAtFloor(floor) {
+  // Determina quanti NPC spawnare (1-3 in base al piano, max 5 attivi)
+  if (NPC_CONTAINER.children.length >= 5) return; // limite performance
+  let count;
+  if (floor === 0) count = 2 + Math.floor(Math.random() * 2); // lobby: 2-3
+  else if (floor === 8) count = 2 + Math.floor(Math.random() * 2); // ristorante: 2-3
+  else if (floor >= 1 && floor <= 3) count = 1 + Math.floor(Math.random() * 2); // uffici: 1-2
+  else if (floor >= 4 && floor <= 6) count = 1 + Math.floor(Math.random() * 3); // hotel: 1-3
+  else count = Math.random() < 0.5 ? 1 : 0; // attico: 0-1
+  // Spawn NPC davanti alla cabina
+  for (let i = 0; i < count; i++) {
+    const npc = makeNpc();
+    // Posizione: di fronte alla cabina, leggermente offset per evitare overlap
+    npc.position.set(
+      cabin.position.x + (i - count/2) * 0.3 + (Math.random() - 0.5) * 0.2,
+      cabin.position.y,
+      (Math.random() - 0.5) * 0.4  // drift iniziale in Z
+    );
+    NPC_CONTAINER.add(npc);
+  }
+  // TTS annuncio breve (solo se la cabina non è in allarme/OOO)
+  if (!state.alarmOn && !state.outOfOrder) {
+    const tts = NPC_TTS_BY_FLOOR[floor];
+    if (tts && typeof speak === 'function' && ttsEnabled && !state.muted) {
+      speak(tts(state));
+    }
+  }
+}
+function tickNpcs(dt, now) {
+  // Muove NPC e rimuove scaduti
+  const toRemove = [];
+  NPC_CONTAINER.children.forEach(npc => {
+    const ud = npc.userData;
+    const age = now - ud.born;
+    if (age > ud.lifetime) {
+      toRemove.push(npc);
+      return;
+    }
+    // Movimento orizzontale + bob camminata
+    npc.position.x += ud.speed * dt;
+    npc.position.z += ud.zSpeed * dt;
+    npc.position.y = cabin.position.y + Math.sin(now * 0.012 + ud.bobPhase) * 0.02;
+    // Z drift rallenta (effetto wander)
+    ud.zSpeed *= 0.98;
+  });
+  toRemove.forEach(npc => NPC_CONTAINER.remove(npc));
+}
+
 // giorni della settimana e mesi
 const GIORNI = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
 const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
@@ -5768,9 +5874,11 @@ function teleportToFloor(floor) {
   corridor.position.y = cabin.position.y;
   if (typeof buildCorridor === 'function') buildCorridor(floor);
   if (typeof drawFloorSign === 'function') drawFloorSign(floor);
-  setDoors(true);
-  // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
-  if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(floor);
+setDoors(true);
+    // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
+    if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(floor);
+    // Polish Pack V2 Step 10a: spawn NPC passeggeri (anche su teleport)
+    if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(floor);
   markDisplayDirty();
   logEvent(`Teleport piano ${floor === 0 ? 'T' : floor}`);
   const status = document.getElementById('statusText');
@@ -6164,6 +6272,8 @@ function tickMove(dt) {
     setDoors(true);
     // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
     if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
+    // Polish Pack V2 Step 10a: spawn NPC passeggeri che escono nel corridoio
+    if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(moveTo);
     // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
     bus.emit('floor:arrived', { floor: moveTo });
     updateFloorDisplay();
@@ -6930,6 +7040,8 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
+  tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
   tickArrowFade(now);
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
