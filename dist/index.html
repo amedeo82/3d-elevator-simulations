@@ -2699,8 +2699,59 @@ const arrowMat = new THREE.MeshBasicMaterial({ transparent: true });
 const arrowMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.11), arrowMat);
 arrowMesh.position.set(0, CABIN.h - 0.05, CABIN.d/2 + 0.001);
 arrowMesh.rotation.y = Math.PI;
+arrowMat.opacity = 1.0; // Polish Pack V2 Step 9b: usato per crossfade
+arrowMat.transparent = true;
 cabin.add(arrowMesh);
-function setArrow(direction) { arrowMat.map = makeArrowTexture(direction); arrowMat.needsUpdate = true; }
+// Polish Pack V2 Step 9b: crossfade della freccia direzione.
+// Invece di swap istantaneo della texture, fade-in 200ms dalla vecchia alla nuova.
+// Manteniamo due mesh: arrowMesh (sopra, fade-in) + arrowFade (sotto, fade-out).
+let arrowFadeMesh = null;
+let arrowFadeMat = null;
+let arrowFadeStart = 0;
+const ARROW_FADE_MS = 200;
+function setArrow(direction) {
+  const newTex = makeArrowTexture(direction);
+  // Crea una mesh "ghost" che mostra la texture PRECEDENTE che svanisce
+  if (arrowMat.map && arrowMat.opacity > 0.5) {
+    if (arrowFadeMesh) {
+      cabin.remove(arrowFadeMesh);
+      if (arrowFadeMat.map) arrowFadeMat.map.dispose();
+    }
+    // Crea una mesh sovrapposta con la stessa texture attuale, fade-out
+    const ghostMat = new THREE.MeshBasicMaterial({
+      map: arrowMat.map,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: false
+    });
+    const ghost = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.11), ghostMat);
+    ghost.position.copy(arrowMesh.position);
+    ghost.rotation.copy(arrowMesh.rotation);
+    cabin.add(ghost);
+    arrowFadeMesh = ghost;
+    arrowFadeMat = ghostMat;
+    arrowFadeStart = performance.now();
+  }
+  // Aggiorna subito la texture principale (che appare sopra il ghost)
+  arrowMat.map = newTex;
+  arrowMat.opacity = 1.0;
+  arrowMat.needsUpdate = true;
+}
+// Hooked in loop per gestire il fade-out del ghost
+function tickArrowFade(now) {
+  if (!arrowFadeMesh || !arrowFadeMat) return;
+  const elapsed = now - arrowFadeStart;
+  if (elapsed >= ARROW_FADE_MS) {
+    // Fade completato, rimuovi il ghost
+    cabin.remove(arrowFadeMesh);
+    if (arrowFadeMat.map) arrowFadeMat.map.dispose();
+    arrowFadeMesh = null;
+    arrowFadeMat = null;
+    return;
+  }
+  // Lerp alpha 1.0 → 0.0 durante ARROW_FADE_MS
+  arrowFadeMat.opacity = 1.0 - (elapsed / ARROW_FADE_MS);
+}
 setArrow('idle');
 
 // ============================================================
@@ -6020,6 +6071,11 @@ function startMoveTo(floor, directionHint) {
   state._lastShownFloor = null;
   const distance = Math.abs(moveTo - moveFrom);
   moveDuration = 1.6 + distance * 0.6; // più piani = più tempo
+  // Polish Pack V2 Step 9c: frenata/accelerazione progressiva. L'easing
+  // easeInOutCubic() applicato in tickMove() (riga sotto) rende il movimento
+  // smooth alle due estremità (no scatti a inizio/fine). Coerente con tutti i
+  // tipi di movimento: digit keys, pulsantiera ▲/▼, prenotazione lobby,
+  // manutentore teleporte, coda FIFO (Q9.5=C).
   // chiudi le porte prima di partire (se non sono già chiuse)
   if (state.doorsActual > 0.05) {
     animateDoorsTo(0, 0.8).then(() => actuallyStartMove());
@@ -6051,20 +6107,28 @@ function tickMove(dt) {
   }
   moveElapsed += dt;
   moveT = Math.min(1, moveElapsed / moveDuration);
-  const t = easeInOutCubic(moveT);
+  const t = easeInOutCubic(moveT);  // Polish Pack V2 Step 9c: frenata/accelerazione progressiva
   const y = (moveFrom + (moveTo - moveFrom) * t) * FLOOR_HEIGHT;
-  // whoosh: modulazione pitch + volume in base alla velocità (envelope a campana)
+  // Polish Pack V2 Step 9c: velocità istantanea (derivata dell'easing) — usata per
+  // whoosh audio + envelope vibrazione. easeInOutCubic' = 12*t*(1-t), che è 0 a t=0
+  // e t=1, massimo a t=0.5. Coerente con la fisica del movimento.
+  const speed = 12 * moveT * (1 - moveT); // 0..0.75..0, derivata analitica
   if (whooshGain && whooshFilter) {
-    const speed = Math.sin(Math.PI * moveT); // 0..1..0
-    whooshFilter.frequency.value = 300 + speed * 800;
+    whooshFilter.frequency.value = 300 + speed * 700;
     whooshGain.gain.value = 0.025 * speed;
   }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
   cabin.position.y = y;
-  // shake continuo durante il viaggio (Fase 10 #1) — envelope a campana, max al centro
+  // Polish Pack V2 Step 9a: vibrazione multi-band realistica. L'envelope "speed"
+  // (derivata dell'easing) modula l'ampiezza: alta in accel/frenata (t→0 o t→1),
+  // bassa in crociera (t≈0.5). Questo simula lo "shock" dei passeggeri a inizio/fine viaggio.
+  // Aggiungiamo un minimo di vibrazione di crociera (mulino a vuoto del motore) per
+  // dare "presenza" anche durante la velocità di crociera.
   state._movePhase += dt * 4;
-  const amp = 0.0035 * Math.sin(Math.PI * moveT);
+  const CRUISE_AMP = 0.0006;
+  const amp = CRUISE_AMP + speed * 0.0035;
+  // 4 bande: X (orizzontale), Z (profondità), Roll (laterale), Pitch (avanti-indietro)
   state.vibrationX = (Math.sin(state._movePhase * 7.3) + Math.sin(state._movePhase * 11.1)) * amp;
   state.vibrationZ = (Math.cos(state._movePhase * 8.7) + Math.sin(state._movePhase * 13.3)) * amp;
   state.vibrationRoll  = Math.sin(state._movePhase * 5.1) * amp * 0.6;
@@ -6866,6 +6930,8 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
+  tickArrowFade(now);
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
   // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)

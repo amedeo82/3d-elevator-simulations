@@ -26,7 +26,7 @@
 | 6 | D2 — PWA installabile (manifest inline) | 1 sessione | 🟢 | Feature | ⏳ |
 | 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | 1 sessione | 🟡 | Feature | ✅ |
 | 8 | i18n IT/EN (backlog #12) | 1-2 sessioni | 🔴 | Refactor+Feature | ✅ |
-| 9 | Shaft "dietro le quinte" + animazione micro porte | 1-2 sessioni | 🟢 | Feature | ⏳ |
+| 9 | Sensazioni realistiche cabina (vibrazione + crossfade + frenata) | 1 sessione | 🟢 | Polish | ✅ |
 | 10 | Eventi speciali hotel (matrimonio, conferenza) | 1 sessione | 🟢 | Feature | ⏳ |
 | 11 | L-block: più piani parametrico + texture HD arredi | 1-2 sessioni | 🟡 | Feature | ⏳ |
 | 12 | Test framework leggero (unit test funzioni pure) | 1 sessione | 🟡 | DX | ⏳ |
@@ -512,56 +512,71 @@ Quali sezioni tradurre per prime?
 
 ---
 
-# STEP 9 · Shaft "dietro le quinte" + animazione micro porte
+# STEP 9 · Sensazioni realistiche cabina (vibrazione + micro-animazioni + frenata)
+
+## Contesto
+Il progetto è in **prima persona con mouse-look e pointer-lock**: il giocatore è sempre
+dentro la cabina dell'ascensore (90%+ del tempo) e nei corridoi solo brevemente.
+Lo Step 9 originale (shaft "dietro le quinte") non ha senso nel contesto attuale
+perché il giocatore non è uno spettatore che vede la cabina arrivare al piano:
+è **lui stesso** che aziona l'ascensore, vedendo sempre l'interno della cabina
+durante il movimento.
+
+Step 9 viene quindi **riscritto** per focalizzarsi su feature che migliorano il
+"feel" della cabina **durante il gameplay in prima persona**.
 
 ## Scope proposto
-- **9a**. **Shaft visibile**: quando le porte della cabina sono aperte, vedi il vano ascensore che scorre. Pannello di fondo con luci di piano che si accendono al passaggio, indicatori meccanici (guide, cavi, contrappeso).
-- **9b**. **Animazione micro porte**: crossfade 200ms + scale-in dell'indicatore direzione sopra porte (oggi cambia istantaneamente).
-- **9c**. **Shaft all'attico**: la vetrata panoramica (esistente) rivela anche il shaft visto dal lato opposto, con la cabina che passa silenziosa all'esterno.
+- **9a**. **Vibrazione realistica della cabina**: la cabina vibra durante il movimento con un pattern che simula accelerazione/frenata + leggera oscillazione laterale. Oggi c'è già `state.vibration` ma il pattern è basilare (`*= 0.96`).
+- **9b**. **Crossfade dell'indicatore direzione sopra porte**: la freccia ▲/▼/· cambia con crossfade 200ms invece che istantaneamente. Estende il `setArrow()` con interpolazione smooth.
+- **9c**. **Frenata/accelerazione progressiva**: easing ease-in-out sul movimento della cabina invece di velocità lineare. La cabina accelera all'inizio, mantiene velocità di crociera, decelera verso la fine. Più realistica.
 
 ## Decision Questions
 
 ### Q9.1 — Scope
 
-- **A. Solo shaft (9a)** — feature "wow" pura *(Recommended)*
-- **B. Solo animazione micro porte (9b)** — polish visivo
-- **C. Shaft + micro (9a + 9b)**
-- **D. Tutto (9a + 9b + 9c)** — esperienza completa
+- **A. Solo vibrazione realistica (9a)** — focus su "feel" del movimento *(Recommended)*
+- **B. Solo micro-animazioni (9b + 9c)** — polish visivo + fisica
+- **C. Tutto (9a + 9b + 9c)** — esperienza realistica completa *(Recommended per sinergie)*
+- **D. Tutto + extra** (rumore cabina + passeggeri che oscillano)
 
-### Q9.2 — Complessità shaft
+### Q9.2 — Pattern vibrazione (9a)
 
-- **A. Minimalista**: solo 2-3 pannelli di fondo + luci di piano *(Recommended)*
-- **B. Realistico**: cavi, contrappeso, guide, illuminazione vano
-- **C. Iperrealista**: meccanica in movimento (cavi che si muovono, contrappeso che scende)
+- **A. Enhanced decay exponential** — mantiene il pattern attuale ma con parametri più realistici (decay ~0.92, intensità doppia in accelerazione)
+- **B. Multi-band**: vibrazione a 3 frequenze sovrapposte (bassa 4Hz per cabin rolling, media 12Hz per compressione sospensioni, alta 30Hz per button travel) *(Recommended per realismo)*
+- **C. Solo oscillazione laterale visiva** (no vibrazione del giocatore, solo della cabina)
 
-### Q9.3 — Performance: il shaft è renderizzato anche quando non visibile?
+### Q9.3 — Crossfade direzione (9b)
 
-- **A. `shaft.visible = state.doorsActual > 0.5`**, sempre in scena ma nascosto
-- **B. Shaft creato on-demand** quando porte aprono, dispose quando chiudono *(Recommended per memoria)*
-- **C. Sempre renderizzato** (spreco)
+- **A. CSS class swap** con transition CSS — semplice, basta modificare drawExternalFloorIndicator *(Recommended)*
+- **B. Lerp manuale su canvas** — interpolazione pixel-level, più smooth
 
-### Q9.4 — Animazione micro porte
+### Q9.4 — Frenata/accelerazione (9c)
 
-- **A. Crossfade 200ms** (semplice) *(Recommended)*
-- **B. Slide orizzontale 300ms** (più "fisico")
-- **C. Pulse + fade** (più "digitale")
+- **A. Sigmoid ease-in-out** (smoothstep): `t = t * t * (3 - 2 * t)` applicato al progresso del movimento *(Recommended)*
+- **B. Cubic ease-in-out** (`t² / (t² + (1-t)²)`): smooth alle due estremità, più "digitale"
+- **C. Funzione piecewise**: accelerazione costante → cruise → decelerazione costante (stile pianificato real ascensori)
 
-### Q9.5 — Coerenza con specchio riflettente
+### Q9.5 — Quando frenata/accelerazione inizia?
 
-Lo specchio già riflette l'interno. Il shaft dovrebbe essere riflesso?
-
-- **A. No** (shaft è dietro le porte, lo specchio è sulla parete opposta — non si riflette) *(Recommended)*
-- **B. Sì, estende la riflessione**
+- **A. Solo durante il movimento normale** (digit keys + pulsantiera)
+- **B. Solo per prenotazione automatica lobby** (Step 1.4 #20)
+- **C. Per tutti i movimenti** inclusi manutentore teleporte — *(Recommended, coerenza)*
 
 ## Acceptance criteria
-- [ ] (se 9a) con porte aperte, si vede il shaft che scorre
-- [ ] (se 9b) freccia direzione non cambia istantaneamente
-- [ ] (se 9c) dall'attico, la cabina passa visibile oltre la vetrata
-- [ ] Nessuna regressione FPS significativa (target ≥45)
+- [ ] (se 9a) la vibrazione si sente chiaramente diversa in accelerazione, crociera e frenata
+- [ ] (se 9b) la freccia direzione non cambia istantaneamente, transizione 200ms smooth
+- [ ] (se 9c) la cabina accelera gradualmente all'inizio, decelera verso il piano target
+- [ ] Nessuna regressione FPS (target ≥45)
 - [ ] `node --check` + brace balance
+- [ ] Test sensazione: movimento cabina che si "sente" realistico (non più scatto lineare)
 
-## Effort
-1-2 sessioni.
+## Effort stimato
+1 sessione (3 feature coordinate, scope C).
+
+## Trade-off / sinergie
+- Le 3 feature si rinforzano a vicenda: vibrazione accentuata in accel/frenata, micro-animazione direzione smooth, easing smoothstep. Insieme danno "ASCENSORE REALE" feel.
+- Tutte impatto performance trascurabile (vibrazione è già calcolata, easing è una funzione, crossfade è CSS).
+- Compat con Step 7 (pulsantiera semantica) e Step 5 (HOTEL_CONFIG) senza modifiche.
 
 ---
 
