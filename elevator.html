@@ -5958,6 +5958,57 @@ function logEvent(label) {
   state._eventLog.unshift(`${ts} ${label}`);
   if (state._eventLog.length > 10) state._eventLog.length = 10;
 }
+
+// Polish Pack V2 Step 10d · Log manutenzione realistica
+// Ogni 30 secondi, il 12% di probabilita' di generare un evento di log
+// tecnico che simula un sistema di manutenzione interno dell'hotel.
+// I log compaiono solo nell'overlay manutentore (Shift+M), non visibili
+// in gameplay normale, ma danno credibilita' al mondo simulato.
+const MAINT_LOG_TEMPLATES = [
+  { it: 'Cuscinetto cabina: micro-attrito rilevato al piano ${floor}, monitoraggio in corso', en: 'Cabin bearing: micro-friction detected at floor ${floor}, monitoring' },
+  { it: 'Sensore porta ${side} ricalibrato automaticamente',                  en: 'Door sensor ${side} auto-recalibrated' },
+  { it: 'Cavo ${cable}: tensione anomala, autocorrezione eseguita',          en: '${cable} cable: tension anomaly, auto-correction applied' },
+  { it: 'Pastiglia freno leggermente usurata, manutenzione tra ~6 mesi',   en: 'Brake pad slightly worn, maintenance in ~6 months' },
+  { it: 'Sensore peso ricalibrato per piano ${floor}',                       en: 'Weight sensor recalibrated for floor ${floor}' },
+  { it: 'Filtro HVAC cabina pulito automaticamente',                          en: 'Cabin HVAC filter auto-cleaned' },
+  { it: 'Ventola di scarico ${side} test routine completato',                en: 'Exhaust fan ${side} routine test completed' },
+  { it: 'Comunicazione interna elevator-controller OK (latenza ${ms}ms)',   en: 'Elevator-controller intercom OK (latency ${ms}ms)' }
+];
+const MAINT_LOG_CABLES = ['primario', 'secondario', 'contromassa', 'freno'];
+const MAINT_LOG_SIDES = ['L (left)', 'R (right)'];
+function tickMaintenanceLog() {
+  if (!state.maintenanceMode) {
+    if (Math.random() < 0.12) {
+      // ~12% probabilita' ad ogni tick (30s) = ~1 log ogni 4 min
+      const tpl = MAINT_LOG_TEMPLATES[Math.floor(Math.random() * MAINT_LOG_TEMPLATES.length)];
+      const floor = Math.floor(Math.random() * 10);
+      const cable = MAINT_LOG_CABLES[Math.floor(Math.random() * MAINT_LOG_CABLES.length)];
+      const side = MAINT_LOG_SIDES[Math.floor(Math.random() * MAINT_LOG_SIDES.length)];
+      const ms = Math.floor(15 + Math.random() * 30);
+      const txt = tpl[state.lang === 'en' ? 'en' : 'it']
+        .replace('${floor}', floor === 0 ? 'T' : String(floor))
+        .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
+        .replace('${cable}', cable)
+        .replace('${ms}', String(ms));
+      logEvent(txt);
+    }
+  } else {
+    // in maintenance mode: genera log piu' frequentemente (33%)
+    if (Math.random() < 0.33) {
+      const tpl = MAINT_LOG_TEMPLATES[Math.floor(Math.random() * MAINT_LOG_TEMPLATES.length)];
+      const floor = Math.floor(Math.random() * 10);
+      const cable = MAINT_LOG_CABLES[Math.floor(Math.random() * MAINT_LOG_CABLES.length)];
+      const side = MAINT_LOG_SIDES[Math.floor(Math.random() * MAINT_LOG_SIDES.length)];
+      const ms = Math.floor(15 + Math.random() * 30);
+      const txt = tpl[state.lang === 'en' ? 'en' : 'it']
+        .replace('${floor}', floor === 0 ? 'T' : String(floor))
+        .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
+        .replace('${cable}', cable)
+        .replace('${ms}', String(ms));
+      logEvent(txt);
+    }
+  }
+}
 function applyWireframe(on) {
   // salva o ripristina lo stato wireframe dei materiali della cabina
   if (on) {
@@ -7327,6 +7378,8 @@ state.lang = loadLang();
 state.dayPhase = getDayPhase();
 applyTimeOfDayLights(state.dayPhase);
 setInterval(tickTimeOfDay, 60000); // re-check ogni 60s per alba/tramonto/notte
+// Polish Pack V2 Step 10d: log manutenzione realistica ogni 30s
+setInterval(tickMaintenanceLog, 30000);
 // Polish Pack V2 Step 5a: aggiorna elementi HTML della start screen con HOTEL_CONFIG
 (function applyHotelConfigToStartScreen() {
   const nameEl = document.getElementById('startHotelName');
