@@ -4440,11 +4440,20 @@ function makeNpc() {
   // Metadata per animazione e lifecycle. Pivot salvati per swing camminata.
   npc.userData = {
     born: performance.now(),
-    lifetime: 4000 + Math.random() * 3000, // 4-7 secondi
+    lifetime: 4500 + Math.random() * 3500, // 4.5-8 secondi (vita un po' piu' lunga per fade-out)
     speed: 0.55 + Math.random() * 0.35, // 0.55-0.9 m/s (passo umano normale)
     xDrift: (Math.random() - 0.5) * 0.25, // drift laterale iniziale
     bobPhase: Math.random() * Math.PI * 2,
     swingPhase: Math.random() * Math.PI * 2,
+    // Polish Pack V2 Step 10a · Fix 4: walkTime accumulato (no Math.sin(now * 8) diretto).
+    // Cammina smooth anche con frame rate variabile (tab background, GC pause, ecc.)
+    walkTime: 0,
+    // Scale lifecycle per fade-in/out: parte piccolo (0.3), cresce a 1 in 300ms,
+    // rimpicciolisce a 0 negli ultimi 600ms di vita per uscita graduale.
+    currentScale: 0.3,
+    targetScale: 1.0,
+    // Y interpolato smooth (lerp) per evitare "scatti" del bob
+    currentY: 0,
     // Riferimenti ai pivot per animazione swing (impostati dopo aver aggiunto al group)
     legL: legLPivot,
     legR: legRPivot,
@@ -4580,13 +4589,39 @@ function playCorridorAmbient(floor) {
   CORRIDOR_AMBIENT.push(...soundNodes);
 }
 function tickNpcs(dt, now) {
-  // Muove NPC, anima swing braccia/gambe, rimuove scaduti
+  // Polish Pack V2 Step 10a · Fix scattosita' movimento NPC:
+  // - walkTime accumulato (no Math.sin(now) diretto che salta se now discontinuo)
+  // - currentY lerpato (no set assoluto che scatta se dt variabile)
+  // - currentScale lerpato per fade-in/out smooth (spawn e despawn graduali)
+  // - Rimozione ritardata per permettere al fade-out di completarsi
   const toRemove = [];
   NPC_CONTAINER.children.forEach(npc => {
     const ud = npc.userData;
     const age = now - ud.born;
-    // Rimuovi se scaduto O se ha raggiunto fine corridoio (z > 12)
-    if (age > ud.lifetime || npc.position.z > 12.0) {
+    const ageRatio = age / ud.lifetime;
+    // Polish Pack V2 Step 10a · Fix 1: walkTime accumulato per animazione continua
+    ud.walkTime += dt;
+    // Polish Pack V2 Step 10a · Fix 2: scale lifecycle smooth (lerp 30%/frame ~ esponenziale)
+    // Fase 1: fade-in 0-300ms (scale 0.3 -> 1)
+    // Fase 2: stabile (1.0)
+    // Fase 3: fade-out ultimi 600ms di vita (scale 1.0 -> 0)
+    let targetScale;
+    if (age < 300) {
+      // Fade-in: scale 0.3 -> 1 in 300ms
+      const t = age / 300;
+      targetScale = 0.3 + 0.7 * (t * t * (3 - 2 * t)); // smoothstep
+    } else if (age > ud.lifetime - 600) {
+      // Fade-out: scale 1 -> 0 negli ultimi 600ms
+      const t = (ud.lifetime - age) / 600;
+      targetScale = t * t * (3 - 2 * t); // smoothstep
+    } else {
+      targetScale = 1.0;
+    }
+    ud.currentScale = ud.currentScale + (targetScale - ud.currentScale) * 0.25;
+    npc.scale.setScalar(ud.currentScale);
+    // Polish Pack V2 Step 10a · Fix 3: Rimozione ritardata dopo fade-out completo
+    // (currentScale ~ 0.001) per evitare "pop" improvviso quando lifetime scade
+    if (age > ud.lifetime + 200 || npc.position.z > 12.0) {
       toRemove.push(npc);
       return;
     }
@@ -4595,18 +4630,25 @@ function tickNpcs(dt, now) {
     // Lieve drift laterale che decresce (effetto wander)
     npc.position.x += ud.xDrift * dt;
     ud.xDrift *= 0.96;
-    // Bob verticale camminata (passo)
-    npc.position.y = cabin.position.y + Math.sin(now * 8 + ud.bobPhase) * 0.025;
-    // Swing camminata: 8 rad/s = ~1.3 Hz (passo umano normale).
-    // Gambe opposte (L avanti quando R indietro), braccia opposte alle gambe.
-    const swingAngle = 0.65; // ~37 gradi max swing
-    const t = now * 8 + ud.swingPhase;
-    const legSwing = Math.sin(t) * swingAngle;
+    // Bob verticale camminata — interpolazione smooth (lerp) per evitare scatti
+    // Frequenza 1.6 Hz (passo umano adulto normale, 2Hz e' troppo veloce)
+    const walkPhase = ud.walkTime * 1.6 * Math.PI * 2; // 1.6 cicli/s
+    const bobTarget = Math.abs(Math.sin(walkPhase + ud.bobPhase)) * 0.025;
+    const targetY = cabin.position.y + bobTarget;
+    // Lerp 25%/frame per smooth transition (smussa jitter)
+    ud.currentY = ud.currentY + (targetY - ud.currentY) * 0.25;
+    npc.position.y = ud.currentY;
+    // Swing camminata: walkTime-based (no Math.sin(now) diretto).
+    // 1.6 Hz = frequenza passo umano naturale.
+    // Ampiezza 0.65 rad (~37°) = swing realistico ginocchio.
+    const swingAngle = 0.65;
+    const legSwing = Math.sin(walkPhase + ud.swingPhase) * swingAngle;
     if (ud.legL) ud.legL.rotation.x = legSwing;
     if (ud.legR) ud.legR.rotation.x = -legSwing;
-    const armSwing = Math.sin(t) * swingAngle;
-    if (ud.armL) ud.armL.rotation.x = -armSwing;  // braccio sx opposto a gamba sx
-    if (ud.armR) ud.armR.rotation.x = armSwing;
+    // Braccia opposte alle gambe (movimento naturale camminata)
+    const armSwing = -legSwing;
+    if (ud.armL) ud.armL.rotation.x = -armSwing * 0.7;  // braccia oscillano meno
+    if (ud.armR) ud.armR.rotation.x = armSwing * 0.7;
   });
   toRemove.forEach(npc => NPC_CONTAINER.remove(npc));
 }
