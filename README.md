@@ -291,6 +291,12 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - **9c · Frenata/accelerazione progressiva**: `easeInOutCubic(moveT)` già implementato in `tickMove()`. Si applica a TUTTI i movimenti (digit keys, pulsantiera ▲/▼, prenotazione lobby, manutentore teleporte, coda FIFO) grazie a convergenza su `actuallyStartMove()`.
 - **Weesh audio coerente**: la velocità `speed = 12*moveT*(1-moveT)` modula pitch e volume del weesh loop (300-1000Hz), sincronizzato con vibrazione cabina.
 - **Coerenza con architettura first-person**: tutte le feature sono visibili e percepibili dal giocatore (shaft "dietro le quinte" scartato perché non visibile in prima persona).
+
+### 🏨 Vita dell'hotel (Step 10)
+- **10a · Passeggeri NPC**: alla fermata al piano, 1-3 NPC umanoidi (capsula + testa + braccia) escono dalla cabina e camminano nel corridoio per 4-7s. TTS annuncia l'arrivo ("Ospiti del ristorante" / "Office workers"). Massimo 5 simultanei per performance.
+- **10b · Suoni contestuali corridoio**: alla fermata cabina, suoni ambientali 3s coerenti con la zona: lobby (brusio lowpass 1.2kHz), uffici (4-6 tick tastiere square 600-800Hz), hotel (3-4 tick orologio triangle 1800Hz), attico (vento soft bandpass 400Hz). Volume basso 0.025-0.04 per non sovrastare TTS.
+- **10c · Ciclo giorno/notte automatico**: `new Date().getHours()` determina `state.dayPhase` (day 6-18 / evening 18-22 / night 22-6) che modula `ceilingLight.intensity`, `fillLight.intensity`, e `scene.fog.color`. Update automatico ogni 60s via `setInterval`. `nightMode` (tasto N) override manuale rispettato.
+- **10d · Log manutenzione realistica**: ogni 30s, 12% probabilità di generare un log tecnico credibile (cuscinetto, sensore porta, cavo, freno, HVAC, comunicazione controller) che appare nel maintenance overlay (Shift+M). 8 template IT/EN con placeholder dinamici (floor, side, cable, ms latenza 15-45ms). Probabilità aumentata a 33% in maintenance mode.
   - HUD pannello comandi (14 righe key+desc), start screen (.keys, slides, intro, topbar)
   - Tutorial contestuale (5 step con placeholder shortName hotel)
   - Customizer overlay (title + presets + labels + bottoni + status)
@@ -588,6 +594,7 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 - [x] **Step 7** Pulsantiera ▲/▼ semantica — coda `{floor, direction}` invece di Set + helper queueNextSmart (serve stessa direzione, poi inversione automatica) + visualizzazione intenzione su cartello + icona ↻ su pulsantiera esterna
 - [x] **Step 8** i18n IT/EN — `STRINGS[lang]` dictionary (~120 chiavi) + Tasto L toggle + bottone UI IT/EN + auto-detect navigator.language + persistenza `localStorage.bossHotelLang@v1` + TTS en-GB prioritaria + helper `t(key)` + `applyLangToDOM()` consolidata + refactor HTML statico → generazione dinamica (panel-help, start screen, customizer, tutorial, maintenance overlay) + tutti gli annunci/subtitle/status italiani tradotti
 - [x] **Step 9** Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva easeInOutCubic + weesh sincronizzato) — originariamente era "Shaft dietro le quinte" ma ripensato perché non visibile in prima persona. Sostituito con feature percepibili dal giocatore.
+- [x] **Step 10** Vita dell'hotel (NPC passeggeri + suoni contestuali corridoio + ciclo giorno/notte + log manutenzione realistica) — originariamente era "Eventi speciali hotel" (matrimonio/conferenza) ma ripensato per dare game value al simulatore first-person (decorazioni corridoio visibili solo uscendo dalla cabina, narrative debole). Sostituito con 4 feature coordinabili che danno vita al simulatore.
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

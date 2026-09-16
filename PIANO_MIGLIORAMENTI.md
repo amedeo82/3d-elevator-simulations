@@ -55,7 +55,8 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | Polish Pack V2 Step 7 | ✅ Pulsantiera ▲/▼ semantica (coda `{floor, direction}`, smart routing, visualizzazione intenzione) |
 | Polish Pack V2 Step 8 | ✅ i18n IT/EN (backlog #12 chiuso — `STRINGS[lang]`, tasto L, refactor HTML, TTS en-GB) |
 | Polish Pack V2 Step 9 | ✅ Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva) |
-| File di progetto | `elevator.html` (~298KB, 7.129 righe, single file) + `dist/index.html` |
+| Polish Pack V2 Step 10 | ✅ Vita dell'hotel (NPC + suoni contestuali + giorno/notte + log manutenzione) |
+| File di progetto | `elevator.html` (~305KB, 7.434 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
 
@@ -1278,13 +1279,61 @@ in `tickMove()` (Italian Pack v1.3 commit `4f0e3d1`). Si applica a TUTTI i movim
 
 ---
 
+## Fase 28 — Polish Pack V2 Step 10: vita dell'hotel ✅ (2026-09-16)
+
+### Contesto
+Step 10 era originariamente "Eventi speciali hotel" (matrimonio/conferenza/gala).
+Scartato dopo discussione con l'utente: il giocatore è l'operatore dell'ascensore
+in prima persona, non un invitato al matrimonio. Decorazioni corridoio viste
+solo entrando nella cabina, con trigger narrativo debole. Riscritto per dare
+**vita al simulatore** con 4 feature coordinate che aggiungono realismo percepibile
+durante il gameplay.
+
+### Soluzione in 4 sotto-step (scope C)
+**10a · Passeggeri NPC**: alla fermata al piano, 1-3 NPC umanoidi (capsula + testa +
+braccia, 6 colori casuali) escono dalla cabina e camminano nel corridoio per 4-7s
+prima di scomparire. Movimento orizzontale + bob camminata. TTS annuncia l'arrivo
+("Ospiti del ristorante" / "Office workers" / "Guests in the lobby" ecc.).
+Massimo 5 simultanei per performance.
+
+**10b · Suoni contestuali corridoio**: alla fermata cabina, suono ambientale 3s
+coerente con la zona: lobby (brusio lowpass 1.2kHz), uffici (4-6 tick tastiere square
+600-800Hz), hotel (3-4 tick orologio triangle 1800Hz), attico (vento soft bandpass
+400Hz). Volume 0.025-0.04. Web Audio API procedurale (no asset esterni).
+
+**10c · Ciclo giorno/notte automatico**: `state.dayPhase` da
+`new Date().getHours()` (day 6-18 / evening 18-22 / night 22-6) modula
+`ceilingLight.intensity` (1.6/1.0/0.55), `fillLight.intensity` (0.25/0.18/0.10),
+`scene.fog.color` (neutro/viola/molto scuro). Update ogni 60s via setInterval.
+`nightMode` (tasto N) override manuale rispettato.
+
+**10d · Log manutenzione realistica**: ogni 30s, 12% probabilità di generare un log
+tecnico credibile (cuscinetto, sensore porta, cavo, freno, HVAC, comunicazione
+controller) che appare nel maintenance overlay (Shift+M). 8 template IT/EN con
+placeholder dinamici (floor 0-9, side L/R, cable, ms latenza 15-45ms).
+Probabilità aumentata a 33% in maintenance mode per feedback più denso.
+
+### Acceptance
+- [x] 1-3 NPC escono alla fermata del piano (visibili nel corridoio)
+- [x] TTS annuncia l'arrivo coerente per piano
+- [x] Suoni ambientali distinti per zona (lobby/uffici/hotel/attico)
+- [x] Luci diurne/serali/notturne auto-modulate con setInterval
+- [x] Log di manutenzione credibili nel maintenance overlay
+- [x] NPC + luci + suoni + log si rinforzano a vicenda ("simulatore vivo")
+- [x] node --check + brace balance 1004/1004
+
+### Branch
+`feature/polish-pack-v2-step-10` mergiato su `main`.
+
+---
+
 ## 7. Statistiche finali del progetto
 
 | Metrica | Valore |
 |---|---|
 | File principale | `elevator.html` |
-| Dimensione | ~298 KB |
-| Linee di codice | ~7.129 |
+| Dimensione | ~305 KB |
+| Linee di codice | ~7.434 |
 | Sezioni di codice | 30+ numerate e commentate |
 | Tasti interattivi | 14 (10 celle piano + 4 tasti fisici) |
 | Texture dinamiche | 10+ canvas (display, meteo, pubblicità, cartello, targhe, loghi, frecce, orologio, citofono, header pulsantiera esterna) |
@@ -1527,6 +1576,7 @@ Polish Pack:
 23. ✅ **Polish Pack V2 Step 7** — Pulsantiera ▲/▼ semantica (coda con direzione, smart routing)
 24. ✅ **Polish Pack V2 Step 8** — i18n IT/EN (`STRINGS[lang]` ~120 chiavi, tasto L, refactor HTML)
 25. ✅ **Polish Pack V2 Step 9** — Sensazioni realistiche cabina (vibrazione multi-band + crossfade + easeInOutCubic)
+26. ✅ **Polish Pack V2 Step 10** — Vita dell'hotel (NPC passeggeri + suoni contestuali + giorno/notte + log manutenzione)
 
 Dopo v1.6, le feature residue nel backlog sono solo 1: #12 (i18n IT/EN, alto sforzo).
 
