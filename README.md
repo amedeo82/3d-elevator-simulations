@@ -284,6 +284,26 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - **Event delegation**: preset buttons configurati via addEventListener sul parent `.hc-presets` (sopravvive ai re-render di applyLangToDOM)
 - **`applyLangToDOM()`** consolidata: chiamata all'init e ad ogni `setLang()` per aggiornare tutti gli elementi dinamici
 - **TTS en-GB prioritaria**: `speak()` usa `lang === 'en' ? englishVoice : italianVoice`, fallback en-US se en-GB non disponibile
+
+### 🎚️ Sensazioni realistiche cabina (Step 9)
+- **9a · Vibrazione realistica multi-band**: 4 frequenze sovrapposte (X 7.3+11.1Hz, Z 8.7+13.3Hz, Roll 5.1Hz, Pitch 6.7Hz) con envelope derivato da `12*moveT*(1-moveT)` (derivata di easeInOutCubic). Alta vibrazione in accel/decel, minima in crociera (CRUISE_AMP=0.0006 per "presenza" del motore vuoto).
+- **9b · Crossfade freccia direzione**: `setArrow(direction)` non swap più istantaneamente la texture, ma fade-out 200ms della vecchia + fade-in della nuova tramite due mesh tre.js sovrapposte (`arrowFadeMesh`).
+- **9c · Frenata/accelerazione progressiva**: `easeInOutCubic(moveT)` già implementato in `tickMove()`. Si applica a TUTTI i movimenti (digit keys, pulsantiera ▲/▼, prenotazione lobby, manutentore teleporte, coda FIFO) grazie a convergenza su `actuallyStartMove()`.
+- **Weesh audio coerente**: la velocità `speed = 12*moveT*(1-moveT)` modula pitch e volume del weesh loop (300-1000Hz), sincronizzato con vibrazione cabina.
+- **Coerenza con architettura first-person**: tutte le feature sono visibili e percepibili dal giocatore (shaft "dietro le quinte" scartato perché non visibile in prima persona).
+  - HUD pannello comandi (14 righe key+desc), start screen (.keys, slides, intro, topbar)
+  - Tutorial contestuale (5 step con placeholder shortName hotel)
+  - Customizer overlay (title + presets + labels + bottoni + status)
+  - Display touch (PRENOTATA/BOOKED, FUORI SERVIZIO/OUT OF SERVICE, PIANO/FLOOR, mappa CABINA POSITION, OROLOGIO MONDIALE/WORLD CLOCK, ecc.)
+  - Manutentore overlay (8 labels + hint + status)
+  - Canvas drawRestaurantScreen / drawSpaScreen / drawWorldClock / drawWelcomeScreen
+  - Status pill "ALLARME/ALARM", "Diretto al piano/Going to floor", "In attesa/Waiting"
+  - TTS announcements (arrival, alarm, door closing, obstacle detected, voice command, prompt 30s inattività)
+  - Subtitle HUD (ostacolo rilevato/obstacle detected, lingua/language, tutti i feedback)
+- **Refactor HTML statico**: tabelle HTML (#panel-help, #startscreen .keys, slides) sono ora rigenerate via JS da helper `t(key)`, `buildPanelHelpRows()`, `buildStartScreenKeys()`, `buildStartSlides()`
+- **Event delegation**: preset buttons configurati via addEventListener sul parent `.hc-presets` (sopravvive ai re-render di applyLangToDOM)
+- **`applyLangToDOM()`** consolidata: chiamata all'init e ad ogni `setLang()` per aggiornare tutti gli elementi dinamici
+- **TTS en-GB prioritaria**: `speak()` usa `lang === 'en' ? englishVoice : italianVoice`, fallback en-US se en-GB non disponibile
 - **Click su ▲/▼**: chiama la cabina a quel piano (se è già lì, apre le porte gentilmente)
   - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
@@ -559,14 +579,15 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
       le porte fuori dalla cabina.~~ **Sostituito dal comportamento più realistico
       di v1.7** (auto-close + prenotazione lobby-only).
 
-### 🎉 Polish Pack V2 — completato (Steps 1-5 + 7, branch `feature/polish-pack-v2-step-N`)
+### 🎉 Polish Pack V2 — completato (Steps 1-5, 7, 8, 9, branch `feature/polish-pack-v2-step-N`)
 - [x] **Step 1** Salute del codice — CI GitHub Actions + `AGENTS.md` + audit `state` (STATE.md, 26+ campi) + mini event bus homemade
 - [x] **Step 2** UX invisibile — sensore IR anti-ostacolo (ASME A17.1 §2.13.5) + tutorial contestuale prima volta (5 step, tasto `?`, prompt inattività 30s)
 - [x] **Step 3** Audio contestuale corridoi + musica ristorante — 4 temi corridoio (3 layer ciascuno) + chitarra classica + piatti al piano 8
 - [x] **Step 4** Meteo evoluto — stagionalità mensile (clima Roma) + 3 nuove condizioni (grandine, foschia, vento) + slide 24h con previsioni
 - [x] **Step 5** Personalizzazione hotel — `HOTEL_CONFIG` (17 campi, refactor 23 stringhe hardcoded) + HUD overlay tasto `H` + 4 preset (Boss Hotel / Sky Tower Tokyo / Hôtel de Paris / Burj Al Arab) + persistenza `localStorage.bossHotelConfig@v1`
-- [x] **Step 7** Pulsantiera ▲/▼ semantica — coda `{floor, direction}` invece di Set + helper queueNextSmart (serve stessa direzione, inversione automatica) + visualizzazione intenzione su cartello + icona ↻ su pulsantiera esterna
+- [x] **Step 7** Pulsantiera ▲/▼ semantica — coda `{floor, direction}` invece di Set + helper queueNextSmart (serve stessa direzione, poi inversione automatica) + visualizzazione intenzione su cartello + icona ↻ su pulsantiera esterna
 - [x] **Step 8** i18n IT/EN — `STRINGS[lang]` dictionary (~120 chiavi) + Tasto L toggle + bottone UI IT/EN + auto-detect navigator.language + persistenza `localStorage.bossHotelLang@v1` + TTS en-GB prioritaria + helper `t(key)` + `applyLangToDOM()` consolidata + refactor HTML statico → generazione dinamica (panel-help, start screen, customizer, tutorial, maintenance overlay) + tutti gli annunci/subtitle/status italiani tradotti
+- [x] **Step 9** Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva easeInOutCubic + weesh sincronizzato) — originariamente era "Shaft dietro le quinte" ma ripensato perché non visibile in prima persona. Sostituito con feature percepibili dal giocatore.
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)
