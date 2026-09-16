@@ -2699,8 +2699,59 @@ const arrowMat = new THREE.MeshBasicMaterial({ transparent: true });
 const arrowMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.11), arrowMat);
 arrowMesh.position.set(0, CABIN.h - 0.05, CABIN.d/2 + 0.001);
 arrowMesh.rotation.y = Math.PI;
+arrowMat.opacity = 1.0; // Polish Pack V2 Step 9b: usato per crossfade
+arrowMat.transparent = true;
 cabin.add(arrowMesh);
-function setArrow(direction) { arrowMat.map = makeArrowTexture(direction); arrowMat.needsUpdate = true; }
+// Polish Pack V2 Step 9b: crossfade della freccia direzione.
+// Invece di swap istantaneo della texture, fade-in 200ms dalla vecchia alla nuova.
+// Manteniamo due mesh: arrowMesh (sopra, fade-in) + arrowFade (sotto, fade-out).
+let arrowFadeMesh = null;
+let arrowFadeMat = null;
+let arrowFadeStart = 0;
+const ARROW_FADE_MS = 200;
+function setArrow(direction) {
+  const newTex = makeArrowTexture(direction);
+  // Crea una mesh "ghost" che mostra la texture PRECEDENTE che svanisce
+  if (arrowMat.map && arrowMat.opacity > 0.5) {
+    if (arrowFadeMesh) {
+      cabin.remove(arrowFadeMesh);
+      if (arrowFadeMat.map) arrowFadeMat.map.dispose();
+    }
+    // Crea una mesh sovrapposta con la stessa texture attuale, fade-out
+    const ghostMat = new THREE.MeshBasicMaterial({
+      map: arrowMat.map,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: false
+    });
+    const ghost = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.11), ghostMat);
+    ghost.position.copy(arrowMesh.position);
+    ghost.rotation.copy(arrowMesh.rotation);
+    cabin.add(ghost);
+    arrowFadeMesh = ghost;
+    arrowFadeMat = ghostMat;
+    arrowFadeStart = performance.now();
+  }
+  // Aggiorna subito la texture principale (che appare sopra il ghost)
+  arrowMat.map = newTex;
+  arrowMat.opacity = 1.0;
+  arrowMat.needsUpdate = true;
+}
+// Hooked in loop per gestire il fade-out del ghost
+function tickArrowFade(now) {
+  if (!arrowFadeMesh || !arrowFadeMat) return;
+  const elapsed = now - arrowFadeStart;
+  if (elapsed >= ARROW_FADE_MS) {
+    // Fade completato, rimuovi il ghost
+    cabin.remove(arrowFadeMesh);
+    if (arrowFadeMat.map) arrowFadeMat.map.dispose();
+    arrowFadeMesh = null;
+    arrowFadeMat = null;
+    return;
+  }
+  // Lerp alpha 1.0 → 0.0 durante ARROW_FADE_MS
+  arrowFadeMat.opacity = 1.0 - (elapsed / ARROW_FADE_MS);
+}
 setArrow('idle');
 
 // ============================================================
@@ -6874,6 +6925,8 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
+  tickArrowFade(now);
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
   corridor.position.y = cabin.position.y;
   // Polish Pack V2 Step 1c: assert contratti state (no-op in produzione)
