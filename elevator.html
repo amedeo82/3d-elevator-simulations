@@ -613,6 +613,7 @@
     <div class="row"><span class="lbl" id="m-pax-lbl"></span><span class="val" id="m-pax">--</span></div>
     <div class="row"><span class="lbl" id="m-mode-lbl"></span><span class="val" id="m-mode">--</span></div>
     <div class="row"><span class="lbl" id="m-ooo-lbl"></span><span class="val" id="m-ooo">--</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-lbl"></span><span class="val" id="m-interphone">--</span></div>
     <div class="events" id="m-events"></div>
     <div class="hint" id="m-hint"></div>
   </div>
@@ -807,6 +808,7 @@ const STRINGS = {
     maintMode: 'In cabina',
     maintOOO: 'Out-of-order',
     maintEvents: 'Eventi',
+    maintInterphone: 'Citofono',
     maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
@@ -1024,6 +1026,7 @@ const STRINGS = {
     maintMode: 'In cabin',
     maintOOO: 'Out-of-order',
     maintEvents: 'Events',
+    maintInterphone: 'Interphone',
     maintHint: 'Shift+M to exit \u00b7 1-9 to teleport',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
@@ -6301,7 +6304,8 @@ function tickMaintenance(now) {
     'm-queue-lbl': s.maintQueue + ':',
     'm-pax-lbl': s.maintPax + ':',
     'm-mode-lbl': s.maintMode + ':',
-    'm-ooo-lbl': s.maintOOO + ':'
+    'm-ooo-lbl': s.maintOOO + ':',
+    'm-interphone-lbl': s.maintInterphone + ':'
   };
   for (const [id, txt] of Object.entries(lblMap)) {
     const el = document.getElementById(id);
@@ -6329,6 +6333,11 @@ function tickMaintenance(now) {
   document.getElementById('m-pax').textContent = `${state.passengers}/8`;
   document.getElementById('m-mode').textContent = state.playerInCabin ? STRINGS[state.lang].maintMode.toLowerCase() : STRINGS[state.lang].corridorMode.toLowerCase();
   document.getElementById('m-ooo').textContent = state.outOfOrder ? (state.lang === 'en' ? 'YES' : 'SÌ') : (state.lang === 'en' ? 'no' : 'no');
+  // Polish Pack V2 Step 14d: riga HUD manutentore "Citofono" (ON/OFF).
+  // Usa interphoneStatusLabel (esposto in BossHotelPure) per consistenza
+  // con i test. Il helper accetta state+lang e ritorna l'etichetta i18n.
+  const ipEl = document.getElementById('m-interphone');
+  if (ipEl) ipEl.textContent = interphoneStatusLabel(state, state.lang);
   document.getElementById('m-events').innerHTML = (state._eventLog || [])
     .map(e => `<div>${e}</div>`).join('');
 }
