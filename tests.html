@@ -395,14 +395,25 @@
           const r = P.pickNextFloor(q, 'up');
           assertEq(r.floor, 8);
         });
-        test('inversione: se no stessa dir, prende opposta', () => {
+        test('inversione: cabina sale, coda tutta down → va al piano piu basso', () => {
           const q = [
             { floor: 9, direction: 'down' },
             { floor: 2, direction: 'down' }
           ];
-          // cabina va su → cerca up; non c'è → inversione, prende il piu alto dei down
+          // cabina sale → cerca up; non c'è → inversione a scendere
+          // → cabina va al piano piu basso (piu lontano in giu)
           const r = P.pickNextFloor(q, 'up');
-          assertEq(r.floor, 9);
+          assertEq(r.floor, 2);
+        });
+        test('inversione: cabina scende, coda tutta up → va al piano piu alto', () => {
+          const q = [
+            { floor: 3, direction: 'up' },
+            { floor: 8, direction: 'up' }
+          ];
+          // cabina scende → cerca down; non c'è → inversione a salire
+          // → cabina va al piano piu alto (piu lontano in su)
+          const r = P.pickNextFloor(q, 'down');
+          assertEq(r.floor, 8);
         });
         test('lastDirection null → FIFO', () => {
           const q = [
