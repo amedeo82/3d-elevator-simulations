@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 3.1 — Polish Pack V2 Step 12 (test framework leggero)** · Aggiornato 2026-09-16
+**Versione 3.2 — Polish Pack V2 Step 14 (citofono interattivo)** · Aggiornato 2026-09-17
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -22,8 +22,12 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | 8 | i18n IT/EN (backlog #12) | ✅ |
 | 9-14 | Altri step (shaft, eventi, L-block, test, WebXR, citofono) | ⏳ |
 | 12 | Test framework leggero (`tests.html` + `BossHotelPure`) | ✅ |
+| 14 | Citofono interattivo (EN 81-28) + pairing soft/hard SOS | ✅ |
 
-**Totale Polish Pack V2**: 8 step done (1, 2, 3, 4, 5, 7, 8, 12), 1 saltato (6), 5 in coda (9, 10, 11, 13, 14).
+**Totale Polish Pack V2**: 9 step done (1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 14), 1 saltato (6), 3 in coda (11, 13).
+
+> Nota: lo Step 9 risultava gia' merged in PIANO_MIGLIORAMENTI v3.0 ma non era
+> nella tabella di riepilogo. Corretto: Polish Pack V2 ora totalizza 10 step done.
 
 ---
 
@@ -58,6 +62,7 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | Polish Pack V2 Step 9 | ✅ Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva) |
 | Polish Pack V2 Step 10 | ✅ Vita dell'hotel (NPC + suoni contestuali + giorno/notte + log manutenzione) |
 | Polish Pack V2 Step 12 | ✅ Test framework leggero (`tests.html` con 46 assert vanilla + `window.BossHotelPure` + CI integration statica) |
+| Polish Pack V2 Step 14 | ✅ Citofono interattivo (EN 81-28) + pairing soft/hard SOS (53 test, nuovo HUD manutentore) |
 | File di progetto | `elevator.html` (~305KB, 7.434 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
@@ -145,6 +150,71 @@ framework. **Decisioni approvate** (vedi `PIANO_V2.md` §Step 12):
 - I refactor dei call site esistenti (es. 8 occorrenze `floor === 0 ? 'T' : String(floor)`
   → `floorLabel(f)`) sono **deferiti** a Polish Pack successivo per minimizzare
   il rischio di regressione in questa fase.
+
+### Fase 17 — Polish Pack V2 Step 14: Citofono interattivo + pairing SOS ✅ (2026-09-17, branch `feature/v2-step-14-interphone`)
+
+Step Polish aggiunto per dare coerenza realistica EN 81-28 al simulatore:
+il citofono (presente dalla Fase 1 come dettaglio decorativo) diventa
+cliccabile, distinto dal tasto SOS. **Decisioni approvate** (vedi `PIANO_V2.md` §Step 14):
+
+- **Q14.1 = C** (tutto: 14a + 14b + 14c + 14d)
+- **Q14.2 = B** (citofono reception soft / SOS soccorsi hard, due sistemi distinti)
+- **Q14.3 = B** (voce reception simulata dopo 2s)
+- **Q14.4 = B** (nuova sezione dedicata dopo `toggleAlarm`)
+- **Q14.5 = B** (commit separati 14a/14b/14c/14d)
+
+**Deliverable**:
+
+1. **14a — Citofono interattivo**: il `phoneBtn` (pulsante verde cilindrico
+   sulla parete destra della cabina) riceve `userData.isButton = true` +
+   `userData.action = 'interphone'`, viene aggiunto a `buttonList` e
+   dispatcha `handleInterphoneCall()`. Stato `interphoneCalling` (booleano)
+   + `_interphoneStart` (timestamp) + `_interphoneReceptionAnnounced` (flag
+   per voce reception) + `_interphoneButton` (riferimento al mesh per
+   lampeggio). Click → beep 660Hz + TTS "Chiamata in corso. Attendere prego."
+   + subtitle HUD + `bus.emit('interphone:on')` + `savePrefs()` + `logEvent`.
+   `tickInterphoneCall(now)` integrato nel loop RAF gestisce lampeggio
+   emissive pulsante verde a 4Hz + timeout automatico 5s. Blocca se
+   `state.outOfOrder` (rifiuto con beep 220Hz + subtitle).
+
+2. **14b — Pairing soft/hard + voce reception**: documentazione estesa nel
+   codice esplicita i due sistemi EN 81-28 (citofono soft reception /
+   SOS hard soccorsi). A 2s dall'inizio chiamata, TTS pronuncia
+   "Centralino. Buongiorno. Come posso aiutarla?" (IT) / "Reception.
+   Good morning. How may I help you?" (EN). I due sistemi sono
+   indipendenti (nessuna escalation, nessun blocco cabina per citofono).
+   Helper puri aggiunti a `window.BossHotelPure`: `interphoneDurationMs`,
+   `isInterphoneActive(s)`, `interphoneStatusLabel(s, lang)`.
+
+3. **14c — Persistenza stato**: aggiunto `interphone` al payload
+   `bossHotelPrefs@v1` (versione invariata 1, campo additivo).
+   `savePrefs()` salva a ogni start/stop chiamata. `loadPrefs()` legge:
+   se true al boot, resetta a false e mostra subtitle "Chiamata citofono
+   interrotta dal refresh della pagina" (IT) / "Interphone call
+   interrupted by page reload" (EN) per 4s. Rationale: la connessione
+   simulata decade al refresh.
+
+4. **14d — HUD manutentore**: nuova riga in `#maint-overlay` (Shift+M):
+   "Citofono: ATTIVO|NON ATTIVO" (IT) / "Interphone: ON|OFF" (EN).
+   Aggiornamento live ogni frame tramite `interphoneStatusLabel(state, state.lang)`.
+
+5. **Test**: nuova sezione "citofono (interphone helper puri)" in `tests.html`
+   con 6 assert (duration > 0, isActive vari, labels IT/EN, stato null/undefined).
+   Totale: **53 test** (47 → 53). Branch CI `tests` mantiene soglia ≥ 30.
+
+**Sinergie con step precedenti**:
+- Si integra con `BossHotelPure` (Step 12) per test deterministici
+- Rispetta pattern `bus.emit` (Step 1d) per audit/log eventi
+- Rispetta pattern `localStorage.bossHotelPrefs@v1` (Fase 8) per persistenza
+- Rispetta pattern i18n `STRINGS[state.lang]` (Step 8) per labels HUD
+
+**Limiti / non-obiettivi**:
+- Nessuna escalation citofono → SOS: la richiesta realistica EN 81-28 è
+  che il citofono chiami solo la reception; l'utente deve premere SOS
+  separatamente se servono i soccorsi.
+- Nessun cambio al flusso di allarme esistente: `toggleAlarm` invariato.
+- Il lampeggio del pulsante verde è puramente emissive (no animazione
+  geometrica) per impatto performance trascurabile.
 
 ---
 

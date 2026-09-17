@@ -613,6 +613,7 @@
     <div class="row"><span class="lbl" id="m-pax-lbl"></span><span class="val" id="m-pax">--</span></div>
     <div class="row"><span class="lbl" id="m-mode-lbl"></span><span class="val" id="m-mode">--</span></div>
     <div class="row"><span class="lbl" id="m-ooo-lbl"></span><span class="val" id="m-ooo">--</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-lbl"></span><span class="val" id="m-interphone">--</span></div>
     <div class="events" id="m-events"></div>
     <div class="hint" id="m-hint"></div>
   </div>
@@ -807,6 +808,7 @@ const STRINGS = {
     maintMode: 'In cabina',
     maintOOO: 'Out-of-order',
     maintEvents: 'Eventi',
+    maintInterphone: 'Citofono',
     maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
@@ -1024,6 +1026,7 @@ const STRINGS = {
     maintMode: 'In cabin',
     maintOOO: 'Out-of-order',
     maintEvents: 'Events',
+    maintInterphone: 'Interphone',
     maintHint: 'Shift+M to exit \u00b7 1-9 to teleport',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
@@ -1494,7 +1497,14 @@ const state = {
   onboarded: false,           // true dopo aver completato il tutorial iniziale
   tutorialActive: false,      // true quando il tutorial e' in overlay
   tutorialStep: 0,            // step corrente del tutorial (0..N-1)
-  lastInteractionTs: 0        // timestamp ultima interazione (per prompt inattivita')
+  lastInteractionTs: 0,       // timestamp ultima interazione (per prompt inattivita')
+  // Polish Pack V2 Step 14: citofono interattivo (EN 81-28). Stato
+  // separato dall'allarme (state.alarmOn): citofono = chiamata soft
+  // reception, SOS = allarme hard soccorsi. Possono coesistere.
+  interphoneCalling: false,   // true durante una chiamata citofono (5s)
+  _interphoneStart: 0,        // performance.now() di inizio chiamata
+  _interphoneReceptionAnnounced: false,  // true dopo che la voce reception e' stata pronunciata
+  _interphoneButton: null     // reference al mesh del pulsante verde (lazy)
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -2547,6 +2557,14 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
   );
   phoneBtn.rotation.x = Math.PI / 2;
   phoneBtn.position.set(0, -0.04, 0.011);
+  // Polish Pack V2 Step 14a: citofono interattivo. Il pulsante verde
+  // diventa cliccabile: userData.isButton per il raycaster, action
+  // 'interphone' dispatcha a handleInterphoneCall() (definito dopo
+  // toggleAlarm). L'aggiunta a buttonList lo rende raggiungibile dal
+  // ciclo di hover/click.
+  phoneBtn.userData.isButton = true;
+  phoneBtn.userData.action = 'interphone';
+  phoneBtn.userData.buttonTop = phoneBtn;  // per animazione pressione
   phoneGroup.add(phoneBtn);
   // etichetta "INTERFONO"
   const phoneLabel = (() => {
@@ -2570,6 +2588,13 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
   phoneGroup.position.set(CABIN.w/2 - 0.005, 0.7, 0.0);
   phoneGroup.rotation.y = -Math.PI / 2;
   cabin.add(phoneGroup);
+  // Polish Pack V2 Step 14a: registra il pulsante verde nella buttonList
+  // globale. Cosi' il raycaster (hover + click) lo riconosce come pulsante
+  // e pressButton() dispatcha l'action 'interphone'.
+  buttonList.push(phoneBtn);
+  // aggancia il riferimento al mesh nello state per tickInterphoneCall()
+  // (lazy: viene anche impostato in pressButton come fallback)
+  state._interphoneButton = phoneBtn;
 }
 
 // ---- Targhetta "BOSS HOTEL" e certificazioni (vicino al pannello) ----
@@ -6279,7 +6304,8 @@ function tickMaintenance(now) {
     'm-queue-lbl': s.maintQueue + ':',
     'm-pax-lbl': s.maintPax + ':',
     'm-mode-lbl': s.maintMode + ':',
-    'm-ooo-lbl': s.maintOOO + ':'
+    'm-ooo-lbl': s.maintOOO + ':',
+    'm-interphone-lbl': s.maintInterphone + ':'
   };
   for (const [id, txt] of Object.entries(lblMap)) {
     const el = document.getElementById(id);
@@ -6307,6 +6333,11 @@ function tickMaintenance(now) {
   document.getElementById('m-pax').textContent = `${state.passengers}/8`;
   document.getElementById('m-mode').textContent = state.playerInCabin ? STRINGS[state.lang].maintMode.toLowerCase() : STRINGS[state.lang].corridorMode.toLowerCase();
   document.getElementById('m-ooo').textContent = state.outOfOrder ? (state.lang === 'en' ? 'YES' : 'SÌ') : (state.lang === 'en' ? 'no' : 'no');
+  // Polish Pack V2 Step 14d: riga HUD manutentore "Citofono" (ON/OFF).
+  // Usa interphoneStatusLabel (esposto in BossHotelPure) per consistenza
+  // con i test. Il helper accetta state+lang e ritorna l'etichetta i18n.
+  const ipEl = document.getElementById('m-interphone');
+  if (ipEl) ipEl.textContent = interphoneStatusLabel(state, state.lang);
   document.getElementById('m-events').innerHTML = (state._eventLog || [])
     .map(e => `<div>${e}</div>`).join('');
 }
@@ -6743,6 +6774,126 @@ function toggleAlarm() {
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
 }
 
+// Polish Pack V2 Step 14b: PAIRING CITOFONO <-> SOS
+// Due sistemi di emergenza distinti (Q14.2=B):
+//   - CITOFONO (state.interphoneCalling) = chiamata SOFT alla reception
+//     operatoria dell'hotel. EN 81-28. Comportamento:
+//       * Nessun blocco cabina, nessuna chiusura porte forzata.
+//       * Nessuna luce rossa, nessuna sirena.
+//       * Lampeggio pulsante verde a 4Hz per 5s.
+//       * TTS soft: 'Chiamata in corso. Attendere prego.'
+//       * Voce reception simulata dopo 2s (Q14.3=B):
+//         'Centralino. Buongiorno. Come posso aiutarla?'
+//       * Subtitle HUD sincronizzato.
+//       * logEvent + bus.emit('interphone:on'/'interphone:off').
+//
+//   - SOS (state.alarmOn via toggleAlarm) = allarme HARD soccorsi.
+//     EN 81-28 §5.4 / ASME A17.1 §2.27. Comportamento:
+//       * Blocco cabina immediato (movePaused=true).
+//       * Chiusura porte forzata, annullamento auto-close.
+//       * Luci rosse pulsanti + sirena alternata 660/880Hz.
+//       * TTS hard: 'Allarme. Chiamata di soccorsi in corso. Restate calmi.'
+//
+// I due sistemi sono INDIPENDENTI: il giocatore può attivare il citofono
+// mentre l'allarme è attivo (e viceversa) senza conflitti. Le luci rosse
+// dell'allarme hanno priorita' visiva sulla cabina; il citofono lampeggia
+// sul pulsante verde indipendentemente dal contesto.
+// Nessuna escalation: citofono non chiama automaticamente i soccorsi.
+
+// ============================================================
+// POLISH PACK V2 STEP 14 — CITOFONO INTERATTIVO (EN 81-28)
+// Sistema di chiamata "soft" alla reception, distinto dal SOS (allarme
+// soccorsi "hard" gestito da toggleAlarm). Citofono e SOS possono essere
+// attivi contemporaneamente senza conflitti.
+// ============================================================
+const INTERPHONE_DURATION_MS = 5000;     // durata totale della chiamata
+const INTERPHONE_RECEPTION_DELAY_MS = 2000;  // delay prima della voce reception
+const INTERPHONE_BLINK_HZ = 4;           // frequenza lampeggio pulsante verde
+
+// pure: durata totale della chiamata in ms. Esposto in BossHotelPure.
+function interphoneDurationMs() { return INTERPHONE_DURATION_MS; }
+// pure: true se la chiamata è attiva (semplice lettura state wrapper).
+function isInterphoneActive(s) { return !!(s && s.interphoneCalling); }
+// pure: etichetta i18n per lo stato del citofono ('ON' | 'OFF').
+function interphoneStatusLabel(s, lang) {
+  return isInterphoneActive(s)
+    ? (lang === 'en' ? 'ON' : 'ATTIVO')
+    : (lang === 'en' ? 'OFF' : 'NON ATTIVO');
+}
+
+// handleInterphoneCall: avvia una nuova chiamata al citofono.
+// Se gia' attiva, ignora (idempotente). Annuncio TTS soft, lampeggio
+// pulsante verde, subtitle HUD. La voce reception simulata (Q14.3=B)
+// viene pronunciata dopo INTERPHONE_RECEPTION_DELAY_MS dal tick.
+function handleInterphoneCall() {
+  if (state.interphoneCalling) return;  // gia' in corso, ignora
+  if (state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    showSubtitle(state.lang === 'en'
+      ? 'Interphone unavailable (out of service)'
+      : 'Citofono non disponibile (fuori servizio)', 3000);
+    return;
+  }
+  state.interphoneCalling = true;
+  state._interphoneStart = performance.now();
+  state._interphoneReceptionAnnounced = false;
+  // beep breve di conferma
+  if (typeof playBeep === 'function') playBeep(660, 0.1, 'sine', 0.1);
+  // annuncio soft + subtitle
+  const txt = state.lang === 'en'
+    ? 'Calling. Please wait.'
+    : 'Chiamata in corso. Attendere prego.';
+  if (typeof speak === 'function') speak(txt);
+  if (typeof showSubtitle === 'function') showSubtitle(txt, 3000);
+  // log per maintenance overlay
+  if (typeof logEvent === 'function') logEvent('interphone:start');
+  // evento bus per audit/eventuali consumatori futuri
+  if (typeof bus !== 'undefined' && bus) bus.emit('interphone:on');
+  // salvataggio prefs (la chiamata e' uno stato transitorio ma
+  // lo salviamo per consentire a 14c la persistenza post-refresh)
+  if (typeof savePrefs === 'function') savePrefs();
+}
+
+// tickInterphoneCall: aggiorna lo stato del citofono. Chiamato dal
+// loop RAF ogni frame. Gestisce: lampeggio pulsante verde, voce
+// reception dopo 2s, termine automatico della chiamata.
+function tickInterphoneCall(now) {
+  if (!state.interphoneCalling) return;
+  const elapsed = now - state._interphoneStart;
+  // voce reception simulata (Q14.3=B): dopo 2s, pronuncia TTS di benvenuto
+  if (!state._interphoneReceptionAnnounced && elapsed >= INTERPHONE_RECEPTION_DELAY_MS) {
+    state._interphoneReceptionAnnounced = true;
+    const txt = state.lang === 'en'
+      ? 'Reception. Good morning. How may I help you?'
+      : 'Centralino. Buongiorno. Come posso aiutarla?';
+    if (typeof speak === 'function') speak(txt);
+    if (typeof showSubtitle === 'function') showSubtitle(txt, 3000);
+    if (typeof logEvent === 'function') logEvent('interphone:reception');
+  }
+  // lampeggio pulsante verde: alterna emissive intensity a INTERPHONE_BLINK_HZ
+  const btn = state._interphoneButton;
+  if (btn && btn.material) {
+    const phase = (now / 1000) * INTERPHONE_BLINK_HZ * 2 * Math.PI;
+    const k = 0.5 + 0.5 * Math.sin(phase);
+    btn.material.emissiveIntensity = 0.15 + k * 0.85;  // 0.15..1.0
+  }
+  // termine automatico della chiamata
+  if (elapsed >= INTERPHONE_DURATION_MS) stopInterphoneCall('timeout');
+}
+
+// stopInterphoneCall: termina la chiamata citofono. Chiamato da
+// tickInterphoneCall al timeout o manualmente. Ripristina emissive
+// intensity del pulsante e pulisce stato.
+function stopInterphoneCall(reason) {
+  if (!state.interphoneCalling) return;
+  state.interphoneCalling = false;
+  const btn = state._interphoneButton;
+  if (btn && btn.material) btn.material.emissiveIntensity = 0.3;  // valore originale
+  if (typeof logEvent === 'function') logEvent('interphone:stop:' + (reason || 'manual'));
+  if (typeof bus !== 'undefined' && bus) bus.emit('interphone:off');
+  if (typeof savePrefs === 'function') savePrefs();
+}
+
 // ============================================================
 // ESCI / RIENTRA DALLA CABINA
 // ============================================================
@@ -6970,6 +7121,13 @@ function pressButton(btn) {
     if (!state.playerInCabin) {
       requestFloor(state.currentFloor, btn.userData.direction);
     }
+  } else if (btn.userData.action === 'interphone') {
+    // Polish Pack V2 Step 14a: citofono interattivo. Sistema "soft"
+    // (chiamata reception) distinto dal SOS (toggleAlarm, "hard").
+    // Se state._interphoneButton non e' stato ancora agganciato, fallo
+    // qui lazy (copre il caso di inizializzazione posticipata).
+    if (!state._interphoneButton) state._interphoneButton = btn;
+    handleInterphoneCall();
   }
 }
 
@@ -7417,6 +7575,8 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 14: gestione chiamata citofono (lampeggio + voce reception + timeout)
+  tickInterphoneCall(now);
   // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
   tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
@@ -7545,6 +7705,15 @@ function loadPrefs() {
       if (typeof p.muted === 'boolean') state.muted = p.muted;
       if (typeof p.tts === 'boolean') ttsEnabled = p.tts;
       if (typeof p.night === 'boolean') state.nightMode = p.night;
+      // Polish Pack V2 Step 14c: persistenza stato citofono.
+      // Una chiamata citofono non puo' sopravvivere a un page reload
+      // (la connessione con la reception e' simulata e decade al refresh).
+      // Se al load era true, mostra subtitle informativo e resetta a false.
+      if (typeof p.interphone === 'boolean' && p.interphone) {
+        state.interphoneCalling = false;
+        // segnala per il deferred subtitle (eseguito dopo init DOM)
+        pendingInterphoneInterruptNotice = true;
+      }
     }
   } catch(e) { /* localStorage non disponibile o corrotto: ignora */ }
 }
@@ -7555,13 +7724,31 @@ function savePrefs() {
       muted: state.muted,
       tts: ttsEnabled,
       night: state.nightMode,
+      // Polish Pack V2 Step 14c: persistenza stato citofono
+      interphone: state.interphoneCalling,
     }));
   } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
 }
 
+// Polish Pack V2 Step 14c: flag per mostrare subtitle "Chiamata interrotta
+// dal refresh" al primo paint dopo loadPrefs(). Verrà consumato in init().
+let pendingInterphoneInterruptNotice = false;
+
 loadPrefs();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
+// Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
+if (pendingInterphoneInterruptNotice) {
+  pendingInterphoneInterruptNotice = false;
+  // mostra subtitle dopo che showSubtitle e' disponibile (in pratica subito)
+  setTimeout(() => {
+    if (typeof showSubtitle === 'function') {
+      showSubtitle(state.lang === 'en'
+        ? 'Interphone call interrupted by page reload'
+        : 'Chiamata citofono interrotta dal refresh della pagina', 4000);
+    }
+  }, 1500);
+}
 // Polish Pack V2 Step 10c: determina dayPhase iniziale (giorno/sera/notte) e applica luci
 state.dayPhase = getDayPhase();
 applyTimeOfDayLights(state.dayPhase);
@@ -7909,6 +8096,8 @@ window.BossHotelPure = {
   // funzioni originali gia' pure
   floorRoomRange, getThemeForFloor, parseHexColor,
   getDayPhase, easeInOutCubic,
+  // helper citofono (Polish Pack V2 Step 14)
+  interphoneDurationMs, isInterphoneActive, interphoneStatusLabel,
   // costanti utili per i test
   NUM_FLOORS
 };
