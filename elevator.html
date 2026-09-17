@@ -6765,6 +6765,32 @@ function toggleAlarm() {
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
 }
 
+// Polish Pack V2 Step 14b: PAIRING CITOFONO <-> SOS
+// Due sistemi di emergenza distinti (Q14.2=B):
+//   - CITOFONO (state.interphoneCalling) = chiamata SOFT alla reception
+//     operatoria dell'hotel. EN 81-28. Comportamento:
+//       * Nessun blocco cabina, nessuna chiusura porte forzata.
+//       * Nessuna luce rossa, nessuna sirena.
+//       * Lampeggio pulsante verde a 4Hz per 5s.
+//       * TTS soft: 'Chiamata in corso. Attendere prego.'
+//       * Voce reception simulata dopo 2s (Q14.3=B):
+//         'Centralino. Buongiorno. Come posso aiutarla?'
+//       * Subtitle HUD sincronizzato.
+//       * logEvent + bus.emit('interphone:on'/'interphone:off').
+//
+//   - SOS (state.alarmOn via toggleAlarm) = allarme HARD soccorsi.
+//     EN 81-28 §5.4 / ASME A17.1 §2.27. Comportamento:
+//       * Blocco cabina immediato (movePaused=true).
+//       * Chiusura porte forzata, annullamento auto-close.
+//       * Luci rosse pulsanti + sirena alternata 660/880Hz.
+//       * TTS hard: 'Allarme. Chiamata di soccorsi in corso. Restate calmi.'
+//
+// I due sistemi sono INDIPENDENTI: il giocatore può attivare il citofono
+// mentre l'allarme è attivo (e viceversa) senza conflitti. Le luci rosse
+// dell'allarme hanno priorita' visiva sulla cabina; il citofono lampeggia
+// sul pulsante verde indipendentemente dal contesto.
+// Nessuna escalation: citofono non chiama automaticamente i soccorsi.
+
 // ============================================================
 // POLISH PACK V2 STEP 14 — CITOFONO INTERATTIVO (EN 81-28)
 // Sistema di chiamata "soft" alla reception, distinto dal SOS (allarme
@@ -8034,6 +8060,8 @@ window.BossHotelPure = {
   // funzioni originali gia' pure
   floorRoomRange, getThemeForFloor, parseHexColor,
   getDayPhase, easeInOutCubic,
+  // helper citofono (Polish Pack V2 Step 14)
+  interphoneDurationMs, isInterphoneActive, interphoneStatusLabel,
   // costanti utili per i test
   NUM_FLOORS
 };

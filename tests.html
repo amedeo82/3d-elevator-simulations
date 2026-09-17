@@ -424,6 +424,32 @@
           assertEq(r.floor, 5); // primo inserito
         });
       });
+
+      // ---- citofono (Step 14) ------------------------------------
+      describe('citofono (interphone helper puri)', () => {
+        test('interphoneDurationMs > 0', () => {
+          assert(P.interphoneDurationMs() > 0);
+        });
+        test('isInterphoneActive: state vuoto → false', () => {
+          assertEq(P.isInterphoneActive({}), false);
+          assertEq(P.isInterphoneActive({ interphoneCalling: false }), false);
+        });
+        test('isInterphoneActive: state true → true', () => {
+          assertEq(P.isInterphoneActive({ interphoneCalling: true }), true);
+        });
+        test('isInterphoneActive: state null/undefined → false', () => {
+          assertEq(P.isInterphoneActive(null), false);
+          assertEq(P.isInterphoneActive(undefined), false);
+        });
+        test('interphoneStatusLabel IT: ON/OFF', () => {
+          assertEq(P.interphoneStatusLabel({ interphoneCalling: true }, 'it'), 'ATTIVO');
+          assertEq(P.interphoneStatusLabel({ interphoneCalling: false }, 'it'), 'NON ATTIVO');
+        });
+        test('interphoneStatusLabel EN: ON/OFF', () => {
+          assertEq(P.interphoneStatusLabel({ interphoneCalling: true }, 'en'), 'ON');
+          assertEq(P.interphoneStatusLabel({ interphoneCalling: false }, 'en'), 'OFF');
+        });
+      });
     }
 
     // ============================================================
