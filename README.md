@@ -657,18 +657,31 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
       le porte fuori dalla cabina.~~ **Sostituito dal comportamento più realistico
       di v1.7** (auto-close + prenotazione lobby-only).
 
-### 🎉 Polish Pack V2 — completato (Steps 1-5, 7, 8, 9, branch `feature/polish-pack-v2-step-N`)
+### 🎉 Polish Pack V2 — **CHIUSO 2026-09-17** (10/13 step, 77%)
 - [x] **Step 1** Salute del codice — CI GitHub Actions + `AGENTS.md` + audit `state` (STATE.md, 26+ campi) + mini event bus homemade
 - [x] **Step 2** UX invisibile — sensore IR anti-ostacolo (ASME A17.1 §2.13.5) + tutorial contestuale prima volta (5 step, tasto `?`, prompt inattività 30s)
 - [x] **Step 3** Audio contestuale corridoi + musica ristorante — 4 temi corridoio (3 layer ciascuno) + chitarra classica + piatti al piano 8
 - [x] **Step 4** Meteo evoluto — stagionalità mensile (clima Roma) + 3 nuove condizioni (grandine, foschia, vento) + slide 24h con previsioni
 - [x] **Step 5** Personalizzazione hotel — `HOTEL_CONFIG` (17 campi, refactor 23 stringhe hardcoded) + HUD overlay tasto `H` + 4 preset (Boss Hotel / Sky Tower Tokyo / Hôtel de Paris / Burj Al Arab) + persistenza `localStorage.bossHotelConfig@v1`
+- [ ] **Step 6** PWA installabile (saltato) — vedi `PIANO_V2.md` per razionale
 - [x] **Step 7** Pulsantiera ▲/▼ semantica — coda `{floor, direction}` invece di Set + helper queueNextSmart (serve stessa direzione, poi inversione automatica) + visualizzazione intenzione su cartello + icona ↻ su pulsantiera esterna
 - [x] **Step 8** i18n IT/EN — `STRINGS[lang]` dictionary (~120 chiavi) + Tasto L toggle + bottone UI IT/EN + auto-detect navigator.language + persistenza `localStorage.bossHotelLang@v1` + TTS en-GB prioritaria + helper `t(key)` + `applyLangToDOM()` consolidata + refactor HTML statico → generazione dinamica (panel-help, start screen, customizer, tutorial, maintenance overlay) + tutti gli annunci/subtitle/status italiani tradotti
 - [x] **Step 9** Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva easeInOutCubic + weesh sincronizzato) — originariamente era "Shaft dietro le quinte" ma ripensato perché non visibile in prima persona. Sostituito con feature percepibili dal giocatore.
 - [x] **Step 10** Vita dell'hotel (NPC passeggeri + suoni contestuali corridoio + ciclo giorno/notte + log manutenzione realistica) — originariamente era "Eventi speciali hotel" (matrimonio/conferenza) ma ripensato per dare game value al simulatore first-person (decorazioni corridoio visibili solo uscendo dalla cabina, narrative debole). Sostituito con 4 feature coordinabili che danno vita al simulatore.
-- [x] **Step 12** Test framework leggero — `window.BossHotelPure` namespace (13 funzioni pure: `clamp`, `lerp`, `smoothstep`, `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`, `floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`, `easeInOutCubic` + `NUM_FLOORS`) + `tests.html` (47 assert vanilla, 12 sezioni, iframe sandbox + reporter DOM + export JSON) + secondo job CI `tests` per validazione statica (presenza namespace + conteggio test ≥ 30 + referenziamento elevator.html). Branch `feature/v2-step-12-tests`. Decisioni: Q12.1=C, Q12.2=A (vanilla), Q12.3=A (separato), Q12.4=B (47 test > 30 minimi), Q12.5=C (manuale + export JSON).
-- [x] **Step 14** Citofono interattivo (EN 81-28) + pairing SOS — `phoneBtn` diventa cliccabile (click → lampeggio verde 4Hz 5s + TTS "Chiamata in corso. Attendere prego." + voce reception simulata "Centralino. Buongiorno. Come posso aiutarla?" dopo 2s + subtitle HUD). Stato `state.interphoneCalling` separato da `state.alarmOn` (citofono=soft reception, SOS=hard soccorsi, due sistemi indipendenti). Persistenza `bossHotelPrefs@v1` con subtitle "Chiamata interrotta dal refresh" al reload. Nuova riga HUD manutentore (Shift+M) "Citofono: ATTIVO|NON ATTIVO" / "Interphone: ON|OFF". Helper puri `interphoneDurationMs`, `isInterphoneActive`, `interphoneStatusLabel` in `BossHotelPure` + 6 test in `tests.html` (totale 53). Branch `feature/v2-step-14-interphone`. Decisioni: Q14.1=C, Q14.2=B (due sistemi distinti), Q14.3=B (voce reception dopo 2s), Q14.4=B (nuova sezione dopo toggleAlarm), Q14.5=B (4 commit separati 14a/14b/14c/14d).
+- [ ] **Step 11** L-block parametrico (rinviato a V3+)
+- [x] **Step 12** Test framework leggero — `window.BossHotelPure` namespace (13 funzioni pure) + `tests.html` (47 assert vanilla, 12 sezioni, iframe sandbox + reporter DOM + export JSON) + secondo job CI `tests` per validazione statica. Branch `feature/v2-step-12-tests`. Decisioni: Q12.1=C, Q12.2=A, Q12.3=A, Q12.4=B (47 > 30), Q12.5=C.
+- [ ] **Step 13** WebXR / multi-cabina (rinviato long-term)
+- [x] **Step 14** Citofono interattivo (EN 81-28) + pairing SOS — `phoneBtn` cliccabile (click → lampeggio verde 4Hz 5s + TTS "Chiamata in corso. Attendere prego." + voce reception simulata a 2s). Stato `state.interphoneCalling` separato da `state.alarmOn`. Persistenza `bossHotelPrefs@v1`. Nuova riga HUD manutentore. 6 test in `tests.html` (totale 53). Branch `feature/v2-step-14-interphone`. Decisioni: Q14.1=C, Q14.2=B, Q14.3=B, Q14.4=B, Q14.5=B.
+
+**Decisioni D-key** (10 contratti di progetto, vedi `AGENTS.md`):
+D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti.
+
+**Lessons learned V2** (input per V3): 10 insegnamenti in `PIANO_V2.md` §Stato finale. Punti chiave: decisioni via `question` funzionano, test framework cross-step, commit separati, D-key emergono organicamente, scope creep elevato (accettare riscritture).
+
+### 🎨 Polish Pack V3 — pianificazione (vedi `PIANO_V3.md`)
+- [ ] **Step 1** Scope discovery — decidere i 4-6 step V3 da menu Tier 1/2/3
+- [ ] **Step 2+** TBD (accessibility, bug fix UX, micro-animazioni, performance, settings QoL, docs, test coverage estesa)
+- **Contratti V3**: nessuna feature additiva grossa, ogni step aggiunge almeno 1 test/smoke test, workflow `question` tool, acceptance criteria espliciti, smoke test screenshot pre-merge.
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)
