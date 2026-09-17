@@ -29,7 +29,7 @@
 | 9 | Sensazioni realistiche cabina (vibrazione + crossfade + frenata) | 1 sessione | 🟢 | Polish | ✅ |
 | 10 | Vita dell'hotel (NPC + suoni contestuali + giorno/notte + log manutenzione) | 1 sessione | 🟢 | Polish | ✅ |
 | 11 | L-block: più piani parametrico + texture HD arredi | 1-2 sessioni | 🟡 | Feature | ⏳ |
-| 12 | Test framework leggero (unit test funzioni pure) | 1 sessione | 🟡 | DX | ⏳ |
+| 12 | Test framework leggero (unit test funzioni pure) | 1 sessione | 🟡 | DX | ✅ |
 | 13 | Long-term: WebXR, multi-cabina, multiplayer | future | 🟢 | Vision | ⏳ |
 | 14 | Citofono interattivo + pairing con tasto SOS | 1 sessione | 🟡 | Polish | ⏳ |
 
