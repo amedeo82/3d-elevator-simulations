@@ -26,6 +26,18 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 > resta manuale. Branch `feature/v2-step-12-tests`. Dettaglio:
 > `PIANO_MIGLIORAMENTI.md` §Fase 16 e `PIANO_V2.md` §Step 12.
 
+> **📞 Polish Pack V2 Step 14 (2026-09-17)** — Citofono interattivo (EN 81-28).
+> Il citofono sulla parete destra della cabina (pulsante verde, prima
+> solo decorativo dalla Fase 1) diventa cliccabile. Click → lampeggio
+> verde 4Hz per 5s + TTS "Chiamata in corso. Attendere prego." + voce
+> reception simulata "Centralino. Buongiorno. Come posso aiutarla?"
+> dopo 2s + subtitle HUD. Pairing soft/hard: citofono (reception) e SOS
+> (soccorsi via `toggleAlarm`) sono due sistemi distinti e indipendenti.
+> Stato persistito in `localStorage.bossHotelPrefs@v1`. Nuova riga
+> "Citofono: ON/OFF" nel maintenance overlay (Shift+M). 53 test totali
+> (+6 nuovi per helper citofono). Branch `feature/v2-step-14-interphone`.
+> Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 17 e `PIANO_V2.md` §Step 14.
+
 > **🛗 Hotfix v1.7 (2026-09-12)** — comportamento porte allineato allo standard ADA/ASME
 > A17.1 per ascensori reali: timer differenziato per piano (lobby 8s, altri piani 5s) e
 > prenotazione automatica dal corridoio limitata al solo piano T (lobby). Ai piani 1-9 le
@@ -207,6 +219,15 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
 - Luci rosse pulsanti, sirena alternata a due toni
 - Cabina bloccata, porte chiuse, annuncio vocale
 - Tasto STOP (giallo) per fermare immediatamente la cabina
+
+### 📞 Citofono interattivo (EN 81-28, Step 14)
+- **Click sul pulsante verde** del citofono (parete destra cabina) per chiamare la reception
+- **Lampeggio pulsante verde 4Hz** per 5 secondi + TTS "Chiamata in corso. Attendere prego."
+- **Voce reception simulata** dopo 2s: "Centralino. Buongiorno. Come posso aiutarla?" (IT) / "Reception. Good morning. How may I help you?" (EN)
+- **Pairing soft/hard**: citofono = chiamata SOFT alla reception, SOS (tasto !) = allarme HARD soccorsi. I due sistemi sono indipendenti (nessuna escalation, nessun blocco cabina per citofono)
+- **Persistenza**: stato `interphoneCalling` salvato in `localStorage.bossHotelPrefs@v1`; al refresh, mostra subtitle "Chiamata citofono interrotta dal refresh della pagina"
+- **HUD manutentore**: nuova riga "Citofono: ATTIVO|NON ATTIVO" / "Interphone: ON|OFF" nel maintenance overlay (Shift+M)
+- **Blocca se fuori servizio**: con tasto `O` attivo, citofono rifiuta la chiamata con beep 220Hz + subtitle
 
 ### 🛑 Modalità "Fuori servizio"
 - Tasto **O** per mettere l'ascensore in stato di manutenzione
@@ -647,6 +668,7 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 - [x] **Step 9** Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva easeInOutCubic + weesh sincronizzato) — originariamente era "Shaft dietro le quinte" ma ripensato perché non visibile in prima persona. Sostituito con feature percepibili dal giocatore.
 - [x] **Step 10** Vita dell'hotel (NPC passeggeri + suoni contestuali corridoio + ciclo giorno/notte + log manutenzione realistica) — originariamente era "Eventi speciali hotel" (matrimonio/conferenza) ma ripensato per dare game value al simulatore first-person (decorazioni corridoio visibili solo uscendo dalla cabina, narrative debole). Sostituito con 4 feature coordinabili che danno vita al simulatore.
 - [x] **Step 12** Test framework leggero — `window.BossHotelPure` namespace (13 funzioni pure: `clamp`, `lerp`, `smoothstep`, `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`, `floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`, `easeInOutCubic` + `NUM_FLOORS`) + `tests.html` (47 assert vanilla, 12 sezioni, iframe sandbox + reporter DOM + export JSON) + secondo job CI `tests` per validazione statica (presenza namespace + conteggio test ≥ 30 + referenziamento elevator.html). Branch `feature/v2-step-12-tests`. Decisioni: Q12.1=C, Q12.2=A (vanilla), Q12.3=A (separato), Q12.4=B (47 test > 30 minimi), Q12.5=C (manuale + export JSON).
+- [x] **Step 14** Citofono interattivo (EN 81-28) + pairing SOS — `phoneBtn` diventa cliccabile (click → lampeggio verde 4Hz 5s + TTS "Chiamata in corso. Attendere prego." + voce reception simulata "Centralino. Buongiorno. Come posso aiutarla?" dopo 2s + subtitle HUD). Stato `state.interphoneCalling` separato da `state.alarmOn` (citofono=soft reception, SOS=hard soccorsi, due sistemi indipendenti). Persistenza `bossHotelPrefs@v1` con subtitle "Chiamata interrotta dal refresh" al reload. Nuova riga HUD manutentore (Shift+M) "Citofono: ATTIVO|NON ATTIVO" / "Interphone: ON|OFF". Helper puri `interphoneDurationMs`, `isInterphoneActive`, `interphoneStatusLabel` in `BossHotelPure` + 6 test in `tests.html` (totale 53). Branch `feature/v2-step-14-interphone`. Decisioni: Q14.1=C, Q14.2=B (due sistemi distinti), Q14.3=B (voce reception dopo 2s), Q14.4=B (nuova sezione dopo toggleAlarm), Q14.5=B (4 commit separati 14a/14b/14c/14d).
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)
