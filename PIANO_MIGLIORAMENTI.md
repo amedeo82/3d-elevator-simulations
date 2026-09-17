@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 3.0 — Polish Pack V2 completo (Steps 1-5, 7, 8: refactor + UX + i18n)** · Aggiornato 2026-09-15
+**Versione 3.1 — Polish Pack V2 Step 12 (test framework leggero)** · Aggiornato 2026-09-16
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -21,8 +21,9 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | ✅ |
 | 8 | i18n IT/EN (backlog #12) | ✅ |
 | 9-14 | Altri step (shaft, eventi, L-block, test, WebXR, citofono) | ⏳ |
+| 12 | Test framework leggero (`tests.html` + `BossHotelPure`) | ✅ |
 
-**Totale Polish Pack V2**: 6 step done (1, 2, 3, 4, 5, 7, 8), 1 saltato (6), 6 in coda.
+**Totale Polish Pack V2**: 8 step done (1, 2, 3, 4, 5, 7, 8, 12), 1 saltato (6), 5 in coda (9, 10, 11, 13, 14).
 
 ---
 
@@ -56,6 +57,7 @@ Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato
 | Polish Pack V2 Step 8 | ✅ i18n IT/EN (backlog #12 chiuso — `STRINGS[lang]`, tasto L, refactor HTML, TTS en-GB) |
 | Polish Pack V2 Step 9 | ✅ Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva) |
 | Polish Pack V2 Step 10 | ✅ Vita dell'hotel (NPC + suoni contestuali + giorno/notte + log manutenzione) |
+| Polish Pack V2 Step 12 | ✅ Test framework leggero (`tests.html` con 46 assert vanilla + `window.BossHotelPure` + CI integration statica) |
 | File di progetto | `elevator.html` (~305KB, 7.434 righe, single file) + `dist/index.html` |
 
 **Tempo effettivo di sviluppo**: ~3 sessioni di lavoro, in linea con la stima iniziale di 10-12 ore.
@@ -88,6 +90,61 @@ all'inizio del movimento (`actuallyStartMove`). Rispetta `ttsEnabled`/`muted`.
 Hook diretto nella funzione di animazione del movimento, quindi funziona per
 qualsiasi origine della chiamata (click display, tasto 1-9, comando vocale,
 pulsantiera ▲/▼ esterna).
+
+### Fase 16 — Polish Pack V2 Step 12: Test framework leggero ✅ (2026-09-16, branch `feature/v2-step-12-tests`)
+
+Step DX (Developer Experience) aggiunto al volo: il backlog #12 originale del
+piano V1 era i18n (chiuso allo Step 8), il backlog #12 di V2 è il test
+framework. **Decisioni approvate** (vedi `PIANO_V2.md` §Step 12):
+
+- **Q12.1 = C** (struttura + test + CI integration)
+- **Q12.2 = A** (assert vanilla, zero dipendenze)
+- **Q12.3 = A** (`tests.html` separato)
+- **Q12.4 = B** (46 test comprensivi di casi limite, oltre i 30 minimi)
+- **Q12.5 = C** (manuale + export JSON per futura CI headless)
+
+**Deliverable**:
+
+1. **`window.BossHotelPure`** — namespace in `elevator.html` (esposto alla fine
+   dello script) che raccoglie 13 funzioni pure: `clamp`, `lerp`, `smoothstep`,
+   `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`,
+   `floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`,
+   `easeInOutCubic` + costante `NUM_FLOORS`. Per le funzioni con side-effect
+   (`adjustPassengersForFloor`, `queueNextSmart`) ho estratto la logica pura
+   in varianti stateless testabili.
+
+2. **`tests.html`** — file standalone che carica `elevator.html` in un iframe
+   sandboxato e esegue 46 assert vanilla su `iframe.contentWindow.BossHotelPure`.
+   Organizzati in 12 sezioni: `clamp` (3), `lerp` (4), `smoothstep` (4),
+   `floorLabel` (2), `clampFloor` (3), `floorRoomRange` (4), `getThemeForFloor`
+   (4), `parseHexColor` (4), `getDayPhase` (3), `easeInOutCubic` (3),
+   `computePassengerDelta` (6), `pickNextFloor` (6). Reporter DOM con
+   raggruppamento per sezione + export JSON dei risultati
+   (`window.__testResults`) scaricabile.
+
+3. **CI integration leggera** — secondo job in `.github/workflows/ci.yml`
+   (`tests`) che valida staticamente: presenza di `window.BossHotelPure` in
+   `elevator.html`, presenza di `tests.html`, conteggio `>= 30` invocazioni
+   `test(`, referenziamento `elevator.html` in `tests.html`. Nessuna
+   installazione di Playwright/Puppeteer (le esecuzioni browser restano
+   manuali in locale).
+
+**Sinergie con step precedenti**:
+- Le funzioni `pickNextFloor`/`computePassengerDelta` rendono testabile il
+  cuore della logica introdotta agli Step 7 (routing intelligente coda) e 10
+  (passeggeri NPC).
+- I test su `easeInOutCubic` (Step 9c, frenata/accelerazione progressiva)
+  e `smoothstep` (usata per il camera dolly in `tickPlayer`) proteggono da
+  regressioni nelle curve di animazione.
+
+**Limiti / non-obiettivi**:
+- I test NON eseguono la simulazione 3D (no rendering, no WebGL). Verificano
+  solo logica pura deterministica.
+- Il pattern iframe + `BossHotelPure` è leggermente invasivo ma resta
+  single-file (nessun asset esterno).
+- I refactor dei call site esistenti (es. 8 occorrenze `floor === 0 ? 'T' : String(floor)`
+  → `floorLabel(f)`) sono **deferiti** a Polish Pack successivo per minimizzare
+  il rischio di regressione in questa fase.
 
 ---
 

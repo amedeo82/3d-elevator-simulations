@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>BOSS HOTEL — Test Suite (Polish Pack V2 Step 12)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0e1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { color: #ffd66b; font-size: 24px; margin: 0 0 10px 0; }
+    .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+    .summary {
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .summary.pass { background: #1a3a1a; color: #6dff7c; border: 1px solid #2a5a2a; }
+    .summary.fail { background: #3a1a1a; color: #ff6d6d; border: 1px solid #5a2a2a; }
+    .test-list { list-style: none; padding: 0; }
+    .test-list li {
+      padding: 8px 12px;
+      margin: 2px 0;
+      border-radius: 4px;
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .test-list li.pass { background: rgba(109, 255, 124, 0.08); color: #6dff7c; }
+    .test-list li.fail { background: rgba(255, 109, 109, 0.08); color: #ff6d6d; }
+    .test-list li .name { flex: 1; }
+    .test-list li .status { font-weight: 700; margin-left: 12px; }
+    .section-header {
+      color: #ffd66b;
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 214, 107, 0.3);
+    }
+    .actions { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions button, .actions a {
+      padding: 8px 16px;
+      background: #ffd66b;
+      color: #1a1a1a;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .actions button:hover { background: #ffe588; }
+    pre.error-detail {
+      background: rgba(255, 109, 109, 0.1);
+      padding: 6px 10px;
+      margin: 4px 0 8px 0;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #ff8d8d;
+      overflow-x: auto;
+    }
+    #export-area {
+      width: 100%;
+      height: 120px;
+      background: #000;
+      color: #6dff7c;
+      border: 1px solid #2a2a3a;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-size: 11px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>BOSS HOTEL — Test Suite</h1>
+  <div class="subtitle">
+    Polish Pack V2 · Step 12 · Assert vanilla su funzioni pure esposte in <code>window.BossHotelPure</code>
+  </div>
+
+  <div id="summary" class="summary">Esecuzione in corso...</div>
+
+  <div class="actions">
+    <button onclick="location.reload()">Riesegui test</button>
+    <button onclick="exportJSON()">Esporta risultati JSON</button>
+  </div>
+
+  <div id="report"></div>
+
+  <details>
+    <summary style="cursor:pointer; color:#888; margin-top:20px; font-size:13px;">
+      JSON risultati (per ispezione / futura CI)
+    </summary>
+    <textarea id="export-area" readonly></textarea>
+  </details>
+
+  <!--
+    Carichiamo elevator.html come modulo in un iframe nascosto. Quando il
+    modulo inizializza three.js e popola window.BossHotelPure, estraiamo
+    le funzioni pure. La simulazione 3D non viene visualizzata (iframe
+    hidden) ma le funzioni pure sono disponibili immediatamente.
+  -->
+  <iframe id="src" src="elevator.html"
+          style="position:absolute; left:-9999px; width:1px; height:1px; border:0;"
+          sandbox="allow-same-origin allow-scripts"></iframe>
+
+  <script>
+    // ============================================================
+    // Framework: assert vanilla + reporter DOM + export JSON
+    // ============================================================
+
+    const results = [];
+    let currentSection = '';
+
+    function describe(name, fn) {
+      currentSection = name;
+      fn();
+    }
+
+    function test(name, fn) {
+      const fullName = `[${currentSection}] ${name}`;
+      try {
+        fn();
+        results.push({ name: fullName, pass: true });
+      } catch (e) {
+        results.push({ name: fullName, pass: false, error: e.message });
+      }
+    }
+
+    function assert(cond, msg) {
+      if (!cond) throw new Error(msg || 'assertion failed');
+    }
+
+    function assertEq(actual, expected, msg) {
+      const a = JSON.stringify(actual);
+      const e = JSON.stringify(expected);
+      if (a !== e) {
+        throw new Error((msg ? msg + ' — ' : '') +
+          `expected ${e}, got ${a}`);
+      }
+    }
+
+    function assertNear(actual, expected, eps, msg) {
+      if (Math.abs(actual - expected) > eps) {
+        throw new Error((msg ? msg + ' — ' : '') +
+          `expected ${expected} ± ${eps}, got ${actual}`);
+      }
+    }
+
+    // ============================================================
+    // Attesa caricamento iframe e bootstrap test
+    // ============================================================
+
+    const iframe = document.getElementById('src');
+    iframe.addEventListener('load', () => {
+      // Aspetta che il modulo di elevator.html abbia definito BossHotelPure.
+      // Tre passi: requestAnimationFrame x2 per essere robusti.
+      requestAnimationFrame(() => requestAnimationFrame(tryBootstrap));
+    });
+
+    function tryBootstrap() {
+      const P = iframe.contentWindow && iframe.contentWindow.BossHotelPure;
+      if (!P) {
+        document.getElementById('summary').textContent =
+          'ERRORE: window.BossHotelPure non disponibile dopo 2 frame. ' +
+          'Verifica che elevator.html sia stato caricato correttamente.';
+        document.getElementById('summary').className = 'summary fail';
+        return;
+      }
+      runAllTests(P);
+      renderReport();
+    }
+
+    // ============================================================
+    // Suite di test (30 test)
+    // ============================================================
+
+    function runAllTests(P) {
+
+      // ---- clamp --------------------------------------------------
+      describe('clamp', () => {
+        test('valori dentro range', () => {
+          assertEq(P.clamp(5, 0, 10), 5);
+          assertEq(P.clamp(0, 0, 10), 0);
+          assertEq(P.clamp(10, 0, 10), 10);
+        });
+        test('valori sotto min', () => {
+          assertEq(P.clamp(-3, 0, 10), 0);
+          assertEq(P.clamp(-100, -5, 5), -5);
+        });
+        test('valori sopra max', () => {
+          assertEq(P.clamp(15, 0, 10), 10);
+          assertEq(P.clamp(100, 0, 1), 1);
+        });
+      });
+
+      // ---- lerp ---------------------------------------------------
+      describe('lerp', () => {
+        test('t=0 ritorna a', () => assertEq(P.lerp(2, 8, 0), 2));
+        test('t=1 ritorna b', () => assertEq(P.lerp(2, 8, 1), 8));
+        test('t=0.5 ritorna media', () => assertEq(P.lerp(2, 8, 0.5), 5));
+        test('estrapolazione t>1', () => assertEq(P.lerp(0, 10, 1.5), 15));
+      });
+
+      // ---- smoothstep --------------------------------------------
+      describe('smoothstep', () => {
+        test('t=0 → 0', () => assertEq(P.smoothstep(0), 0));
+        test('t=1 → 1', () => assertEq(P.smoothstep(1), 1));
+        test('t=0.5 → 0.5 (simmetria)', () => assertEq(P.smoothstep(0.5), 0.5));
+        test('monotona crescente', () => {
+          let prev = -1;
+          for (let i = 0; i <= 100; i++) {
+            const t = i / 100;
+            const v = P.smoothstep(t);
+            assert(v >= prev, `non monotona a t=${t}`);
+            prev = v;
+          }
+        });
+      });
+
+      // ---- floorLabel --------------------------------------------
+      describe('floorLabel', () => {
+        test('piano 0 → "T"', () => assertEq(P.floorLabel(0), 'T'));
+        test('piani 1-9 → numero stringa', () => {
+          assertEq(P.floorLabel(1), '1');
+          assertEq(P.floorLabel(5), '5');
+          assertEq(P.floorLabel(9), '9');
+        });
+      });
+
+      // ---- clampFloor --------------------------------------------
+      describe('clampFloor', () => {
+        test('piano valido invariato', () => {
+          assertEq(P.clampFloor(0), 0);
+          assertEq(P.clampFloor(5), 5);
+          assertEq(P.clampFloor(9), 9);
+        });
+        test('sotto 0 → 0', () => assertEq(P.clampFloor(-5), 0));
+        test('sopra NUM_FLOORS-1 → NUM_FLOORS-1', () => {
+          assertEq(P.clampFloor(99), P.NUM_FLOORS - 1);
+        });
+      });
+
+      // ---- floorRoomRange ----------------------------------------
+      describe('floorRoomRange', () => {
+        test('piano 0 → Lobby', () =>
+          assertEq(P.floorRoomRange(0), 'Lobby · Reception'));
+        test('piani 1-3 → Uffici N° piano', () => {
+          assertEq(P.floorRoomRange(1), 'Uffici 1° piano');
+          assertEq(P.floorRoomRange(2), 'Uffici 2° piano');
+          assertEq(P.floorRoomRange(3), 'Uffici 3° piano');
+        });
+        test('piani 4-6 → range camere 32 stanze', () => {
+          assertEq(P.floorRoomRange(4), 'Camere 401–432');
+          assertEq(P.floorRoomRange(5), 'Camere 501–532');
+          assertEq(P.floorRoomRange(6), 'Camere 601–632');
+        });
+        test('piani 7-9 → Attico Suite', () => {
+          assertEq(P.floorRoomRange(7), 'Attico · Suite 707');
+          assertEq(P.floorRoomRange(9), 'Attico · Suite 909');
+        });
+      });
+
+      // ---- getThemeForFloor --------------------------------------
+      describe('getThemeForFloor', () => {
+        test('piano 0 → lobby', () => assertEq(P.getThemeForFloor(0), 'lobby'));
+        test('piani 1-3 → office', () => {
+          assertEq(P.getThemeForFloor(1), 'office');
+          assertEq(P.getThemeForFloor(3), 'office');
+        });
+        test('piani 4-6 → hotel', () => {
+          assertEq(P.getThemeForFloor(4), 'hotel');
+          assertEq(P.getThemeForFloor(6), 'hotel');
+        });
+        test('piani 7+ → penthouse', () => {
+          assertEq(P.getThemeForFloor(7), 'penthouse');
+          assertEq(P.getThemeForFloor(99), 'penthouse');
+        });
+      });
+
+      // ---- parseHexColor -----------------------------------------
+      describe('parseHexColor', () => {
+        test('blu semplice', () => assertEq(P.parseHexColor('#4a9eff'), 0x4a9eff));
+        test('oro BOSS HOTEL', () => assertEq(P.parseHexColor('#c9a449'), 0xc9a449));
+        test('nero', () => assertEq(P.parseHexColor('#000000'), 0x000000));
+        test('bianco', () => assertEq(P.parseHexColor('#ffffff'), 0xffffff));
+      });
+
+      // ---- getDayPhase -------------------------------------------
+      describe('getDayPhase', () => {
+        test('ore diurne 6-17 → day', () => {
+          assertEq(P.getDayPhase(6), 'day');
+          assertEq(P.getDayPhase(12), 'day');
+          assertEq(P.getDayPhase(17), 'day');
+        });
+        test('ore serali 18-21 → evening', () => {
+          assertEq(P.getDayPhase(18), 'evening');
+          assertEq(P.getDayPhase(21), 'evening');
+        });
+        test('ore notturne 22-5 → night', () => {
+          assertEq(P.getDayPhase(22), 'night');
+          assertEq(P.getDayPhase(0), 'night');
+          assertEq(P.getDayPhase(5), 'night');
+        });
+      });
+
+      // ---- easeInOutCubic ----------------------------------------
+      describe('easeInOutCubic', () => {
+        test('estremi 0/1 invariati', () => {
+          assertNear(P.easeInOutCubic(0), 0, 1e-9);
+          assertNear(P.easeInOutCubic(1), 1, 1e-9);
+        });
+        test('simmetria a t=0.5', () => assertNear(P.easeInOutCubic(0.5), 0.5, 1e-9));
+        test('monotona crescente', () => {
+          let prev = -1;
+          for (let i = 0; i <= 100; i++) {
+            const v = P.easeInOutCubic(i / 100);
+            assert(v >= prev, `non monotona a t=${i/100}`);
+            prev = v;
+          }
+        });
+      });
+
+      // ---- computePassengerDelta ---------------------------------
+      describe('computePassengerDelta', () => {
+        // rand deterministici: usiamo valori noti.
+        // floor=0: Math.floor(rand()*3) → 0 se rand<1/3, 1 se 1/3≤rand<2/3, 2 altrimenti
+        test('lobby: rand=0.1 → 0 salgono', () => {
+          assertEq(P.computePassengerDelta(0, () => 0.1), 0);
+        });
+        test('lobby: rand=0.5 → 1 sale', () => {
+          assertEq(P.computePassengerDelta(0, () => 0.5), 1);
+        });
+        test('lobby: rand=0.9 → 2 salgono', () => {
+          assertEq(P.computePassengerDelta(0, () => 0.9), 2);
+        });
+        test('uffici: prob 70% scendono, 30% +1', () => {
+          // < 0.7 → scendono (1..2 escono)
+          assert(P.computePassengerDelta(2, () => 0.1) <= 0);
+          assert(P.computePassengerDelta(2, () => 0.5) <= 0);
+          // >= 0.7 → +1
+          assertEq(P.computePassengerDelta(2, () => 0.9), 1);
+        });
+        test('hotel: 50/50 ±1', () => {
+          assertEq(P.computePassengerDelta(5, () => 0.3), 1);
+          assertEq(P.computePassengerDelta(5, () => 0.7), -1);
+        });
+        test('attico: 60% +1, 40% 0', () => {
+          assertEq(P.computePassengerDelta(8, () => 0.3), 1);
+          assertEq(P.computePassengerDelta(8, () => 0.7), 0);
+        });
+      });
+
+      // ---- pickNextFloor -----------------------------------------
+      describe('pickNextFloor (routing intelligente)', () => {
+        test('coda vuota → null', () => {
+          assertEq(P.pickNextFloor([], 'up'), null);
+          assertEq(P.pickNextFloor([], null), null);
+        });
+        test('direzione up: prende il piu lontano in salita', () => {
+          const q = [
+            { floor: 3, direction: 'up' },
+            { floor: 7, direction: 'up' },
+            { floor: 5, direction: 'up' }
+          ];
+          const r = P.pickNextFloor(q, 'up');
+          assertEq(r.floor, 7);
+        });
+        test('direzione down: prende il piu lontano in discesa', () => {
+          const q = [
+            { floor: 8, direction: 'down' },
+            { floor: 2, direction: 'down' },
+            { floor: 5, direction: 'down' }
+          ];
+          const r = P.pickNextFloor(q, 'down');
+          assertEq(r.floor, 2);
+        });
+        test('include richieste con direction null nella stessa direzione', () => {
+          const q = [
+            { floor: 4, direction: 'up' },
+            { floor: 8, direction: null }
+          ];
+          const r = P.pickNextFloor(q, 'up');
+          assertEq(r.floor, 8);
+        });
+        test('inversione: cabina sale, coda tutta down → va al piano piu basso', () => {
+          const q = [
+            { floor: 9, direction: 'down' },
+            { floor: 2, direction: 'down' }
+          ];
+          // cabina sale → cerca up; non c'è → inversione a scendere
+          // → cabina va al piano piu basso (piu lontano in giu)
+          const r = P.pickNextFloor(q, 'up');
+          assertEq(r.floor, 2);
+        });
+        test('inversione: cabina scende, coda tutta up → va al piano piu alto', () => {
+          const q = [
+            { floor: 3, direction: 'up' },
+            { floor: 8, direction: 'up' }
+          ];
+          // cabina scende → cerca down; non c'è → inversione a salire
+          // → cabina va al piano piu alto (piu lontano in su)
+          const r = P.pickNextFloor(q, 'down');
+          assertEq(r.floor, 8);
+        });
+        test('lastDirection null → FIFO', () => {
+          const q = [
+            { floor: 5, direction: 'up' },
+            { floor: 3, direction: 'down' }
+          ];
+          const r = P.pickNextFloor(q, null);
+          assertEq(r.floor, 5); // primo inserito
+        });
+      });
+    }
+
+    // ============================================================
+    // Rendering
+    // ============================================================
+
+    function renderReport() {
+      const passed = results.filter(r => r.pass).length;
+      const total = results.length;
+      const summary = document.getElementById('summary');
+      summary.className = 'summary ' + (passed === total ? 'pass' : 'fail');
+      summary.textContent = passed === total
+        ? `TUTTI I TEST PASSATI (${passed}/${total})`
+        : `FALLIMENTI: ${total - passed}/${total} (${passed} passati)`;
+
+      const report = document.getElementById('report');
+      const groups = {};
+      results.forEach(r => {
+        const section = r.name.match(/^\[([^\]]+)\]/)[1];
+        (groups[section] = groups[section] || []).push(r);
+      });
+
+      let html = '';
+      Object.keys(groups).forEach(section => {
+        html += `<div class="section-header">${section} (${groups[section].length})</div>`;
+        html += '<ul class="test-list">';
+        groups[section].forEach(r => {
+          html += `<li class="${r.pass ? 'pass' : 'fail'}">
+            <span class="name">${r.name}</span>
+            <span class="status">${r.pass ? '✓ PASS' : '✗ FAIL'}</span>
+          </li>`;
+          if (!r.pass && r.error) {
+            html += `<pre class="error-detail">${escapeHtml(r.error)}</pre>`;
+          }
+        });
+        html += '</ul>';
+      });
+      report.innerHTML = html;
+
+      // Export JSON auto-popolato
+      const json = {
+        timestamp: new Date().toISOString(),
+        total, passed, failed: total - passed,
+        tests: results
+      };
+      window.__testResults = json;
+      document.getElementById('export-area').value = JSON.stringify(json, null, 2);
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function exportJSON() {
+      const json = JSON.stringify(window.__testResults, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `boss-hotel-tests-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

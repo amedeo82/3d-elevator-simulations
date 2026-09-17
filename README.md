@@ -15,6 +15,17 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 > piani 7-9 (prima privi di porte) di 2 suite per piano con legno pregiato e targhetta
 > "Suite NNN". Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 19.
 >
+> **🧪 Polish Pack V2 Step 12 (2026-09-17)** — Test framework leggero. `elevator.html`
+> espone `window.BossHotelPure` (13 funzioni pure: `clamp`, `lerp`, `smoothstep`,
+> `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`,
+> `floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`,
+> `easeInOutCubic` + costante `NUM_FLOORS`). `tests.html` (47 assert vanilla,
+> 12 sezioni) lo consuma via iframe sandbox e mostra reporter DOM con export
+> JSON. CI GitHub Actions estesa con secondo job `tests` per validazione
+> statica (presenza namespace + conteggio test ≥ 30). Esecuzione browser
+> resta manuale. Branch `feature/v2-step-12-tests`. Dettaglio:
+> `PIANO_MIGLIORAMENTI.md` §Fase 16 e `PIANO_V2.md` §Step 12.
+
 > **🛗 Hotfix v1.7 (2026-09-12)** — comportamento porte allineato allo standard ADA/ASME
 > A17.1 per ascensori reali: timer differenziato per piano (lobby 8s, altri piani 5s) e
 > prenotazione automatica dal corridoio limitata al solo piano T (lobby). Ai piani 1-9 le
@@ -314,6 +325,13 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
   - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
 
+### 🧪 Test framework (Step 12)
+- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 13 funzioni pure (vedi sopra). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`
+- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **47 assert vanilla** su `iframe.contentWindow.BossHotelPure`. Organizzati in 12 sezioni: `clamp`(3) `lerp`(4) `smoothstep`(4) `floorLabel`(2) `clampFloor`(3) `floorRoomRange`(4) `getThemeForFloor`(4) `parseHexColor`(4) `getDayPhase`(3) `easeInOutCubic`(3) `computePassengerDelta`(6) `pickNextFloor`(7)
+- **Reporter DOM** con raggruppamento per sezione, banner sommario colorato (verde se tutti pass, rosso con dettaglio errore se falliscono), `<details>` con JSON esportabile (`window.__testResults`), bottone "Esporta risultati JSON" che scarica file `.json` timestampato
+- **CI integration leggera** — secondo job in `.github/workflows/ci.yml` (`tests`) valida staticamente: presenza di `window.BossHotelPure` in `elevator.html`, presenza di `tests.html`, conteggio test ≥ 30 (soglia acceptance Q12.4), referenziamento `elevator.html`. Nessuna installazione Playwright/Puppeteer — esecuzione browser resta manuale (Q12.5=C, "export JSON per futura CI headless")
+- **Esecuzione locale**: `python -m http.server` → apri `tests.html` → la suite gira automaticamente al caricamento dell'iframe
+
 ---
 
 ## 🎮 Demo
@@ -381,13 +399,19 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 ```
 .
 ├── elevator.html          # File principale (~178 KB, ~4.770 righe) — tutta la simulazione
+├── tests.html             # Test framework (47 assert vanilla su window.BossHotelPure)
+├── scripts/
+│   └── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
 ├── dist/
 │   └── index.html         # Build per il deploy (copia di elevator.html)
+├── .github/
+│   └── workflows/
+│       └── ci.yml         # CI: 2 job paralleli (check sintassi + tests)
 ├── README.md              # Questo file
 └── PIANO_MIGLIORAMENTI.md # Documento di design (fasi implementate)
 ```
 
-Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in un unico file per massima portabilità e facilità di deploy. Il file è organizzato internamente in sezioni numerate e commentate.
+Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in un unico file per massima portabilità e facilità di deploy. Il file è organizzato internamente in sezioni numerate e commentate. `tests.html` e `.github/workflows/` sono gli unici file accessori (rispettivamente DX e CI).
 
 ---
 
@@ -421,6 +445,7 @@ Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in
 24. **MOVIMENTO FPS** — WASD + collisioni nel corridoio
 25. **LOOP** — render loop con tutti i tick (display, ads, luci, vibrazione, ecc.)
 26. **AVVIO** — inizializzazione + start screen
+27. **BOSS HOTEL PURE** — namespace `window.BossHotelPure` con funzioni pure testabili (Polish Pack V2 Step 12)
 
 ### Modello dati principale
 
@@ -499,6 +524,32 @@ php -S localhost:8000
 4. Apri la **DevTools Console** (F12) per vedere eventuali errori
 
 > ⚠️ Il Pointer Lock e la Web Speech API funzionano solo su `http://localhost` o `https://`. Aprire il file direttamente con `file://` può dare warning.
+
+### Test (Polish Pack V2 Step 12)
+
+Il progetto include un mini test framework vanilla in `tests.html`. Esegue 47 assert su funzioni pure esposte in `window.BossHotelPure`.
+
+```bash
+# Avvia un server locale
+python3 -m http.server 8000
+
+# Apri nel browser
+# http://localhost:8000/tests.html
+
+# I test girano automaticamente al caricamento dell'iframe.
+# Risultato: banner "TUTTI I TEST PASSATI (47/47)" verde.
+# Esporta JSON con il bottone "Esporta risultati JSON".
+```
+
+### Verifica sintassi + brace balance
+
+Prima di committare, esegui il check sintattico autorevole:
+
+```bash
+node scripts/check-balance.js elevator.html
+```
+
+Output atteso: `Tutti i check autorevolativi passati.`
 
 ---
 
@@ -595,6 +646,7 @@ Copia `elevator.html` (rinominato in `index.html`) sul web server.
 - [x] **Step 8** i18n IT/EN — `STRINGS[lang]` dictionary (~120 chiavi) + Tasto L toggle + bottone UI IT/EN + auto-detect navigator.language + persistenza `localStorage.bossHotelLang@v1` + TTS en-GB prioritaria + helper `t(key)` + `applyLangToDOM()` consolidata + refactor HTML statico → generazione dinamica (panel-help, start screen, customizer, tutorial, maintenance overlay) + tutti gli annunci/subtitle/status italiani tradotti
 - [x] **Step 9** Sensazioni realistiche cabina (vibrazione multi-band + crossfade freccia 200ms + frenata/acc progressiva easeInOutCubic + weesh sincronizzato) — originariamente era "Shaft dietro le quinte" ma ripensato perché non visibile in prima persona. Sostituito con feature percepibili dal giocatore.
 - [x] **Step 10** Vita dell'hotel (NPC passeggeri + suoni contestuali corridoio + ciclo giorno/notte + log manutenzione realistica) — originariamente era "Eventi speciali hotel" (matrimonio/conferenza) ma ripensato per dare game value al simulatore first-person (decorazioni corridoio visibili solo uscendo dalla cabina, narrative debole). Sostituito con 4 feature coordinabili che danno vita al simulatore.
+- [x] **Step 12** Test framework leggero — `window.BossHotelPure` namespace (13 funzioni pure: `clamp`, `lerp`, `smoothstep`, `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`, `floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`, `easeInOutCubic` + `NUM_FLOORS`) + `tests.html` (47 assert vanilla, 12 sezioni, iframe sandbox + reporter DOM + export JSON) + secondo job CI `tests` per validazione statica (presenza namespace + conteggio test ≥ 30 + referenziamento elevator.html). Branch `feature/v2-step-12-tests`. Decisioni: Q12.1=C, Q12.2=A (vanilla), Q12.3=A (separato), Q12.4=B (47 test > 30 minimi), Q12.5=C (manuale + export JSON).
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

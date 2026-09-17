@@ -61,11 +61,14 @@ Log implementativo: `PIANO_MIGLIORAMENTI.md`.
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
+| Aprire `tests.html` in browser (via server locale) | Esegue 47 assert vanilla su `window.BossHotelPure` |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
 | Copia `elevator.html` → `dist/index.html` | Build per deploy (vedi ultimo commit di ogni Polish Pack) |
 | `git checkout feature/<branch>` | Lavorare su branch dedicato, merge solo dopo validazione |
 
-CI GitHub Actions: `.github/workflows/ci.yml` gira `check-balance.js` su ogni push/PR.
+CI GitHub Actions: `.github/workflows/ci.yml` ha 2 job paralleli:
+1. `check` — `check-balance.js` su ogni push/PR
+2. `tests` — validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento `elevator.html` in `tests.html`
 
 ---
 
@@ -81,6 +84,7 @@ CI GitHub Actions: `.github/workflows/ci.yml` gira `check-balance.js` su ogni pu
 | D6 | **Carica config PRIMA delle cabin texture IIFE** | Polish Pack V2 Step 5 fix critico. `loadHotelConfig()` deve girare prima delle IIFE che bakano `HOTEL_CONFIG` nelle canvas texture (targa cabina, header pulsantiera). Altrimenti le texture sono baked con valori originali e l'utente vede "BOSS HOTEL" anche dopo aver salvato "Sky Tower". Sintomo: 'non vedo differenze tra preset'. |
 | D7 | **Coda viaggi come `Array<{floor, direction}>` (non `Set`)** | Polish Pack V2 Step 7. La pulsantiera ▲/▼ esprime "intenzione viaggio"; `direction: 'up'\|'down'\|null` viene memorizzata per instradamento intelligente e visualizzazione. `queueNextSmart(currentFloor, lastDirection)` serve stessa direzione, poi inversione automatica. |
 | D8 | **`STRINGS[lang]` + refactor HTML statico → dinamico** | Polish Pack V2 Step 8 (i18n IT/EN). Tutte le stringhe UI in `STRINGS[lang]`. Helper `t(key)` per lookup. `applyLangToDOM()` consolidata chiamata all'init + ad ogni `setLang()`. Le tabelle HTML statiche (`#panel-help`, start screen `.keys`, slides) sono ora rigenerate via JS da array di costanti (`PANEL_HELP_KEYS`, `SLIDE_DEFS`, `PRESET_KEYS`). Event delegation sul parent `.hc-presets` per i bottoni preset (sopravvive ai re-render di `applyLangToDOM`). 100% copertura testi visibili. |
+| D9 | **Funzioni pure in `window.BossHotelPure`** | Polish Pack V2 Step 12. Le funzioni senza side-effect sono esposte in un namespace globale per renderle testabili da `tests.html` (che le consuma via iframe sandbox). Nuove helper pure (`clamp`, `lerp`, `smoothstep`, `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`) aggiunte accanto a quelle gia' pure preesistenti (`floorRoomRange`, `getThemeForFloor`, `parseHexColor`, `getDayPhase`, `easeInOutCubic`). Quando aggiungi una funzione pura, mettila in `BossHotelPure` e aggiungi test in `tests.html`. Le funzioni con side-effect vanno refactorate in `computeX(state, ...args)` + `applyX(state, ...)`. |
 
 ---
 

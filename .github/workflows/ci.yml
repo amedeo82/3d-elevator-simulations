@@ -19,3 +19,45 @@ jobs:
 
       - name: Verifica sintassi e bilanciamento braces/parens
         run: node scripts/check-balance.js elevator.html
+
+  tests:
+    name: Test framework (Polish Pack V2 Step 12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verifica export BossHotelPure in elevator.html
+        run: |
+          if ! grep -q 'window.BossHotelPure' elevator.html; then
+            echo "::error::window.BossHotelPure non trovato in elevator.html"
+            exit 1
+          fi
+          echo "OK: window.BossHotelPure trovato"
+
+      - name: Verifica tests.html presente e con almeno 30 test
+        run: |
+          if [ ! -f tests.html ]; then
+            echo "::error::tests.html mancante"
+            exit 1
+          fi
+          # Conta le chiamate test('...', ...) nel file (escludendo stringhe/commenti)
+          COUNT=$(grep -cE "^\s+test\('" tests.html || true)
+          echo "Test trovati in tests.html: $COUNT"
+          if [ "$COUNT" -lt 30 ]; then
+            echo "::error::Servono almeno 30 test, trovati $COUNT"
+            exit 1
+          fi
+          echo "OK: $COUNT test (>= 30)"
+
+      - name: Smoke test iframe loading via node (no browser)
+        run: |
+          # Verifica statica: elevator.html referenziato in tests.html
+          if ! grep -q 'elevator.html' tests.html; then
+            echo "::error::tests.html non referenzia elevator.html"
+            exit 1
+          fi
+          echo "OK: tests.html referenzia elevator.html"

@@ -5021,6 +5021,61 @@ function cancelAutoClose() {
 // essere invocato da tickDoors ogni frame (polling su state.doorsActual).
 bus.on('door:opened', scheduleAutoClose);
 
+// ============================================================
+// Polish Pack V2 Step 12: helper matematici puri.
+// Funzioni senza side-effect, esposte in window.BossHotelPure
+// per i test in tests.html. NON dipendono da state/scene.
+// ============================================================
+
+// pure: limita un valore nell'intervallo [min, max].
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// pure: interpolazione lineare tra a e b con t in [0,1].
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// pure: smoothstep classico `t*t*(3-2t)`, output [0,1] per t in [0,1].
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+// pure: clamp del numero di piano nell'intervallo valido [0, NUM_FLOORS-1].
+function clampFloor(f) { return clamp(f, 0, NUM_FLOORS - 1); }
+
+// pure: etichetta display del piano (0 -> 'T', altrimenti numero come stringa).
+function floorLabel(f) { return f === 0 ? 'T' : String(f); }
+
+// pure: delta passeggeri per piano (estratto da adjustPassengersForFloor).
+// Restituisce l'incremento da applicare al contatore passeggeri; clamp finale
+// e' responsabilita' del caller per consentire test deterministici.
+function computePassengerDelta(floor, rand) {
+  if (floor === 0) return Math.floor(rand() * 3);                   // lobby: 0..2 salgono
+  if (floor <= 3) return rand() < 0.7 ? -Math.floor(rand() * 3) : 1; // uffici: scendono
+  if (floor <= 6) return rand() < 0.5 ? 1 : -1;                      // hotel: check-in/out
+  return rand() < 0.6 ? 1 : 0;                                       // attico: +1 o 0
+}
+
+// pure: versione stateless di queueNextSmart. Sceglie la prossima richiesta
+// dalla coda in base a direzione corrente. Restituisce null se coda vuota.
+function pickNextFloor(queue, lastDirection) {
+  if (queue.length === 0) return null;
+  if (lastDirection === 'up' || lastDirection === 'down') {
+    const sameDir = queue.filter(r => r.direction === lastDirection || r.direction === null);
+    if (sameDir.length > 0) {
+      return lastDirection === 'up'
+        ? sameDir.reduce((m, r) => r.floor > m.floor ? r : m)
+        : sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+    const oppDir = lastDirection === 'up' ? 'down' : 'up';
+    const opp = queue.filter(r => r.direction === oppDir);
+    if (opp.length > 0) {
+      return oppDir === 'up'
+        ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
+        : opp.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+  }
+  return queue[0];
+}
+
+// ============================================================
+
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
 // Restituisce la stringa da mostrare sul display in base al piano corrente
 function floorRoomRange(f) {
@@ -7840,6 +7895,23 @@ if (langSwitchBtn) {
 }
 
 requestAnimationFrame(loop);
+
+// ============================================================
+// Polish Pack V2 Step 12: Esposizione funzioni pure per test.
+// tests.html legge questo namespace per eseguire assert su
+// helper senza side-effect. Non influenza il gameplay.
+// ============================================================
+window.BossHotelPure = {
+  // helper matematici (vedi definizioni sopra)
+  clamp, lerp, smoothstep, clampFloor, floorLabel,
+  // logiche di business pure
+  computePassengerDelta, pickNextFloor,
+  // funzioni originali gia' pure
+  floorRoomRange, getThemeForFloor, parseHexColor,
+  getDayPhase, easeInOutCubic,
+  // costanti utili per i test
+  NUM_FLOORS
+};
 </script>
 </body>
 </html>
