@@ -7696,6 +7696,15 @@ function loadPrefs() {
       if (typeof p.muted === 'boolean') state.muted = p.muted;
       if (typeof p.tts === 'boolean') ttsEnabled = p.tts;
       if (typeof p.night === 'boolean') state.nightMode = p.night;
+      // Polish Pack V2 Step 14c: persistenza stato citofono.
+      // Una chiamata citofono non puo' sopravvivere a un page reload
+      // (la connessione con la reception e' simulata e decade al refresh).
+      // Se al load era true, mostra subtitle informativo e resetta a false.
+      if (typeof p.interphone === 'boolean' && p.interphone) {
+        state.interphoneCalling = false;
+        // segnala per il deferred subtitle (eseguito dopo init DOM)
+        pendingInterphoneInterruptNotice = true;
+      }
     }
   } catch(e) { /* localStorage non disponibile o corrotto: ignora */ }
 }
@@ -7706,13 +7715,31 @@ function savePrefs() {
       muted: state.muted,
       tts: ttsEnabled,
       night: state.nightMode,
+      // Polish Pack V2 Step 14c: persistenza stato citofono
+      interphone: state.interphoneCalling,
     }));
   } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
 }
 
+// Polish Pack V2 Step 14c: flag per mostrare subtitle "Chiamata interrotta
+// dal refresh" al primo paint dopo loadPrefs(). Verrà consumato in init().
+let pendingInterphoneInterruptNotice = false;
+
 loadPrefs();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
+// Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
+if (pendingInterphoneInterruptNotice) {
+  pendingInterphoneInterruptNotice = false;
+  // mostra subtitle dopo che showSubtitle e' disponibile (in pratica subito)
+  setTimeout(() => {
+    if (typeof showSubtitle === 'function') {
+      showSubtitle(state.lang === 'en'
+        ? 'Interphone call interrupted by page reload'
+        : 'Chiamata citofono interrotta dal refresh della pagina', 4000);
+    }
+  }, 1500);
+}
 // Polish Pack V2 Step 10c: determina dayPhase iniziale (giorno/sera/notte) e applica luci
 state.dayPhase = getDayPhase();
 applyTimeOfDayLights(state.dayPhase);
