@@ -17,47 +17,170 @@
 
 ---
 
-## 0. Indice degli step (provvisorio)
+## 0. Indice degli step
 
-| # | Step | Sforzo | Impatto | Tipo | Stato |
+| # | Step | Tier | Sforzo | Impatto | Stato |
 |---|---|---|---|---|---|
-| 1 | Scope discovery: decidere i 4-6 step V3 | 1 sessione | 🟡 | Pianificazione | ⏳ |
-| 2+ | TBD (scope da definire allo Step 1) | TBD | TBD | TBD | ⏳ |
+| 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ⏳ |
+| 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
+| 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
+| 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
+| 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ⏳ |
+| 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ⏳ |
+| 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ⏳ |
+| 8 | Test coverage estesa (53 → 100+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
+| 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
+
+**Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
 
 **Legenda stato**: ⏳ pending · 🔄 in corso · ✅ done · ❌ scartato
 
+**Legenda impatto**: 🔴 alto · 🟡 medio · 🟢 basso
+
 ---
 
-## Tier di scope V3 (candidati)
+## Scope Step 1 — Accessibility (T1a)
 
-V3 attinge da 3 tier di scope qualitativi. Lo Step 1 (scope discovery)
-seleziona 4-6 step da questo menu:
+Miglioramenti di accessibilità per il simulatore. Include:
 
-### Tier 1 — Alto valore, effort medio-basso
+- **Sottotitoli garantiti per tutti gli annunci TTS**: ogni `speak()` deve avere un
+  corrispondente `showSubtitle()` automatico (oggi alcuni sono accoppiati manualmente).
+- **Rispetto `prefers-reduced-motion`**: rileva `window.matchMedia('(prefers-reduced-motion: reduce)')`
+  e disabilita animazioni non essenziali (crossfade freccia, "respiro" tasti, easing smoothstep
+  → lineare). Animazioni essenziali (apertura/chiusura porte, vibrazione cabina) restano attive.
+- **Focus visibile su bottoni HUD**: tasti `.hud-action` + bottoni tutorial + customizer
+  hanno un focus ring visibile al keyboard navigation.
+- **Contrasto display touch**: verifica WCAG AA sui colori del display (gold su nero,
+  bianco su blu, ecc.). Aumento contrasto dove necessario.
 
-- **T1a · Accessibility**: sottotitoli garantiti per TTS, rispetto `prefers-reduced-motion`,
-  focus visibile su bottoni HUD, contrasto migliorato su display touch
-- **T1b · Bug fix UX sistematico**: audit corner case (porte a metà, click durante
-  movimento, allarme + OOO, citofono + SOS, language switch durante annuncio)
-- **T1c · Settings QoL**: volume audio suddiviso (effetti/musica/TTS), luminosità
-  display touch, snapshot stato per debug
+Decision Questions complete definite sotto (§Step 1).
 
-### Tier 2 — Valore medio, effort medio
+---
 
-- **T2a · Micro-animazioni**: tasti display touch "respiro", cartello con effetto
-  "lampeggio gentile" su chiamata accettata, maniglione che vibra in modo più
-  credibile, fade gentile per cambi stato
-- **T2b · Performance**: profiling FPS in vari scenari, riduzione draw call,
-  ottimizzazione shader, lazy load texture
-- **T2c · Quality of life manutenzione**: log eventi più ricco, export stato
-  corrente come JSON per debug, history ultimi N allarmi/interphonate
+## Scope Step 2 — Bug fix UX sistematico (T1b)
 
-### Tier 3 — Lungo termine, alto effort
+Audit corner case noti:
 
-- **T3a · Documentazione completa**: commentare il codice "core" ancora scarsamente
-  documentato, diagrammi ASCII delle dipendenze tra moduli
-- **T3b · Test coverage estesa**: salire da 53 a 100+ test, coprire casi limite
-  routing, edge cases passegeri, integrazione (non solo unit)
+- **Porte a metà movimento** + click su un tasto display: il click arriva durante
+  l'animazione porte, deve essere correttamente gestito (no race condition).
+- **Click durante movimento cabina**: il tasto display è cliccabile in movimento?
+  Oggi rifiuta con beep 220Hz. Verificare coerenza con `requestFloor`.
+- **Allarme + OOO**: se attivi entrambi, chi ha priorità? Disattivazione di uno
+  ripristina l'altro? Test corner case.
+- **Citofono + SOS**: indipendenti (Step 14), ma verificare che subtitle HUD non
+  si sovrascrivano tra loro.
+- **Language switch durante annuncio**: l'annuncio in corso viene abortito e
+  pronunciato nella nuova lingua, oppure no?
+
+Decision Questions da definire quando lo step sarà affrontato.
+
+---
+
+## Scope Step 3 — Settings QoL (T1c)
+
+Settings persistenti aggiuntivi:
+
+- **Volume audio suddiviso**: 3 slider separati (effetti, musica cabin, TTS).
+  - Default: tutto al 100%. Persistenza in `localStorage.bossHotelAudio@v1`.
+  - Già esiste `state.muted` globale (mute); aggiungiamo granularità.
+- **Luminosità display touch**: slider 50%-150% che applica un moltiplicatore
+  al `globalCompositeOperation` del canvas display (o semplicemente moltiplica
+  i colori via shader).
+- **Snapshot stato debug**: bottone "Esporta stato JSON" nel maintenance overlay
+  (Shift+M) che scarica `state` completo + ultime 50 entry log + cache corrente.
+  Utile per issue reporting.
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 4 — Micro-animazioni (T2a)
+
+- **Tasti display touch "respiro"**: scale animation sottile (1.0 → 1.02 → 1.0)
+  in loop 4s per attirare l'attenzione. Rispetta `prefers-reduced-motion`.
+- **Cartello con effetto "lampeggio gentile"**: quando la cabina è in arrivo,
+  il cartello corridoio lampeggia brevemente (3 flash in 1s) prima di stabilizzarsi.
+- **Fade gentile cambi stato**: OOO/alarm/citofono ora hanno snap immediato.
+  Aggiungere fade-in 200ms sull'opacità degli elementi coinvolti.
+- **Easing più morbido su maniglione**: vibrazione con curva "bounce-out" invece
+  di decay esponenziale puro.
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 5 — Performance (T2b)
+
+- **Profilo FPS in vari scenari**: misurare FPS a default (10 piani), 20 piani,
+  con OOO attivo, con allarme, con citofono. Identificare i colli di bottiglia.
+- **Riduzione draw call**: merge geometrie dove possibile (es. arredi corridoio
+  per piano), uso di `THREE.BufferGeometryUtils.mergeGeometries()`.
+- **Lazy load texture**: le canvas texture della cabina (targa, citofono, header
+  pulsantiera) sono bake-on-init. Aggiungere cache LRU per evitare re-bake
+  inutili.
+- **Ottimizzazione shader**: profilare fragment shader del display touch e
+  del pannello pubblicitario.
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 6 — QoL manutenzione (T2c)
+
+- **Log eventi più ricco**: aggiungere campi a `logEvent()`: severity (info/warn/error),
+  category (cabin/door/audio/state). Filtro per categoria nel maintenance overlay.
+- **Export stato JSON**: bottone dedicato (vedi anche Step 3) per scaricare snapshot.
+- **History ultimi N allarmi/interphonate**: contatori `state.alarmCount`,
+  `state.interphoneCount` con timestamp. Mostrati nel maintenance overlay.
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 7 — Documentazione completa (T3a)
+
+- **Commentare codice core**: focus su `tickMove`, `tickDoors`, `tickPlayer`,
+  `buildCorridor`, `getThemeForFloor` (funzioni lunghe e/o scarsamente commentate).
+  Stile: numero di riga nei riferimenti storici, razionale del "perché".
+- **Diagrammi ASCII delle dipendenze**: in `AGENTS.md` o file separato
+  `ARCHITECTURE.md`. Es. ciclo RAF → tickMove → tickDoors → tickPlayer.
+- **Documentare STRINGS[lang]**: mappatura completa IT/EN per ogni chiave,
+  in `STRINGS_REFERENCE.md` o sezione `AGENTS.md`.
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 8 — Test coverage estesa (T3b)
+
+Salire da 53 a 100+ test. Aree da coprire:
+
+- **Casi limite routing** (`pickNextFloor`): code miste, code vuote con lastDirection, inversioni multiple.
+- **Edge cases passeggeri** (`computePassengerDelta`): rand=0, rand=1, tutte le soglie.
+- **Integrazione**: helper che combinano più pure functions (es. `floorLabel + getDayPhase`).
+- **Helper citofono**: durata, timing lampeggio (richiede simulazione clock).
+- **Stress test**: 100 chiamate consecutive a `pickNextFloor` per verificare
+  nessun leak/state mutation.
+- **Coverage state fields**: helper `stateInvariantCheck(s)` che valida i contratti
+  state (es. `state.interphoneCalling && state.alarmOn` -> caso lecito).
+
+Decision Questions da definire.
+
+---
+
+## Scope Step 9 — Mobile responsive layout (Bonus)
+
+Layout responsive per mobile/tablet. Oggi il simulatore è desktop-only (richiede
+mouse-look + WASD). Per mobile serve:
+
+- **Touch controls**: trascinamento dito = mouse-look, swipe = movimento.
+- **HUD scalato**: bottoni più grandi su schermi piccoli, font auto-scaling.
+- **Layout landscape forzato**: il simulatore richiede orizzontale.
+- **Pulsantiera display touch adattata**: celle più grandi per il tocco.
+- **Fallimento graceful**: se mobile non supporta `requestPointerLock`,
+  mostra istruzioni "tap to look".
+
+Decision Questions complete da definire quando lo step sarà affrontato.
 
 ---
 
@@ -98,7 +221,7 @@ i seguenti constraint:
 - **B. Solo `PIANO_V3.md`**
 - **C. Tutto in un nuovo `CHANGELOG.md`**
 
-### DG-V3.4 — Versetti e branching del repo
+### DG-V3.4 — Versioning del repo
 
 - **A. Continuare su `main`** (V3 chiuso su main, versioni in README)
 - **B. Branch dedicato `v3`** con merge finale su main
@@ -106,67 +229,124 @@ i seguenti constraint:
 
 ---
 
-# STEP 1 · Scope discovery: decidere i 4-6 step V3
+# STEP 1 · Scope discovery ✅ (chiuso 2026-09-17)
+
+Step "meta" che ha definito il backlog definitivo V3.
+
+## Decisioni approvate
+
+- **Q1.1 → B (iniziale) → 9 finale**: inizialmente "6 step", poi espanso a 9 per copertura esaustiva di tutti i Tier + 1 bonus (mobile responsive).
+- **Q1.2 → A**: tutti i 3 Tier 1 inclusi (T1a accessibility, T1b bug fix UX, T1c settings QoL).
+- **Q1.3 → D**: tutti i 3 Tier 2 inclusi (T2a micro-animazioni, T2b performance, T2c QoL manutenzione).
+- **Q1.4 → C**: entrambi T3 inclusi (T3a documentazione, T3b test coverage estesa).
+- **Q1.5 → B + A**: bonus = Mobile responsive layout.
+
+## Risultato
+
+Tabella "Indice degli step" definitiva con 9 step (vedi §0 in cima al documento).
+Effort stimato totale: ~10-15 ore su 8-12 sessioni.
+
+---
+
+# STEP 1 (effettivo) · Accessibility (T1a)
+
+Miglioramenti di accessibilità per rendere il simulatore utilizzabile da
+più utenti, inclusi quelli con disabilità visive, motorie o con sensibilità
+a motion. Coerente con EN 81-70 (accessibilità ascensori) e WCAG 2.1 AA.
 
 ## Scope proposto
 
-V3 parte da uno step "meta" che seleziona i candidati effettivi dai Tier 1/2/3.
-Questo step dura ~1 sessione e produce la tabella "Indice degli step" definitiva.
+- **1a · Sottotitoli garantiti per tutti gli annunci TTS**: refactoring di
+  `speak()` per accettare `opts.subtitle` (default = `text` se non specificato).
+  Ogni chiamata `speak(txt)` automaticamente chiama `showSubtitle(txt, dur)`,
+  con durata calcolata in base alla lunghezza del testo (lettura ~150 parole/min).
+  Risolve casi oggi scoperti (es. `speak` di `announceMoveStart` non ha subtitle).
+
+- **1b · Rispetto `prefers-reduced-motion`**: rileva `window.matchMedia` e setta
+  `state.reducedMotion`. Le animazioni non essenziali (crossfade freccia 200ms,
+  "respiro" tasti, easing smoothstep) diventano istantanee. Animazioni
+  essenziali (apertura/chiusura porte, vibrazione cabina, allarme luci rosse)
+  restano attive (sicurezza).
+
+- **1c · Focus visibile su bottoni HUD**: aggiungere `:focus-visible` ring CSS
+  su `.hud-action`, `.tt-btn`, `.hc-btn`, `.start-btn`. Rispetta
+  navigazione keyboard-only. Default browser focus + override con ring brand color.
+
+- **1d · Contrasto display touch WCAG AA**: audit dei colori display touch
+  (gold #c9a449 su nero, bianco su blu #4a90e2). Dove contrasto < 4.5:1,
+  aumenta luminosità testo o scurisce sfondo.
 
 ## Decision Questions
 
-### Q1.1 — Quanti step totali per V3?
+### Q1.1 — Scope di questo step
 
-- **A. 4 step** (focus mirato, ~3-5 ore totali) *(Recommended)*
-- **B. 6 step** (bilanciato, ~6-10 ore totali)
-- **C. 8 step** (ambizioso, ~10-15 ore totali)
+- **A. Tutto (1a + 1b + 1c + 1d)** — copertura completa *(Recommended)*
+- **B. Solo 1a + 1b** (sottotitoli + reduced motion)
+- **C. Solo 1b + 1c** (reduced motion + focus)
+- **D. Altro**
 
-### Q1.2 — Quanti Tier 1 (alto valore, basso effort)?
+### Q1.2 — Sottotitoli automatici per TTS
 
-- **A. Tutti e 3 (T1a, T1b, T1c)** *(Recommended per completeness)*
-- **B. Solo 2 su 3** (scegliere in seguito)
-- **C. Nessuno** (focus solo Tier 2-3)
+- **A. Wrap automatico in `speak()`** (chi parla passa testo, subtitle auto) *(Recommended)*
+- **B. Solo esplicito** (chi chiama deve passare `subtitle:` separatamente)
+- **C. Refactor con helper `speakWithSubtitle(txt, dur)`** — nuovo helper esplicito
 
-### Q1.3 — Quanti Tier 2 (qualitativo)?
+### Q1.3 — `prefers-reduced-motion`: quanto aggressivo?
 
-- **A. Tutti e 3 (T2a, T2b, T2c)**
-- **B. Solo T2a (micro-animazioni)** *(Recommended per 'feel')*
-- **C. Nessuno** (focus solo Tier 1+3)
+- **A. Disabilita solo micro-animazioni** (crossfade, respiro) *(Recommended)*
+- **B. Disabilita anche easing smoothstep** (diventa lineare)
+- **C. Disabilita tutto tranne sicurezza** (vibrazione, allarme restano)
+- **D. Solo override manuale** (tasto M per motion off)
 
-### Q1.4 — Tier 3 (lento, alto effort)?
+### Q1.4 — Focus ring: design
 
-- **A. Solo T3a (documentazione)** *(Recommended per completezza post-V2)*
-- **B. Solo T3b (test coverage estesa)**
-- **C. Entrambi T3a + T3b**
-- **D. Nessuno** (rimandare a V4)
+- **A. Outline dorato brand** (`outline: 2px solid #ffd66b`) *(Recommended)*
+- **B. Default browser** (nessun override)
+- **C. Background highlight** (cambia sfondo bottone)
 
-### Q1.5 — Step "bonus" non in lista?
+### Q1.5 — Contrasto display touch: scope
 
-- **A. No, restare nel menu Tier** *(Recommended)*
-- **B. Aggiungi specifico step** (es. "ottimizzazione mobile", "tema dark mode", ecc.)
+- **A. Solo display touch pulsantiera** *(Recommended, dove serve di più)*
+- **B. Tutti i testi HUD** (più effort)
+- **C. Solo verifica con tool automatico** (no fix)
 
 ## Acceptance criteria
 
-- [ ] Tabella "Indice degli step" definitiva con scope confermato
-- [ ] Ogni step ha scope proposto + Decision Questions abbozzate (anche minime)
-- [ ] Effort stimato totale = 4-15 ore a seconda delle scelte
+- [ ] (1a) Ogni `speak()` ha subtitle automatico (no skip involontario)
+- [ ] (1b) `prefers-reduced-motion: reduce` → `state.reducedMotion=true` → animazioni non essenziali disabilitate
+- [ ] (1b) Animazioni essenziali (allarme, porte) restano attive anche con reduced motion
+- [ ] (1c) Tab key su bottoni HUD mostra focus ring visibile
+- [ ] (1d) Display touch passa WCAG AA contrast check (≥4.5:1)
+- [ ] (1d) Nessuna regressione FPS
+- [ ] `node --check` + brace balance
+- [ ] Test: helper `shouldDisableMotion(state)` + test in `tests.html`
 
 ## Effort
 
-1 sessione (~1-2 ore).
+1 sessione (~2-3 ore).
+
+---
 
 ---
 
 # Come procedere ora
 
-Questo è il primo step di V3. Rispondi alle Decision Questions (Q1.1-Q1.5)
-per definire il backlog definitivo. Poi iteriamo sui singoli step come in V2.
+Lo **Step 1 (scope discovery) è chiuso** con 9 step definitivi nel backlog.
 
-Workflow:
+Il prossimo step effettivo è **Step 1 (effettivo) · Accessibility (T1a)** in cima a questo documento.
 
-1. Tu rispondi alle Decision Questions via `question` tool, una alla volta.
-2. Implemento solo le opzioni approvate.
-3. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-4. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-5. Commit separati per sotto-step.
-6. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge finale.
+Workflow per iniziare:
+
+1. Decidi se procedere con Step 1 Accessibility subito, o fermarsi qui.
+2. Se sì, rispondi alle Decision Questions Q1.1-Q1.5 di Step 1 (Accessibility).
+3. Implemento solo le opzioni approvate.
+4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
+5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+6. Commit separati per sotto-step (1a/1b/1c/1d).
+7. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge finale.
+
+Pattern identico a V2: branch dedicato `feature/v3-step-1-accessibility`, 4 commit separati, smoke test screenshot pre-merge.
+
+---
+
+**Polish Pack V3 è ufficialmente aperto.** Siamo pronti a iniziare quando dai il via.
