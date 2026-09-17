@@ -53,6 +53,20 @@ Log implementativo: `PIANO_MIGLIORAMENTI.md`.
    CONFIGURAZIONE (riga ~480) PRIMA di qualsiasi funzione che li usa. Vedi lezione §.
 6. **Single-file sempre**: niente file esterni a parte `dist/index.html` (build copy).
    Eventuali eccezioni (asset, suoni) solo via blob URL (`URL.createObjectURL`).
+7. **Processi Chrome dell'utente**: MAI usare `Stop-Process -Name chrome` o equivalente.
+   L'utente ha una o più finestre Chrome attive per il suo lavoro. Per screenshot
+   o smoke test locali usare **unicamente istanze headless dedicate** con un
+   `--user-data-dir` separato (es. `%TEMP%\kilo-chrome-XXXX`) e `--no-first-run`
+   `--no-default-browser-check`. Il comando tipo è:
+   `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new
+   --disable-gpu --no-sandbox --hide-scrollbars --user-data-dir=<tempdir>
+   --window-size=W,H --virtual-time-budget=N --screenshot=<file> <url>`
+   Non serve (e non va) terminare il processo: headless con `--screenshot`
+   esce automaticamente dopo aver scritto il file. Per test ripetuti, riusare
+   lo stesso `--user-data-dir` per coerenza di profile (evita lock su
+   `SingletonLock` se due istanze partono in contemporanea).
+   Per server HTTP locali usare `background_process` con `lifetime: session`
+   e `stop` esplicito a fine sessione (non di ogni test).
 
 ---
 
@@ -69,6 +83,23 @@ Log implementativo: `PIANO_MIGLIORAMENTI.md`.
 CI GitHub Actions: `.github/workflows/ci.yml` ha 2 job paralleli:
 1. `check` — `check-balance.js` su ogni push/PR
 2. `tests` — validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento `elevator.html` in `tests.html`
+
+## Test in locale (opzionale, manuale)
+
+Per ispezionare `tests.html` nel browser senza aprire Chrome dell'utente:
+
+```bash
+# 1. Avvia server HTTP locale (background, lifetime session)
+node -e "const http=require('http');const fs=require('fs');const path=require('path');const mime={'.html':'text/html','.js':'text/javascript'};http.createServer((req,res)=>{let p=req.url==='/'?'/tests.html':req.url;const fp=path.join(process.cwd(),p.split('?')[0]);if(!fp.startsWith(process.cwd())){res.writeHead(403);res.end();return;}if(!fs.existsSync(fp)){res.writeHead(404);res.end();return;}const ext=path.extname(fp);res.writeHead(200,{'Content-Type':mime[ext]||'text/plain'});res.end(fs.readFileSync(fp));}).listen(8765,()=>console.log('ready'));"
+
+# 2. Lancia Chrome headless DEDICATO con --user-data-dir separato
+#    (NON killa il processo: headless con --screenshot esce da solo)
+$tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Substring(0,8))
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --no-sandbox --hide-scrollbars --no-first-run --no-default-browser-check --user-data-dir=$tdir --window-size=1100,3500 --virtual-time-budget=8000 --screenshot="tests-screenshot.png" http://localhost:8765/tests.html
+
+# 3. Stop esplicito del server (background_process stop)
+#    NON stoppare il processo Chrome: si chiude da solo dopo lo screenshot.
+```
 
 ---
 
