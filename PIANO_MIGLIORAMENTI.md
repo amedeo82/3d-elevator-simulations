@@ -2,32 +2,37 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 3.2 — Polish Pack V2 Step 14 (citofono interattivo)** · Aggiornato 2026-09-17
+**Versione 4.0 — Polish Pack V2 CHIUSO (10/13 step, 77%)** · Aggiornato 2026-09-17
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
-## Roadmap V2 (post-implementation)
+## Roadmap V2 — **CHIUSA 2026-09-17**
 
-Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md`. Stato step:
+Per il piano interattivo dettagliato di Polish Pack V2 vedi `PIANO_V2.md` (sezione
+"Stato finale V2 — chiuso il 2026-09-17" per lessons learned e roadmap successiva).
+Per il prossimo ciclo vedi `PIANO_V3.md` (da creare).
 
-| # | Step | Stato |
+**Risultato finale V2**: **10/13 step completati (77%)**.
+
+| # | Step | Stato finale |
 |---|---|---|
 | 1 | Salute del codice (CI + AGENTS.md + audit state + event bus) | ✅ |
 | 2 | UX invisibile (sensore IR + tutorial contestuale) | ✅ |
 | 3 | Audio contestuale corridoi + musica ristorante | ✅ |
 | 4 | Meteo evoluto (stagionalità + 3 condizioni) | ✅ |
 | 5 | Personalizzazione hotel (HOTEL_CONFIG + 4 preset) | ✅ |
-| 6 | D2 — PWA installabile (manifest inline) | ⏳ saltato |
+| 6 | D2 — PWA installabile (manifest inline) | ⏭ saltato |
 | 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | ✅ |
 | 8 | i18n IT/EN (backlog #12) | ✅ |
-| 9-14 | Altri step (shaft, eventi, L-block, test, WebXR, citofono) | ⏳ |
+| 9 | Sensazioni realistiche cabina (vibrazione + crossfade + frenata) | ✅ |
+| 10 | Vita dell'hotel (NPC + suoni + giorno/notte + log) | ✅ |
+| 11 | L-block parametrico (piani + texture HD) | ⏸ rinviato a Polish Pack V3 |
 | 12 | Test framework leggero (`tests.html` + `BossHotelPure`) | ✅ |
+| 13 | Long-term WebXR/multi-cabina | ⏸ rinviato a roadmap long-term |
 | 14 | Citofono interattivo (EN 81-28) + pairing soft/hard SOS | ✅ |
 
-**Totale Polish Pack V2**: 9 step done (1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 14), 1 saltato (6), 3 in coda (11, 13).
-
-> Nota: lo Step 9 risultava gia' merged in PIANO_MIGLIORAMENTI v3.0 ma non era
-> nella tabella di riepilogo. Corretto: Polish Pack V2 ora totalizza 10 step done.
+**Decisioni D-key formali** (vedi `AGENTS.md` per razionale):
+D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti.
 
 ---
 

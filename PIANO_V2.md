@@ -1,7 +1,7 @@
 # Piano V2 — Roadmap Interattiva
 **Documento di design e implementazione iterativa per BOSS HOTEL Elevator 3D**
 
-> Versione 1.0 — Aperto 2026-09-12
+> Versione 1.1 — **V2 CHIUSO il 2026-09-17**
 >
 > Questo documento raccoglie i suggerimenti emersi dall'analisi post-v1.8 e li
 > organizza in **step implementativi** da eseguire **uno alla volta** in sessioni
@@ -9,8 +9,10 @@
 > decisione** che porrò all'utente (via `question` tool) prima di scrivere codice,
 > così che ogni intervento sia approvato esplicitamente.
 >
-> Stato backlog §11: **22/22 (100%)** — V2 è completamente additivo, non sostituisce
-> feature esistenti. Stato v1.8 hotfix porte camere: merged.
+> **Stato finale V2**: 10/13 step completati (77%). Vedi §Stato finale V2 per
+> lessons learned e roadmap successiva. Per il prossimo ciclo vedi `PIANO_V3.md`.
+>
+> Stato storico: 22/22 funzionalità backlog (100%) — V2 era completamente additivo.
 
 ---
 
@@ -965,12 +967,73 @@ Dove inserire la logica del citofono?
 
 ---
 
-# Come procedere ora
+# Stato finale V2 — chiuso il 2026-09-17
 
-Quando sei pronto per iniziare, dimmi:
-1. **Quale step vuoi affrontare per primo** (numero, es. "Step 1")
-2. Rispondo alle **Decision Questions** di quello step tramite `question` tool, una alla volta
-3. Implemento solo le opzioni che confermi
-4. Aggiorno questo documento segnando lo step ✅
+**Risultato Polish Pack V2**: **10/13 step completati** (77%).
 
-Posso anche partire da Step 0 (meta-decisioni DG.\*) se vuoi prima fissare la strategia globale, o partire direttamente da uno step specifico se hai già le idee chiare.
+| # | Step | Stato finale |
+|---|---|---|
+| 1 | Salute del codice: CI, AGENTS.md, audit state, event bus | ✅ merged |
+| 2 | UX invisibile: sensore IR ostacolo + tutorial prima volta | ✅ merged |
+| 3 | Audio contestuale corridoi + musica ristorante piano 8 | ✅ merged |
+| 4 | Meteo evoluto: stagionalità + nuove condizioni | ✅ merged |
+| 5 | Personalizzazione hotel (`HOTEL_CONFIG`) | ✅ merged |
+| 6 | D2 — PWA installabile (manifest inline) | ⏭ saltato (non prioritario) |
+| 7 | D7 — Pulsantiera ▲/▼ semantica (intenzione viaggio) | ✅ merged |
+| 8 | i18n IT/EN (backlog #12) | ✅ merged |
+| 9 | Sensazioni realistiche cabina | ✅ merged |
+| 10 | Vita dell'hotel (NPC + suoni + giorno/notte + log) | ✅ merged |
+| 11 | L-block parametrico (piani + texture HD) | ⏸ rinviato a Polish Pack V3 |
+| 12 | Test framework leggero | ✅ merged |
+| 13 | Long-term WebXR/multi-cabina | ⏸ rinviato a roadmap long-term |
+| 14 | Citofono interattivo + pairing con tasto SOS | ✅ merged |
+
+## Decisioni D-key chiuse durante V2
+
+Vedi `AGENTS.md` §Decisioni D-key. Le 10 decisioni formali sono:
+- **D1** Singolo file HTML sempre
+- **D2** Stato in cima al file (lezione TDZ)
+- **D3** No emoji nel codice
+- **D4** Commenti in italiano + sezioni numerate
+- **D5** HOTEL_CONFIG centralizzato + HOTEL_CONFIG_DEFAULTS frozen (Step 5)
+- **D6** Carica config PRIMA delle cabin texture IIFE (Step 5 fix critico)
+- **D7** Coda viaggi come `Array<{floor, direction}>` (Step 7)
+- **D8** STRINGS[lang] + refactor HTML statico → dinamico (Step 8)
+- **D9** Funzioni pure in `window.BossHotelPure` (Step 12)
+- **D10** Due sistemi di emergenza distinti: citofono (soft) vs SOS (hard) (Step 14)
+
+## Lessons learned da V2 (input per V3)
+
+1. **Il pattern "Decision Questions via `question` tool" funziona**: ogni step ha richiesto 4-5 domande con opzioni + raccomandazione. L'utente ha approvato esplicitamente prima dell'implementazione, riducendo rework a zero.
+
+2. **Test framework come investimento cross-step**: lo Step 12 (BossaHotelPure + 53 test) ha pagato subito. Step 14 (citofono) ha aggiunto 6 test in 5 minuti grazie all'infrastruttura. Per V3: aggiungere test a ogni step.
+
+3. **Commit separati per sotto-step > commit unico granulari**: il pattern Q1.5=C (sub-commit per ogni sotto-step) ha prodotto history pulita e rollback mirato. 5 commit per Step 12, 5 per Step 14. **Costo**: ~30s per commit extra. **Beneficio**: review e cherry-pick semplici.
+
+4. **Branch dedicati per step + merge `--no-ff`**: sempre, senza eccezioni. Il merge commit preserva il "perché" del branch.
+
+5. **Decisioni D-key emergono organicamente**: non tutte le decisioni sono pianificabili upfront. D6 (carica config prima texture IIFE), D9 (BossHotelPure), D10 (citofono/SOS) sono emerse durante l'implementazione. Per V3: aggiungere D-key solo quando diventano "contratti di progetto" chiari.
+
+6. **Acceptance criteria in PIANO_V2.md sono utili**: ogni step li ha avuti espliciti. Per V3: stesso pattern, ma aggiungere "test in PIANO_V2 scope" esplicito.
+
+7. **Rischio di scope creep elevato**: Step 9 e Step 10 hanno subito riscritture (shaft scartato, eventi scartati). Per V3: accettare esplicitamente che scope possa cambiare durante implementazione.
+
+8. **Documentazione incrementale funziona**: PIANO_MIGLIORAMENTI.md aggiornato fase per fase, PIANO_V2.md come roadmap interattiva, README come user-facing. Per V3: stesso pattern con PIANO_V3.md separato.
+
+9. **Saltare Step 6 (PWA) era la scelta giusta**: l'effort per service worker + manifest non giustificava il valore "installabile su mobile" in un simulatore desktop. Per V3: continuare a valutare effort vs valore, non aggiungere feature per completezza.
+
+10. **L'utente ha voce in capitolo in ogni decisione**: il workflow di sessione interattiva con `question` tool ha funzionato. **Nessuna decisione presa unilateralmente**. Per V3: mantenere questo contratto.
+
+## Cosa NON ha funzionato (per V3)
+
+- **Documentazione a posteriori** (`PIANO_MIGLIORAMENTI.md` scritto dopo il merge): a volte il commit di docs veniva dimenticato e dovevo recuperare dopo. Per V3: scrivere docs nello stesso branch, anche in commit separato.
+- **Verifica visiva post-merge**: in V2 ho catturato screenshot occasionali (Step 12, Step 14). Per V3: aggiungere smoke test screenshot per ogni step prima del merge.
+
+## Roadmap successiva
+
+- **Polish Pack V3** (nuovo): focus su polish qualitativo (accessibility, micro-animazioni, performance, settings QoL). Vedi `PIANO_V3.md` quando pronto.
+- **Long-term**: Step 11 (L-block parametrico) e Step 13 (WebXR) rivalutati dopo V3 in base alle priorità emerse.
+
+---
+
+**Polish Pack V2 chiude qui.** Per il prossimo ciclo vedi `PIANO_V3.md`.
