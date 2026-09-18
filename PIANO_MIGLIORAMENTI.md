@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 4.0 — Polish Pack V2 CHIUSO (10/13 step, 77%)** · Aggiornato 2026-09-17
+**Versione 5.0 — Polish Pack V3 aperto, Step 1 ✅** · Aggiornato 2026-09-18
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -32,7 +32,7 @@ Per il prossimo ciclo vedi `PIANO_V3.md` (da creare).
 | 14 | Citofono interattivo (EN 81-28) + pairing soft/hard SOS | ✅ |
 
 **Decisioni D-key formali** (vedi `AGENTS.md` per razionale):
-D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti.
+D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti · D11 speakWithSubtitle · D12 prefers-reduced-motion.
 
 ---
 
@@ -1763,3 +1763,66 @@ UX (allinea display touchscreen a cartello corridoio e strip DOM, già passo-pas
 - Raycast label ▲/▼ (commit `ab8ebc7`) — body.add(label) + recursive intersectObjects
 - Porte invisibili corridoio (commit `6ab62b6`) — doorMat DoubleSide + rimosso shaftBack
 - Housekeeping lista comandi (commit `a6cb3c1`) — welcome screen + HUD aggiornati
+
+---
+
+## Polish Pack V3 — **APERTO 2026-09-17**
+
+Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
+a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
+`PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
+
+### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
+
+Sotto-step implementati (Decision Questions approvate Q1.1=A, Q1.2=C, Q1.3=A, Q1.4=A, Q1.5=B):
+
+- **1a · speakWithSubtitle helper esplicito**: nuovo helper
+  `speakWithSubtitle(text, opts)` accanto a `speak()` puro. Wrappa
+  `speak()` + `showSubtitle()` con durata calcolata da `computeSubtitleDuration`
+  (~150 parole/min, clampata [2000, 6000] ms). Refactor di 9 call site:
+  tutti gli announce* (Arrival/Alarm/DoorClosing/MoveStart) + obstacle IR +
+  forced door closing + NPC TTS + inactivity prompt. Tutti i TTS utente-facing
+  ora hanno subtitle garantito.
+- **1b · prefers-reduced-motion OS-level**: `state.reducedMotion` +
+  `initReducedMotion()` con listener change runtime. Helper puro
+  `shouldDisableMotion(state)`. Le micro-animazioni non essenziali (crossfade
+  freccia 200ms `tickArrowFade`) vengono skippate; animazioni essenziali
+  (porte, vibrazione, allarme) restano per sicurezza/realismo.
+- **1c · focus-visible CSS ring dorato**: `outline: 2px solid #ffd66b +
+  offset 2px + box-shadow rgba(255,214,107,0.25)` su `.hud-action`,
+  `.tt-btn`, `.hc-btn`, `#startscreen button`. Si attiva solo con keyboard
+  nav (`:focus-visible`), non con click mouse.
+- **1d · contrasto WCAG AA testi HUD**: bump opacity/aggiunto `color: #f0e8d8`
+  esplicito su `#floor-strip .label`, `#panel-help`, `#mode-badge`,
+  `#startscreen p`. Helper puri `relativeLuminance(hex)` + `contrastRatio(fg, bg)`
+  per audit futuri. Input invalido → NaN (segnalazione "non calcolabile").
+
+**Pure helpers aggiunti a `window.BossHotelPure`**:
+`computeSubtitleDuration`, `shouldDisableMotion`, `relativeLuminance`, `contrastRatio`.
+
+**Decisioni D-key nuove**: D11 (speakWithSubtitle helper), D12 (prefers-reduced-motion).
+Aggiornato `AGENTS.md` con tabella contratti.
+
+**Acceptance criteria PIANO_V3.md §Step 1**: tutti ✅.
+
+**Test**: 72/72 pass (era 53/53, +19 nuovi assert in 4 sezioni:
+computeSubtitleDuration, shouldDisableMotion, contrastRatio WCAG).
+Test file: `tests.html` (no regressioni sui 53 preesistenti).
+
+**Branch**: `feature/v3-step-1-accessibility`
+**Commit**: `a26ccaf feat(a11y): Polish Pack V3 Step 1 Accessibility (T1a)`
+
+### Lessons learned V3 Step 1
+
+- **Stato in cima check**: aggiunto `reducedMotion: false` in CONFIGURAZIONE.
+  Lezione dei bug TDZ V2 ancora valida: dichiarare SEMPRE i nuovi flag globali
+  in CONFIGURAZIONE (riga ~1440), mai inline.
+- **Init posizione**: `initReducedMotion()` chiamato appena prima di
+  `buildCorridor(0)` per garantire che le prime animazioni rispettino
+  la preferenza OS (no flash iniziale di ghost freccia).
+- **commit unico per atomicita'**: 4 sotto-step modificano lo stesso file
+  (elevator.html) in modo intrecciato. Fattorizzare in 4 commit separati
+  avrebbe richiesto git add -p con patch chirurgiche; il commit unico ben
+  commentato mantiene l'atomicita' del feature con messaggio che elenca
+  esplicitamente i 4 sotto-step. Decisione documentata in PIANO_V3.md
+  implementation note.
