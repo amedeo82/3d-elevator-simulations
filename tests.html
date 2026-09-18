@@ -450,6 +450,86 @@
           assertEq(P.interphoneStatusLabel({ interphoneCalling: false }, 'en'), 'OFF');
         });
       });
+
+      // ---- accessibility (V3 Step 1a/1b) ------------------------
+      describe('accessibility: computeSubtitleDuration', () => {
+        test('testo vuoto → fallback 2000ms', () => {
+          assertEq(P.computeSubtitleDuration('', 'it'), 2000);
+          assertEq(P.computeSubtitleDuration(null, 'it'), 2000);
+          assertEq(P.computeSubtitleDuration(undefined, 'it'), 2000);
+        });
+        test('1 parola → 1900ms → clamped a 2000ms', () => {
+          assertEq(P.computeSubtitleDuration('ok', 'it'), 2000);
+        });
+        test('2 parole → 2300ms', () => {
+          assertEq(P.computeSubtitleDuration('Piano terra', 'it'), 2300);
+        });
+        test('4 parole → 3100ms', () => {
+          assertEq(P.computeSubtitleDuration('Piano primo secondo prego', 'it'), 3100);
+        });
+        test('20 parole → ~9500 → clamped a 6000ms', () => {
+          const d = P.computeSubtitleDuration('a b c d e f g h i j k l m n o p q r s t', 'it');
+          assertEq(d, 6000);
+        });
+        test('whitespace viene normalizzato (parole contate correttamente)', () => {
+          const d1 = P.computeSubtitleDuration('a b c', 'it');
+          const d2 = P.computeSubtitleDuration('   a    b    c   ', 'it');
+          assertEq(d1, d2);
+        });
+        test('lang non influenza la durata (solo conteggio parole)', () => {
+          assertEq(P.computeSubtitleDuration('primo piano', 'it'),
+                   P.computeSubtitleDuration('primo piano', 'en'));
+        });
+      });
+      describe('accessibility: shouldDisableMotion', () => {
+        test('state null/undefined → false', () => {
+          assertEq(P.shouldDisableMotion(null), false);
+          assertEq(P.shouldDisableMotion(undefined), false);
+        });
+        test('reducedMotion=false → false', () => {
+          assertEq(P.shouldDisableMotion({ reducedMotion: false }), false);
+        });
+        test('reducedMotion=true → true', () => {
+          assertEq(P.shouldDisableMotion({ reducedMotion: true }), true);
+        });
+        test('state vuoto (no flag) → false', () => {
+          assertEq(P.shouldDisableMotion({}), false);
+        });
+      });
+      describe('accessibility: contrastRatio WCAG', () => {
+        test('bianco su nero → 21:1 (massimo)', () => {
+          assertEq(P.contrastRatio('#ffffff', '#000000'), 21);
+        });
+        test('nero su nero → 1:1 (minimo)', () => {
+          assertEq(P.contrastRatio('#000000', '#000000'), 1);
+        });
+        test('gold #ffd66b su nero ≥ 14:1 (passa AA AAA)', () => {
+          const r = P.contrastRatio('#ffd66b', '#000000');
+          assert(r >= 14 && r <= 16);
+        });
+        test('accetta hex shorthand #fff', () => {
+          assertEq(P.contrastRatio('#fff', '#000'), 21);
+        });
+        test('accetta numero 0xRRGGBB', () => {
+          const r1 = P.contrastRatio(0xffffff, 0x000000);
+          const r2 = P.contrastRatio('#ffffff', '#000000');
+          assert(Math.abs(r1 - r2) < 0.001);
+        });
+        test('gold #ffd66b su cream #f0e8d8 < 3 (non passa)', () => {
+          const r = P.contrastRatio('#ffd66b', '#f0e8d8');
+          assert(r < 3);
+        });
+        test('commutativo (fg/bg invertiti = stesso ratio)', () => {
+          const a = P.contrastRatio('#ffd66b', '#1a1a24');
+          const b = P.contrastRatio('#1a1a24', '#ffd66b');
+          assert(Math.abs(a - b) < 0.001);
+        });
+        test('input invalido → NaN (segnalazione errore)', () => {
+          assert(Number.isNaN(P.contrastRatio('xyz', '#000000')));
+          assert(Number.isNaN(P.contrastRatio('', '#000000')));
+          assert(Number.isNaN(P.contrastRatio('gibberish', '#fff')));
+        });
+      });
     }
 
     // ============================================================
