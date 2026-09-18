@@ -21,7 +21,7 @@
 
 | # | Step | Tier | Sforzo | Impatto | Stato |
 |---|---|---|---|---|---|
-| 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ⏳ |
+| 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
 | 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
@@ -312,18 +312,31 @@ a motion. Coerente con EN 81-70 (accessibilità ascensori) e WCAG 2.1 AA.
 
 ## Acceptance criteria
 
-- [ ] (1a) Ogni `speak()` ha subtitle automatico (no skip involontario)
-- [ ] (1b) `prefers-reduced-motion: reduce` → `state.reducedMotion=true` → animazioni non essenziali disabilitate
-- [ ] (1b) Animazioni essenziali (allarme, porte) restano attive anche con reduced motion
-- [ ] (1c) Tab key su bottoni HUD mostra focus ring visibile
-- [ ] (1d) Display touch passa WCAG AA contrast check (≥4.5:1)
-- [ ] (1d) Nessuna regressione FPS
-- [ ] `node --check` + brace balance
-- [ ] Test: helper `shouldDisableMotion(state)` + test in `tests.html`
+- [x] (1a) Ogni `speak()` ha subtitle automatico (no skip involontario)
+- [x] (1b) `prefers-reduced-motion: reduce` → `state.reducedMotion=true` → animazioni non essenziali disabilitate
+- [x] (1b) Animazioni essenziali (allarme, porte) restano attive anche con reduced motion
+- [x] (1c) Tab key su bottoni HUD mostra focus ring visibile
+- [x] (1d) Display touch passa WCAG AA contrast check (≥4.5:1)
+- [x] (1d) Nessuna regressione FPS
+- [x] `node --check` + brace balance
+- [x] Test: helper `shouldDisableMotion(state)` + test in `tests.html`
 
 ## Effort
 
 1 sessione (~2-3 ore).
+
+## Implementation note (chiuso)
+
+Decisioni utente approvate: Q1.1=A (tutto), Q1.2=C (helper `speakWithSubtitle` esplicito),
+Q1.3=A (solo micro-animazioni), Q1.4=A (outline dorato brand), Q1.5=B (tutti i testi HUD).
+
+Branch: `feature/v3-step-1-accessibility`
+Commit: `a26ccaf feat(a11y): Polish Pack V3 Step 1 Accessibility (T1a)`
+Test: 72/72 pass (era 53/53, +19 nuovi assert su accessibility helpers)
+
+Aggiornare `AGENTS.md` sezione Contratti con **D-V3-1**: speakWithSubtitle helper
+accanto a speak() puro, e **D-V3-2**: shouldDisableMotion(state) come gate OS-level
+per micro-animazioni.
 
 ---
 
