@@ -1,14 +1,15 @@
 # Piano V3 — Roadmap Polish Qualitativo
 **Documento di design e implementazione iterativa per BOSS HOTEL Elevator 3D**
 
-> Versione 0.1 — Aperto 2026-09-17 (chiusura V2)
+> Versione 0.2 — Aperto 2026-09-17 (chiusura V2) · Step 1 ✅ 2026-09-18
 >
 > V3 sposta il focus da **aggiungere feature** a **migliorare la qualità**
 > di quelle esistenti. Niente nuove funzionalità grosse (rimandate a V4+):
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato: **scope da finalizzare** — vedi §Step 1 (Scope discovery).
+> Stato attuale: **1/9 step completati (11%)** — vedi §Stato V3 in fondo
+> al documento. Step 1 Accessibility merged su `main` (commit `b2497f1`).
 > Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che informano V3.
 >
 > Workflow: stesso pattern di V2 — file `PIANO_V3.md` con step numerati,
@@ -32,6 +33,8 @@
 | 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
 
 **Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
+
+**Progress attuale**: 1/9 step done · Tier T1: 1/3 done (33%) · Tier T2: 0/3 · Tier T3: 0/2 · Bonus: 0/1.
 
 **Legenda stato**: ⏳ pending · 🔄 in corso · ✅ done · ❌ scartato
 
@@ -330,35 +333,70 @@ a motion. Coerente con EN 81-70 (accessibilità ascensori) e WCAG 2.1 AA.
 Decisioni utente approvate: Q1.1=A (tutto), Q1.2=C (helper `speakWithSubtitle` esplicito),
 Q1.3=A (solo micro-animazioni), Q1.4=A (outline dorato brand), Q1.5=B (tutti i testi HUD).
 
-Branch: `feature/v3-step-1-accessibility`
-Commit: `a26ccaf feat(a11y): Polish Pack V3 Step 1 Accessibility (T1a)`
+Branch: `feature/v3-step-1-accessibility` (merged + cancellata locale/remota)
+Commit: `a26ccaf feat(a11y): Polish Pack V3 Step 1 Accessibility (T1a)` · `bc070e0 docs(v3)` · `b2497f1 Merge` · `05345d3 chore(slides) emoji`
 Test: 72/72 pass (era 53/53, +19 nuovi assert su accessibility helpers)
 
-Aggiornare `AGENTS.md` sezione Contratti con **D-V3-1**: speakWithSubtitle helper
-accanto a speak() puro, e **D-V3-2**: shouldDisableMotion(state) come gate OS-level
-per micro-animazioni.
+Contratti D-key nuovi in `AGENTS.md`:
+- **D11**: `speak()` puro + `speakWithSubtitle()` helper esplicito (Q1.2=C).
+- **D12**: `prefers-reduced-motion` OS-level → `state.reducedMotion` + `shouldDisableMotion(state)` helper (Q1.3=A).
+
+Pure helpers aggiunti a `window.BossHotelPure`: `computeSubtitleDuration`,
+`shouldDisableMotion`, `relativeLuminance`, `contrastRatio`.
+
+**Lessons learned** (dettaglio in `PIANO_MIGLIORAMENTI.md` §Fase 18):
+- Stato in cima check rispettato: `reducedMotion: false` dichiarato in
+  CONFIGURAZIONE, mai inline.
+- Init position: `initReducedMotion()` chiamato appena prima di
+  `buildCorridor(0)` per evitare flash iniziale del ghost freccia.
+- Commit strategy: 4 sotto-step intrecciati in elevator.html → commit
+  unico ben commentato (atomicita' del feature), con messaggio che
+  elenca esplicitamente i 4 sotto-step invece di patch chirurgiche.
 
 ---
 
 ---
+
+# Stato V3 — progress overview
+
+| # | Step | Stato | Commit | Branch |
+|---|---|---|---|---|
+| 1 | Accessibility (a11y) | ✅ done 2026-09-18 | `a26ccaf` + `bc070e0` | merged + cancellata |
+| 2 | Bug fix UX sistematico | ⏳ next | — | — |
+| 3 | Settings QoL | ⏳ pending | — | — |
+| 4 | Micro-animazioni | ⏳ pending | — | — |
+| 5 | Performance | ⏳ pending | — | — |
+| 6 | QoL manutenzione | ⏳ pending | — | — |
+| 7 | Documentazione completa | ⏳ pending | — | — |
+| 8 | Test coverage estesa | ⏳ pending | — | — |
+| 9 | Mobile responsive layout | ⏳ pending | — | — |
+
+**Risultato parziale**: **1/9 step completati (11%)** dopo la prima sessione V3.
+Effort residuo stimato: ~8-13 ore su 7-11 sessioni (Step 2 + 7-8 ancora da fare).
+
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12.
 
 # Come procedere ora
 
-Lo **Step 1 (scope discovery) è chiuso** con 9 step definitivi nel backlog.
+**Step 1 Accessibility (T1a) ✅ chiuso e merged su main.**
 
-Il prossimo step effettivo è **Step 1 (effettivo) · Accessibility (T1a)** in cima a questo documento.
+Il prossimo step è **Step 2 · Bug fix UX sistematico (T1b)** — corner case noti
+elencati in §Scope Step 2 sopra (porte a metà movimento + click display,
+click durante movimento cabina, allarme + OOO, citofono + SOS, language switch
+durante annuncio).
 
-Workflow per iniziare:
+Workflow per Step 2:
 
-1. Decidi se procedere con Step 1 Accessibility subito, o fermarsi qui.
-2. Se sì, rispondi alle Decision Questions Q1.1-Q1.5 di Step 1 (Accessibility).
-3. Implemento solo le opzioni approvate.
-4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-6. Commit separati per sotto-step (1a/1b/1c/1d).
-7. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge finale.
+1. Apri la sezione §Scope Step 2 e leggi i corner case noti.
+2. Decidi se aggiungere altri bug noti (audit se necessario).
+3. Rispondi alle Decision Questions quando definite.
+4. Implemento solo le opzioni approvate.
+5. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
+6. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+7. Commit separati per sotto-bug, smoke test screenshot pre-merge.
+8. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase al merge finale.
 
-Pattern identico a V2: branch dedicato `feature/v3-step-1-accessibility`, 4 commit separati, smoke test screenshot pre-merge.
+Pattern: branch dedicato `feature/v3-step-2-bugfix-ux`, merge `--no-ff`.
 
 ---
 
