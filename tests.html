@@ -530,6 +530,85 @@
           assert(Number.isNaN(P.contrastRatio('gibberish', '#fff')));
         });
       });
+
+      // ---- canOpenDoors (Polish Pack V3 Step 2: Q2.6 A+B) ----------
+      describe('canOpenDoors (gate allarme/OOO)', () => {
+        test('stato base (no alarm, no OOO) → porte apribili', () => {
+          assertEq(P.canOpenDoors({ alarmOn: false, outOfOrder: false }), true);
+        });
+        test('allarme ON → porte bloccate', () => {
+          assertEq(P.canOpenDoors({ alarmOn: true, outOfOrder: false }), false);
+        });
+        test('OOO ON → porte bloccate', () => {
+          assertEq(P.canOpenDoors({ alarmOn: false, outOfOrder: true }), false);
+        });
+        test('allarme + OOO entrambi ON → porte bloccate', () => {
+          assertEq(P.canOpenDoors({ alarmOn: true, outOfOrder: true }), false);
+        });
+        test('input null/undefined → false (fail-safe)', () => {
+          assertEq(P.canOpenDoors(null), false);
+          assertEq(P.canOpenDoors(undefined), false);
+        });
+      });
+
+      // ---- shouldAnnounceDoorClose (Polish Pack V3 Step 2: Q2.6 C) -
+      describe('shouldAnnounceDoorClose (anti-spam chiusura)', () => {
+        test('porte aperte 1.0 → annuncia', () => {
+          assertEq(P.shouldAnnounceDoorClose(1.0), true);
+        });
+        test('porte a meta\' 0.5 → annuncia', () => {
+          assertEq(P.shouldAnnounceDoorClose(0.5), true);
+        });
+        test('sopra soglia 0.06 → annuncia', () => {
+          assertEq(P.shouldAnnounceDoorClose(0.06), true);
+        });
+        test('sotto soglia 0.05 → no-op (porte gia\' chiuse)', () => {
+          assertEq(P.shouldAnnounceDoorClose(0.05), false);
+          assertEq(P.shouldAnnounceDoorClose(0.04), false);
+          assertEq(P.shouldAnnounceDoorClose(0), false);
+        });
+      });
+
+      // ---- sosCancelsOOO (Polish Pack V3 Step 2: Q2.4) -------------
+      describe('sosCancelsOOO (interazione allarme/OOO)', () => {
+        test('OOO OFF, allarme ON → non cancella nulla', () => {
+          assertEq(P.sosCancelsOOO({ outOfOrder: false, alarmOn: true }), false);
+        });
+        test('OOO ON, allarme OFF → non si attiva (no-op)', () => {
+          assertEq(P.sosCancelsOOO({ outOfOrder: true, alarmOn: false }), false);
+        });
+        test('OOO ON, allarme ON → cancella OOO (Q2.4=A)', () => {
+          assertEq(P.sosCancelsOOO({ outOfOrder: true, alarmOn: true }), true);
+        });
+        test('entrambi OFF → no-op', () => {
+          assertEq(P.sosCancelsOOO({ outOfOrder: false, alarmOn: false }), false);
+        });
+        test('input null/undefined → false (fail-safe)', () => {
+          assertEq(P.sosCancelsOOO(null), false);
+          assertEq(P.sosCancelsOOO(undefined), false);
+        });
+      });
+
+      // ---- currentMovementDirection (helper routing) ---------------
+      describe('currentMovementDirection', () => {
+        test('fermо → null', () => {
+          assertEq(P.currentMovementDirection({ isMoving: false, currentFloor: 0, targetFloor: 0 }), null);
+          assertEq(P.currentMovementDirection({ isMoving: false, currentFloor: 3, targetFloor: 5 }), null);
+        });
+        test('moving up (target > current) → "up"', () => {
+          assertEq(P.currentMovementDirection({ isMoving: true, currentFloor: 2, targetFloor: 5 }), 'up');
+        });
+        test('moving down (target < current) → "down"', () => {
+          assertEq(P.currentMovementDirection({ isMoving: true, currentFloor: 5, targetFloor: 2 }), 'down');
+        });
+        test('target === current (no-op) → null', () => {
+          assertEq(P.currentMovementDirection({ isMoving: true, currentFloor: 3, targetFloor: 3 }), null);
+        });
+        test('input null/undefined → null (fail-safe)', () => {
+          assertEq(P.currentMovementDirection(null), null);
+          assertEq(P.currentMovementDirection(undefined), null);
+        });
+      });
     }
 
     // ============================================================

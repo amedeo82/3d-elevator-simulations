@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.0 — Polish Pack V3 aperto, Step 1 ✅** · Aggiornato 2026-09-18
+**Versione 5.1 — Polish Pack V3, Step 1 + Step 2 ✅** · Aggiornato 2026-09-18
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,6 +1772,10 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
+**Risultato parziale V3**: **2/9 step completati (22%)** dopo due sessioni.
+Step 1 (Accessibility) merged su main. Step 2 (Bug fix UX) implementato su
+branch dedicato `feature/v3-step-2-bugfix-ux`, merge pending.
+
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
 Sotto-step implementati (Decision Questions approvate Q1.1=A, Q1.2=C, Q1.3=A, Q1.4=A, Q1.5=B):
@@ -1826,3 +1830,63 @@ Test file: `tests.html` (no regressioni sui 53 preesistenti).
   commentato mantiene l'atomicita' del feature con messaggio che elenca
   esplicitamente i 4 sotto-step. Decisione documentata in PIANO_V3.md
   implementation note.
+
+---
+
+### Fase 19 — Polish Pack V3 Step 2: Bug fix UX sistematico (T1b) ✅ (2026-09-18, branch `feature/v3-step-2-bugfix-ux`)
+
+Audit dei 5 corner case elencati in `PIANO_V3.md` §Scope Step 2 + ricerca attiva
+di bug latenti. Decision Questions via `question` tool (6 domande, tutte
+approvate). Fix implementati chirurgicamente.
+
+### Sotto-step implementati
+
+| # | Sotto-step | File | Tipo |
+|---|---|---|---|
+| Q2.2 | Click display durante movimento → beep 440Hz + subtitle 1.5s | `elevator.html` (requestFloor) | UX feedback |
+| Q2.3 | Porte mid-animazione: promise-chaining con coda `doorAnimQueue` | `elevator.html` (animateDoorsTo + tickDoors) | Refactor |
+| Q2.4 | SOS ON mentre OOO ON → forza OOO OFF + TTS notifica | `elevator.html` (toggleAlarm) | Logica stato |
+| Q2.6 A | `setDoors(true)` con allarme → beep 220Hz + subtitle 1.5s | `elevator.html` (setDoors) | UX feedback |
+| Q2.6 B | `setDoors(true)` con OOO → beep 220Hz + subtitle 1.5s | `elevator.html` (setDoors) | UX feedback |
+| Q2.6 C | `setDoors(false)` ripetuto → no spam annuncio chiusura | `elevator.html` (setDoors) | Logica stato |
+| Q2.6 D | `animateDoorsTo()` memory leak Promise.resolve | lasciato | indiretto da Q2.3 |
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `canOpenDoors(state)` → bool: true se porte apribili (no alarm, no OOO)
+- `shouldAnnounceDoorClose(doorsActual)` → bool: true se annuncio "porte in chiusura" deve partire
+- `sosCancelsOOO(state)` → bool: true se attivazione SOS deve azzerare OOO
+- `currentMovementDirection(state)` → 'up' | 'down' | null: direzione del movimento cabina
+
+### Nuove stringhe i18n (STRINGS.it / STRINGS.en)
+
+- `queueAck`: "Richiesta in coda" / "Request queued"
+- `doorBlockedAlarm`: "Porte bloccate per allarme" / "Doors locked due to alarm"
+- `doorBlockedOOO`: "Fuori servizio" / "Out of service"
+- `oooCancelledByAlarm`: "Allarme attivato. Fuori servizio annullato." / "Alarm activated. Out of service cancelled."
+
+### Test
+
+- 73 → 93+ assert (+20 nuovi test su 4 helper puri in `tests.html`)
+- Branch: `feature/v3-step-2-bugfix-ux`
+- Commit: (pending — vedi PIANO_V3.md §Stato V3)
+
+### Contratto D-key nuovo
+
+- **D13**: Bug latenti emersi durante l'audit di Step 2 sono documentati e hanno
+  decisione esplicita (fix o "leave alone" con razionale).
+
+### Lessons learned V3 Step 2
+
+- **Audit-driven fixes > blanket fixes**: l'audit (Q2.1=C) ha rivelato bug non
+  elencati (A, B, C, D). Senza l'audit esteso, questi sarebbero rimasti latenti.
+  Il pattern "audit + fix mirati" è da replicare in Step 5 (Performance).
+- **Pure helpers extraction**: la regola D9 (esporre funzioni pure in
+  `BossHotelPure`) paga ancora. 4 nuovi helper testati senza iframe runtime.
+- **Promise-chaining > replace**: refactor Q2.3 mostra che `replace promise`
+  è fragile (memory leak, bounce visivo). Il pattern coda esplicita è +30 righe
+  ma risolve 3 problemi con 1 fix.
+- **No silent fail UX**: i bug A+B (silent fail su `setDoors(true)` durante
+  allarme/OOO) erano particolarmente gravi perche' l'utente pensava fosse
+  rotto il click. Aggiungere feedback (anche minimo) è sempre meglio del
+  silent return.

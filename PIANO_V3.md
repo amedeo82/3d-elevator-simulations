@@ -23,6 +23,7 @@
 | # | Step | Tier | Sforzo | Impatto | Stato |
 |---|---|---|---|---|---|
 | 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ✅ |
+| 2 | Bug fix UX sistematico | T1b | 1 sessione | 🔴 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
 | 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
@@ -357,13 +358,91 @@ Pure helpers aggiunti a `window.BossHotelPure`: `computeSubtitleDuration`,
 
 ---
 
+# STEP 2 · Bug fix UX sistematico (T1b)
+
+Audit corner case + bug latenti + fix mirati. Pattern: prima Decision
+Questions via `question` tool → poi implementazione chirurgica → test.
+
+## Decision Questions
+
+### Q2.1 — Scope dello step
+- **C. Audit + estensione corner case** *(approvato)*: indagine approfondita
+  dei 5 corner case elencati + ricerca attiva di bug latenti non documentati.
+
+### Q2.2 — Click display durante movimento cabina
+- **A. Beep 440Hz + subtitle 1.5s** *(approvato)*: aggiunto feedback uditivo/visivo
+  quando `requestFloor()` mette il piano in coda durante il movimento (prima solo
+  `lightFloorButton()`, troppo silenzioso).
+
+### Q2.3 — Porte mid-animazione + click display
+- **B. Promise-chaining completo** *(approvato)*: refactor di `animateDoorsTo()`
+  per supportare una coda `doorAnimQueue`. Le Promise resolutions sono rispettate
+  (no memory leak), niente bounce. Edge case: target già raggiunto → resolve
+  immediato (no-op 0-duration).
+
+### Q2.4 — Allarme + OOO: interazione
+- **A. SOS forza OOO OFF** *(approvato)*: quando l'allarme hard va ON mentre OOO
+  è attivo, lo stato OOO viene azzerato + emette `ooo:off` + TTS notifica
+  ("Allarme attivato. Fuori servizio annullato."). Razionale: due stati
+  "fuori servizio" sovrapposti sono ambigui per l'utente.
+
+### Q2.5 — Language switch durante annuncio TTS
+- **A. Lascia finire in lingua vecchia** *(approvato)*: nessun cambiamento.
+  `setLang()` non interrompe TTS in corso. Più naturale di un taglio中途.
+
+### Q2.6 — Bug latenti aggiuntivi (A/B/C/D)
+- **A. Fix A+B+C, lascia D** *(approvato)*:
+  - **A**: `setDoors(true)` con allarme ON → silent fail (era bug: nessun
+    feedback). Ora: beep 220Hz + subtitle "Porte bloccate per allarme" 1.5s.
+  - **B**: `setDoors(true)` con OOO ON → silent open (era bug: apriva le
+    porte anche con OOO attivo). Ora: beep 220Hz + subtitle "Fuori servizio" 1.5s.
+  - **C**: `setDoors(false)` ripetuto → annunciava "porte si chiudono" su
+    ogni click (era spam). Ora: no-op + annuncio solo se `doorsActual > 0.05`.
+  - **D**: `animateDoorsTo()` sostituiva `doorAnim` perdendo la `resolve()`
+    della Promise precedente (memory leak minore). Lasciato perche' fix
+    completo in Q2.3 risolve indirettamente (coda esplicita).
+
+## Acceptance criteria
+
+- [x] (Q2.2) Click display durante movimento → beep 440Hz + subtitle "Richiesta in coda" 1.5s
+- [x] (Q2.3) Porte mid-animazione + click → promise chaining, no bounce, no leak
+- [x] (Q2.3) Coda porte → processata correttamente dopo animazione corrente
+- [x] (Q2.4) SOS ON mentre OOO ON → OOO forzato OFF + TTS notifica
+- [x] (Q2.6 A) `setDoors(true)` con allarme → feedback audio+visivo (no silent fail)
+- [x] (Q2.6 B) `setDoors(true)` con OOO → feedback audio+visivo (no silent open)
+- [x] (Q2.6 C) `setDoors(false)` ripetuto → no spam annuncio chiusura
+- [x] Test: 4 nuovi helper puri in `BossHotelPure` (`canOpenDoors`,
+      `shouldAnnounceDoorClose`, `sosCancelsOOO`, `currentMovementDirection`)
+- [x] Test: ~20 nuovi assert in `tests.html` sui nuovi helper
+- [x] `node --check` + brace balance su entrambi i file
+
+## Contratto D-key nuovo
+
+- **D13**: Bug latenti emersi durante l'audit di Step 2 sono documentati e hanno
+  decisione esplicita (fix o "leave alone" con razionale). Il bug D (memory leak
+  promise) è lasciato perche' il refactor Q2.3 lo risolve indirettamente.
+
+## Effort
+
+1 sessione (~2-3 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-2-bugfix-ux` (creato, commit pending)
+Test: 73 → 93+ assert (+20 nuovi su 4 helper puri)
+File toccati: `elevator.html`, `tests.html`
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
 |---|---|---|---|---|
 | 1 | Accessibility (a11y) | ✅ done 2026-09-18 | `a26ccaf` + `bc070e0` | merged + cancellata |
-| 2 | Bug fix UX sistematico | ⏳ next | — | — |
-| 3 | Settings QoL | ⏳ pending | — | — |
+| 2 | Bug fix UX sistematico | ✅ done 2026-09-18 | (vedi sotto) | `feature/v3-step-2-bugfix-ux` |
+| 3 | Settings QoL | ⏳ next | — | — |
 | 4 | Micro-animazioni | ⏳ pending | — | — |
 | 5 | Performance | ⏳ pending | — | — |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
@@ -371,33 +450,32 @@ Pure helpers aggiunti a `window.BossHotelPure`: `computeSubtitleDuration`,
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **1/9 step completati (11%)** dopo la prima sessione V3.
-Effort residuo stimato: ~8-13 ore su 7-11 sessioni (Step 2 + 7-8 ancora da fare).
+**Risultato parziale**: **2/9 step completati (22%)** dopo due sessioni V3.
+Effort residuo stimato: ~7-12 ore su 6-10 sessioni (Step 3-9 ancora da fare).
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13.
 
 # Come procedere ora
 
-**Step 1 Accessibility (T1a) ✅ chiuso e merged su main.**
+**Step 2 Bug fix UX sistematico (T1b) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 2 · Bug fix UX sistematico (T1b)** — corner case noti
-elencati in §Scope Step 2 sopra (porte a metà movimento + click display,
-click durante movimento cabina, allarme + OOO, citofono + SOS, language switch
-durante annuncio).
+Il prossimo step è **Step 3 · Settings QoL (T1c)** — volumi audio suddivisi
+(effetti/musica/TTS), luminosità display touch, snapshot stato debug JSON.
+Vedi §Scope Step 3 sopra per i 3 sotto-step proposti.
 
-Workflow per Step 2:
+Workflow per Step 3:
 
-1. Apri la sezione §Scope Step 2 e leggi i corner case noti.
-2. Decidi se aggiungere altri bug noti (audit se necessario).
+1. Apri la sezione §Scope Step 3 e leggi i 3 sotto-step proposti.
+2. Decidi se aggiungere altri settings QoL (audit se necessario).
 3. Rispondi alle Decision Questions quando definite.
 4. Implemento solo le opzioni approvate.
 5. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
 6. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-7. Commit separati per sotto-bug, smoke test screenshot pre-merge.
+7. Commit separati per sotto-step, smoke test screenshot pre-merge.
 8. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase al merge finale.
 
-Pattern: branch dedicato `feature/v3-step-2-bugfix-ux`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-3-settings-qol`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Siamo pronti a iniziare quando dai il via.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + Step 2 chiusi; Step 3 pronto quando dai il via.
