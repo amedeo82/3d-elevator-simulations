@@ -412,6 +412,57 @@
     color: #ffd66b;
     font-size: 11px;
   }
+  /* Polish Pack V3 Step 3: bottone export JSON nel maintenance overlay */
+  .m-export-btn {
+    margin-top: 8px;
+    width: 100%;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    transition: background 0.15s;
+  }
+  .m-export-btn:hover { background: rgba(0, 255, 136, 0.22); }
+  .m-export-btn:active { background: rgba(0, 255, 136, 0.35); }
+  /* Polish Pack V3 Step 3: sliders QoL nel pannello Personalizza hotel */
+  .hc-settings {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(201, 165, 90, 0.4);
+  }
+  .hc-settings-title {
+    color: var(--hc-accent, #c9a55a);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .hc-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 11px;
+    color: #d8c8a0;
+  }
+  .hc-slider-row label { flex: 0 0 110px; opacity: 0.85; }
+  .hc-slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--hc-accent, #c9a55a);
+    cursor: pointer;
+  }
+  .hc-slider-row .hc-slider-val {
+    flex: 0 0 40px;
+    text-align: right;
+    color: var(--hc-accent, #c9a55a);
+    font-family: monospace;
+    font-size: 11px;
+  }
 
   /* Start screen */
   #startscreen {
@@ -633,6 +684,9 @@
     <div class="row"><span class="lbl" id="m-interphone-lbl"></span><span class="val" id="m-interphone">--</span></div>
     <div class="events" id="m-events"></div>
     <div class="hint" id="m-hint"></div>
+    <!-- Polish Pack V3 Step 3: bottone export stato JSON.
+         pointer-events:auto perche' il parent overlay ha pointer-events:none. -->
+    <button id="m-export-json" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
   </div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
@@ -672,6 +726,30 @@
       <button id="hc-reset" class="hc-btn"></button>
       <button id="hc-close" class="hc-btn"></button>
       <button id="hc-apply" class="hc-btn hc-primary"></button>
+    </div>
+    <!-- Polish Pack V3 Step 3: Settings QoL (audio + display) -->
+    <div class="hc-settings">
+      <div class="hc-settings-title" id="hc-settings-title"></div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-effects"></label>
+        <input type="range" id="hc-slider-effects" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-effects">100%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-music"></label>
+        <input type="range" id="hc-slider-music" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-music">50%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-tts"></label>
+        <input type="range" id="hc-slider-tts" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-tts">85%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-brightness"></label>
+        <input type="range" id="hc-slider-brightness" min="0.5" max="1.5" step="0.05">
+        <span class="hc-slider-val" id="hc-val-brightness">100%</span>
+      </div>
     </div>
     <div class="hc-status" id="hc-status"></div>
     <div class="hc-hint"></div>
@@ -873,6 +951,18 @@ const STRINGS = {
     doorBlockedAlarm: 'Porte bloccate per allarme',
     doorBlockedOOO: 'Fuori servizio',
     oooCancelledByAlarm: 'Allarme attivato. Fuori servizio annullato.',
+    // Polish Pack V3 Step 3: Settings QoL (pannello Personalizza hotel)
+    settingsTitle: 'Impostazioni',
+    audioSection: 'Audio',
+    audioEffects: 'Effetti sonori',
+    audioMusic: 'Musica cabina',
+    audioTts: 'Annunci vocali (TTS)',
+    audioMute: 'Muto globale',
+    displaySection: 'Display',
+    displayBrightness: 'Luminosita\' display',
+    settingsReset: 'Ripristina default',
+    settingsSaved: 'Impostazioni salvate',
+    settingsExportReady: 'Esporta stato',
     prenotationLabel: 'PRENOTATA \u00b7 Tieni premuto E per entrare',
     helpTitle: 'Comandi',
     // start screen
@@ -1096,6 +1186,18 @@ const STRINGS = {
     doorBlockedAlarm: 'Doors locked due to alarm',
     doorBlockedOOO: 'Out of service',
     oooCancelledByAlarm: 'Alarm activated. Out of service cancelled.',
+    // Polish Pack V3 Step 3: Settings QoL
+    settingsTitle: 'Settings',
+    audioSection: 'Audio',
+    audioEffects: 'Sound effects',
+    audioMusic: 'Cabin music',
+    audioTts: 'Voice announcements (TTS)',
+    audioMute: 'Global mute',
+    displaySection: 'Display',
+    displayBrightness: 'Display brightness',
+    settingsReset: 'Reset defaults',
+    settingsSaved: 'Settings saved',
+    settingsExportReady: 'Export state',
     prenotationLabel: 'BOOKED \u00b7 Hold E to enter',
     helpTitle: 'Controls',
     startBtn: 'Enter the elevator',
@@ -1535,7 +1637,17 @@ const state = {
   // Animazioni essenziali (apertura/chiusura porte, vibrazione cabina,
   // lampeggio allarme) restano attive per ragioni di sicurezza/realismo.
   reducedMotion: false,
-  _interphoneButton: null     // reference al mesh del pulsante verde (lazy)
+  _interphoneButton: null,    // reference al mesh del pulsante verde (lazy)
+  // Polish Pack V3 Step 3: Settings QoL — volumi audio per canale +
+  // luminosità display. Range:
+  //   audio.effects: 0..1 (default 1.0, moltiplicatore su playBeep + chime + alarm + door + whoosh)
+  //   audio.music:   0..1 (default 0.5, moltiplicatore su musica cabin + ristorante)
+  //   audio.tts:     0..1 (default 0.85, volume Web Speech API)
+  //   display.brightness: 0.5..1.5 (default 1.0, applicato via ctx.filter brightness())
+  // Persistenza: localStorage 'bossHotelAudio@v1' + 'bossHotelDisplay@v1'
+  audio: { effects: 1.0, music: 0.5, tts: 0.85 },
+  display: { brightness: 1.0 },
+  _exportLog: []              // log esteso (50 entry) usato per export JSON
 };
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
@@ -5509,10 +5621,17 @@ function drawModernDisplay() {
     displaySemistaticReady = true;
   }
   // 3. Composizione: clear + copia i due layer cached + ridisegna il dynamic
+  // Polish Pack V3 Step 3: brightness filter applicato al canvas display.
+  // Range 0.5..1.5 (default 1.0 = nessuna modifica). ctx.filter influenza
+  // TUTTE le operazioni di disegno successive (drawImage + fillRect + testo).
+  const bright = (state.display && typeof state.display.brightness === 'number')
+    ? state.display.brightness : 1.0;
+  ctx.filter = `brightness(${bright})`;
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(displayStaticCanvas, 0, 0);
   ctx.drawImage(displaySemistaticCanvas, 0, 0);
   renderDisplayDynamicLayer(ctx, animT);
+  ctx.filter = 'none'; // reset per evitare side-effect su altri contesti
 
   displayTex.needsUpdate = true;
   displayDirty = false;
@@ -5628,7 +5747,11 @@ function playBeep(freq = 800, dur = 0.08, type = 'sine', vol = 0.15) {
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   o.type = type; o.frequency.value = freq;
-  g.gain.value = vol;
+  // Polish Pack V3 Step 3: moltiplicatore effetti sonori.
+  // state.audio.effects è in [0..1]. Default 1.0 = nessuna attenuazione.
+  const effMul = (state.audio && typeof state.audio.effects === 'number')
+    ? state.audio.effects : 1.0;
+  g.gain.value = vol * effMul;
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
   o.connect(g); g.connect(audioCtx.destination);
   o.start(); o.stop(audioCtx.currentTime + dur);
@@ -5682,11 +5805,15 @@ function startWhoosh() {
   whooshFilter.frequency.value = 400;
   whooshFilter.Q.value = 1.2;
   whooshGain = audioCtx.createGain();
+  // Polish Pack V3 Step 3: whoosh rispetta state.audio.effects.
   whooshGain.gain.value = 0; // parte silente, sale gradualmente in tickMove
   whooshNode.connect(whooshFilter);
   whooshFilter.connect(whooshGain);
   whooshGain.connect(audioCtx.destination);
   whooshNode.start();
+  // Memorizza il moltiplicatore per applicarlo in tickMove (ramping graduale).
+  whooshGain._effectsMul = (state.audio && typeof state.audio.effects === 'number')
+    ? state.audio.effects : 1.0;
 }
 function stopWhoosh() {
   if (whooshGain) {
@@ -5774,8 +5901,12 @@ function startMusic() {
   filter.connect(gain).connect(audioCtx.destination);
   oscs.forEach(o => o.start());
   lfo.start();
+  // Polish Pack V3 Step 3: musica rispetta state.audio.music.
+  // Baseline 0.04 * moltiplicatore (default music=0.5 → 0.02, dimezzato).
+  const musicMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
   // fade-in 1.5s
-  try { gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5); } catch(e) {}
+  try { gain.gain.linearRampToValueAtTime(0.04 * musicMul, audioCtx.currentTime + 1.5); } catch(e) {}
 }
 function stopMusic(fast = false) {
   if (!musicNodes) return;
@@ -5968,8 +6099,11 @@ function startCorridorAudio(theme) {
   }
 
   corridorAudioNodes = { theme, layers, masterGain };
-  // fade-in 1.0s al volume target (BUG FIX v2: alzato da 0.5 a 0.8)
-  try { masterGain.gain.linearRampToValueAtTime(0.8, now + 1.0); } catch(e) {}
+  // fade-in 1.0s al volume target (BUG FIX v2: alzato da 0.5 a 0.8).
+  // Polish Pack V3 Step 3: corridoio = canale musica (state.audio.music).
+  const corrMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
+  try { masterGain.gain.linearRampToValueAtTime(0.8 * corrMul, now + 1.0); } catch(e) {}
 }
 
 function stopCorridorAudio() {
@@ -6083,8 +6217,11 @@ function startRistoranteAudio() {
     piatti, piattiGain,
     masterGain
   };
-  // fade-in 1.5s (BUG FIX v2: alzato da 0.55 a 0.9)
-  try { masterGain.gain.linearRampToValueAtTime(0.9, audioCtx.currentTime + 1.5); } catch(e) {}
+  // fade-in 1.5s (BUG FIX v2: alzato da 0.55 a 0.9).
+  // Polish Pack V3 Step 3: rispetta state.audio.music (ristorante = canale musica).
+  const ristoMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
+  try { masterGain.gain.linearRampToValueAtTime(0.9 * ristoMul, audioCtx.currentTime + 1.5); } catch(e) {}
 }
 
 function stopRistoranteAudio() {
@@ -6248,6 +6385,64 @@ function logEvent(label) {
   const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
   state._eventLog.unshift(`${ts} ${label}`);
   if (state._eventLog.length > 10) state._eventLog.length = 10;
+  // Polish Pack V3 Step 3: mirror in exportLog (cap 50, separato dal log UI)
+  if (!state._exportLog) state._exportLog = [];
+  state._exportLog.unshift({ ts: new Date().toISOString(), label });
+  if (state._exportLog.length > 50) state._exportLog.length = 50;
+}
+
+// Polish Pack V3 Step 3: esporta snapshot JSON dello stato corrente.
+// Scarica un file `boss-hotel-state-<timestamp>.json` con state (deep clone
+// escludendo funzioni), exportLog esteso, audio + display settings correnti.
+// Utile per issue reporting (l'utente puo' allegare lo snapshot a un bug report).
+function exportStateJSON() {
+  try {
+    // Deep clone shallow (1 livello sufficiente per state + nested objects non-function)
+    const stateClone = {};
+    for (const k of Object.keys(state)) {
+      const v = state[k];
+      if (typeof v === 'function') continue;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        // copia nested object (audio, display, ...)
+        const nested = {};
+        for (const nk of Object.keys(v)) {
+          if (typeof v[nk] !== 'function') nested[nk] = v[nk];
+        }
+        stateClone[k] = nested;
+      } else {
+        stateClone[k] = v;
+      }
+    }
+    const payload = {
+      meta: {
+        exportedAt: new Date().toISOString(),
+        buildVersion: 'BOSS HOTEL Premium Edition',
+        polishPack: 'V3 Step 3',
+        numFloors: NUM_FLOORS,
+        lang: state.lang
+      },
+      state: stateClone,
+      exportLog: state._exportLog || []
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `boss-hotel-state-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // feedback utente
+    if (typeof showSubtitle === 'function') {
+      const msg = (STRINGS[state.lang] && STRINGS[state.lang].settingsExportReady)
+        || 'Stato esportato';
+      showSubtitle(msg, 2000);
+    }
+    if (typeof logEvent === 'function') logEvent('Export JSON OK');
+  } catch (e) {
+    if (typeof logEvent === 'function') logEvent('Export JSON FAIL: ' + e.message);
+  }
 }
 
 // Polish Pack V2 Step 10d · Log manutenzione realistica
@@ -6326,6 +6521,10 @@ function applyWireframe(on) {
 function toggleMaintenance() {
   state.maintenanceMode = !state.maintenanceMode;
   const overlay = document.getElementById('maint-overlay');
+  // Polish Pack V3 Step 3: refresh visibility del bottone export JSON
+  // in base a maintenanceMode (visibile solo in maintenance).
+  const expBtn = document.getElementById('m-export-json');
+  if (expBtn) expBtn.style.display = state.maintenanceMode ? 'block' : 'none';
   if (state.maintenanceMode) {
     overlay.classList.add('show');
     applyWireframe(true);
@@ -6457,9 +6656,13 @@ function speak(text, opts = {}) {
     window.speechSynthesis.cancel(); // interrompi eventuali annunci precedenti
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'en' ? 'en-GB' : 'it-IT';
+    // Polish Pack V3 Step 3: TTS volume da state.audio.tts.
+    // opts.volume esplicito ha priorita' (per test/override).
+    const ttsMul = (state.audio && typeof state.audio.tts === 'number')
+      ? state.audio.tts : 0.85;
+    u.volume = typeof opts.volume === 'number' ? opts.volume : ttsMul;
     u.rate = opts.rate || 0.95;
     u.pitch = opts.pitch || 1.0;
-    u.volume = opts.volume || 0.85;
     if (lang === 'en' && englishVoice) u.voice = englishVoice;
     else if (lang === 'it' && italianVoice) u.voice = italianVoice;
     window.speechSynthesis.speak(u);
@@ -6802,7 +7005,10 @@ function tickMove(dt) {
   const speed = 12 * moveT * (1 - moveT); // 0..0.75..0, derivata analitica
   if (whooshGain && whooshFilter) {
     whooshFilter.frequency.value = 300 + speed * 700;
-    whooshGain.gain.value = 0.025 * speed;
+    // Polish Pack V3 Step 3: whoosh moltiplicato per state.audio.effects.
+    const effMul = (state.audio && typeof state.audio.effects === 'number')
+      ? state.audio.effects : 1.0;
+    whooshGain.gain.value = 0.025 * speed * effMul;
   }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
@@ -7904,8 +8110,115 @@ cabin.rotation.z = state.vibrationRoll;
 
   updateHover();
   renderer.render(scene, camera);
-  requestAnimationFrame(loop);
 }
+
+// ============================================================
+// POLISH PACK V3 STEP 3: Settings QoL — UI wiring
+// Sliders audio + display nel pannello Personalizza hotel (H).
+// Bottone export JSON nel maintenance overlay (Shift+M).
+// Persistenza separata in bossHotelAudio@v1 + bossHotelDisplay@v1.
+// ============================================================
+
+function refreshSettingsQoLLabels() {
+  // Aggiorna label i18n dei sliders Settings QoL.
+  const s = STRINGS[state.lang] || STRINGS.it;
+  const titleEl = document.getElementById('hc-settings-title');
+  const lblE = document.getElementById('hc-lbl-effects');
+  const lblM = document.getElementById('hc-lbl-music');
+  const lblT = document.getElementById('hc-lbl-tts');
+  const lblB = document.getElementById('hc-lbl-brightness');
+  const expBtn = document.getElementById('m-export-json');
+  if (titleEl) titleEl.textContent = s.settingsTitle || 'Settings';
+  if (lblE) lblE.textContent = s.audioEffects || 'Effects';
+  if (lblM) lblM.textContent = s.audioMusic || 'Music';
+  if (lblT) lblT.textContent = s.audioTts || 'TTS';
+  if (lblB) lblB.textContent = s.displayBrightness || 'Brightness';
+  if (expBtn) expBtn.textContent = (s.settingsExportReady || 'Export') + ' JSON';
+}
+
+function updateSettingsQoLValueDisplays() {
+  // Aggiorna label "100%" / "50%" / "85%" accanto agli slider.
+  const e = document.getElementById('hc-val-effects');
+  const m = document.getElementById('hc-val-music');
+  const t = document.getElementById('hc-val-tts');
+  const b = document.getElementById('hc-val-brightness');
+  if (e) e.textContent = Math.round((state.audio.effects || 0) * 100) + '%';
+  if (m) m.textContent = Math.round((state.audio.music || 0) * 100) + '%';
+  if (t) t.textContent = Math.round((state.audio.tts || 0) * 100) + '%';
+  if (b) b.textContent = Math.round((state.display.brightness || 1) * 100) + '%';
+}
+
+function initSettingsQoL() {
+  // Init slider values da state (gia' caricato da loadAudioSettings/loadDisplaySettings)
+  const sE = document.getElementById('hc-slider-effects');
+  const sM = document.getElementById('hc-slider-music');
+  const sT = document.getElementById('hc-slider-tts');
+  const sB = document.getElementById('hc-slider-brightness');
+  if (sE) {
+    sE.value = state.audio.effects;
+    sE.addEventListener('input', () => {
+      state.audio.effects = parseFloat(sE.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sM) {
+    sM.value = state.audio.music;
+    sM.addEventListener('input', () => {
+      state.audio.music = parseFloat(sM.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sT) {
+    sT.value = state.audio.tts;
+    sT.addEventListener('input', () => {
+      state.audio.tts = parseFloat(sT.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sB) {
+    sB.value = state.display.brightness;
+    sB.addEventListener('input', () => {
+      state.display.brightness = parseFloat(sB.value);
+      saveDisplaySettings();
+      updateSettingsQoLValueDisplays();
+      if (typeof markDisplayDirty === 'function') markDisplayDirty();
+    });
+  }
+  // Export JSON button nel maintenance overlay.
+  const expBtn = document.getElementById('m-export-json');
+  if (expBtn) {
+    expBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      exportStateJSON();
+    });
+  }
+  // Mostra/nascondi bottone export in base a maintenanceMode.
+  syncExportBtnVisibility();
+  refreshSettingsQoLLabels();
+  updateSettingsQoLValueDisplays();
+}
+
+function syncExportBtnVisibility() {
+  const eb = document.getElementById('m-export-json');
+  if (eb) eb.style.display = state.maintenanceMode ? 'block' : 'none';
+}
+
+// Refresh visibility export button + labels quando si apre il customizer.
+const _origOpenHotelCustomizer = openHotelCustomizer;
+openHotelCustomizer = function() {
+  _origOpenHotelCustomizer.apply(this, arguments);
+  refreshSettingsQoLLabels();
+  updateSettingsQoLValueDisplays();
+};
+
+// (initSettingsQoL chiamato dopo loadAudioSettings/loadDisplaySettings
+// piu' avanti nel file, cosi' gli slider riflettono i settings caricati
+// da localStorage invece dei default.)
+
+requestAnimationFrame(loop);
 
 // ============================================================
 // AVVIO
@@ -7982,11 +8295,99 @@ function savePrefs() {
   } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
 }
 
+// Polish Pack V3 Step 3: persistenza Settings QoL.
+// Due chiavi separate @v1 (Q3.5=A): granularità indipendente + migrazione
+// forward-compatible (un campo nuovo si puo' aggiungere senza rompere l'altro).
+const AUDIO_PREFS_KEY = 'bossHotelAudio@v1';
+const DISPLAY_PREFS_KEY = 'bossHotelDisplay@v1';
+function clampAudio(v, fallback) {
+  // Pure helper: clamp volume 0..1 con fallback difensivo.
+  if (typeof v !== 'number' || isNaN(v)) return fallback;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+function clampBrightness(v, fallback) {
+  // Pure helper: clamp brightness 0.5..1.5 con fallback difensivo.
+  if (typeof v !== 'number' || isNaN(v)) return fallback;
+  return v < 0.5 ? 0.5 : v > 1.5 ? 1.5 : v;
+}
+
+// pure: formatta volume 0..1 come stringa percentuale intera (es. 0.5 → "50%").
+// Coerente con updateSettingsQoLValueDisplays() nell'UI.
+function formatVolumePercent(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '--';
+  return Math.round(v * 100) + '%';
+}
+
+// pure: shape dell'export JSON (senza funzioni). Helper per test deterministici
+// che non richiedono di importare l'intera state machine.
+function stateShapeForExport(s) {
+  if (!s || typeof s !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(s)) {
+    const v = s[k];
+    if (typeof v === 'function') continue;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const nested = {};
+      for (const nk of Object.keys(v)) {
+        if (typeof v[nk] !== 'function') nested[nk] = v[nk];
+      }
+      out[k] = nested;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+function loadAudioSettings() {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    state.audio.effects = clampAudio(p.effects, state.audio.effects);
+    state.audio.music   = clampAudio(p.music, state.audio.music);
+    state.audio.tts     = clampAudio(p.tts, state.audio.tts);
+  } catch(e) { /* ignore */ }
+}
+function saveAudioSettings() {
+  try {
+    localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify({
+      v: 1,
+      effects: state.audio.effects,
+      music: state.audio.music,
+      tts: state.audio.tts
+    }));
+  } catch(e) { /* ignore */ }
+}
+function loadDisplaySettings() {
+  try {
+    const raw = localStorage.getItem(DISPLAY_PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    state.display.brightness = clampBrightness(p.brightness, state.display.brightness);
+  } catch(e) { /* ignore */ }
+}
+function saveDisplaySettings() {
+  try {
+    localStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify({
+      v: 1,
+      brightness: state.display.brightness
+    }));
+  } catch(e) { /* ignore */ }
+}
+
 // Polish Pack V2 Step 14c: flag per mostrare subtitle "Chiamata interrotta
 // dal refresh" al primo paint dopo loadPrefs(). Verrà consumato in init().
 let pendingInterphoneInterruptNotice = false;
 
 loadPrefs();
+// Polish Pack V3 Step 3: carica settings QoL (volumi audio + luminosità display).
+loadAudioSettings();
+loadDisplaySettings();
+// Polish Pack V3 Step 3: init sliders QoL DOPO il caricamento da localStorage
+// (cosi' gli slider riflettono le preferenze salvate dell'utente).
+initSettingsQoL();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
 // Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
@@ -8204,6 +8605,9 @@ function applyLangToDOM() {
   // Refresh anche le derivati (refreshHudButtons, refreshLangSwitch, ecc.)
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
   if (typeof refreshLangSwitch === 'function') refreshLangSwitch();
+  // Polish Pack V3 Step 3: refresh label sliders QoL (audio + display)
+  // + bottone export JSON del maintenance overlay.
+  if (typeof refreshSettingsQoLLabels === 'function') refreshSettingsQoLLabels();
 }
 (function applyLangToStartScreen() {
   applyLangToDOM();
@@ -8356,6 +8760,8 @@ window.BossHotelPure = {
   relativeLuminance, contrastRatio,
   // Polish Pack V3 Step 2: helper corner case UX
   canOpenDoors, shouldAnnounceDoorClose, sosCancelsOOO, currentMovementDirection,
+  // Polish Pack V3 Step 3: helper Settings QoL (audio + display + export)
+  clampAudio, clampBrightness, formatVolumePercent, stateShapeForExport,
   // costanti utili per i test
   NUM_FLOORS
 };
