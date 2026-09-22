@@ -869,6 +869,10 @@ const STRINGS = {
     elevatorRestored: 'Ascensore ripristinato',
     elevatorOutOfService: 'Ascensore in manutenzione',
     pressORestore: 'Premere O per ripristinare',
+    queueAck: 'Richiesta in coda',
+    doorBlockedAlarm: 'Porte bloccate per allarme',
+    doorBlockedOOO: 'Fuori servizio',
+    oooCancelledByAlarm: 'Allarme attivato. Fuori servizio annullato.',
     prenotationLabel: 'PRENOTATA \u00b7 Tieni premuto E per entrare',
     helpTitle: 'Comandi',
     // start screen
@@ -1088,6 +1092,10 @@ const STRINGS = {
     elevatorRestored: 'Elevator restored',
     elevatorOutOfService: 'Elevator under maintenance',
     pressORestore: 'Press O to restore',
+    queueAck: 'Request queued',
+    doorBlockedAlarm: 'Doors locked due to alarm',
+    doorBlockedOOO: 'Out of service',
+    oooCancelledByAlarm: 'Alarm activated. Out of service cancelled.',
     prenotationLabel: 'BOOKED \u00b7 Hold E to enter',
     helpTitle: 'Controls',
     startBtn: 'Enter the elevator',
@@ -5137,6 +5145,38 @@ function pickNextFloor(queue, lastDirection) {
   return queue[0];
 }
 
+// pure: verifica se le porte possono essere aperte (no allarme, no OOO).
+// Estratto da setDoors() in elevator.html per essere testabile deterministicamente.
+// Polish Pack V3 Step 2 (Q2.6 A+B).
+function canOpenDoors(s) {
+  if (!s) return false;
+  return !s.alarmOn && !s.outOfOrder;
+}
+
+// pure: determina se l'annuncio "porte in chiusura" deve essere pronunciato.
+// Polish Pack V3 Step 2 (Q2.6 C): no-op se le porte sono gia' chiuse.
+// Soglia 0.05 coerente con setDoors().
+function shouldAnnounceDoorClose(doorsActual) {
+  return doorsActual > 0.05;
+}
+
+// pure: indica se l'attivazione del SOS deve azzerare lo stato OOO.
+// Polish Pack V3 Step 2 (Q2.4): quando l'allarme hard va ON mentre OOO era
+// attivo, forza OOO=false + emette 'ooo:off' + TTS notifica.
+function sosCancelsOOO(s) {
+  if (!s) return false;
+  return !!s.outOfOrder;
+}
+
+// pure: verifica se la cabina sta muovendosi verso l'alto, basso o ferma.
+// Usata da pickNextFloor + dai test per la logica di routing.
+function currentMovementDirection(s) {
+  if (!s) return null;
+  if (!s.isMoving) return null;
+  return s.targetFloor > s.currentFloor ? 'up'
+    : s.targetFloor < s.currentFloor ? 'down' : null;
+}
+
 // ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -6690,6 +6730,15 @@ function requestFloor(floor, directionHint) {
     // metti in coda con directionHint (Polish Pack V2 Step 7a)
     queueAdd(directionHint || null, floor);
     lightFloorButton(floor, true);
+    // Polish Pack V3 Step 2: feedback uditivo/visivo per click display durante
+    // movimento. La cabina è già in moto verso un altro piano: l'utente ha
+    // appena registrato una fermata intermedia. Senza feedback rischia di
+    // cliccare di nuovo pensando che il click non sia stato registrato.
+    if (typeof playBeep === 'function') playBeep(440, 0.06, 'sine', 0.08);
+    if (typeof showSubtitle === 'function') {
+      const ack = (STRINGS[state.lang] && STRINGS[state.lang].queueAck) || 'Request queued';
+      showSubtitle(ack, 1500);
+    }
     return;
   }
   startMoveTo(floor, directionHint || null);
@@ -6822,10 +6871,35 @@ function tickMove(dt) {
 // ============================================================
 // ANIMAZIONE PORTE
 // ============================================================
-let doorAnim = null; // { from, to, dur, t }
+// Polish Pack V3 Step 2 (Q2.3=B): promise-chaining per evitare il "bounce"
+// quando una nuova animazione porte arriva mentre un'altra è in corso
+// (es. utente clicca ◄| durante apertura automatica, poi clicca un piano).
+// Prima: animateDoorsTo() sostituiva l'animazione corrente perdendo la
+// resolve() della precedente (memory leak) e causando un brusco inversione
+// di marcia. Ora: una coda `doorAnimQueue` accumula le animazioni pending;
+// tickDoors processa la coda quando l'animazione corrente termina.
+// Le Promise resolutions sono rispettate (niente leak).
+// ============================================================
+let doorAnim = null; // { from, to, dur, t, resolve }
+let doorAnimQueue = []; // Array<{ target, dur, resolve }>
 function animateDoorsTo(target, dur = 1.0) {
   return new Promise(resolve => {
-    doorAnim = { from: state.doorsActual, to: target, dur, t: 0, resolve };
+    // Edge case: target gia' raggiunto (no-op immediato). Evita di sprecare
+    // un'animazione di 0.8s quando le porte sono gia' dove devono essere
+    // (es. queue dopo che una chiusura le ha gia' portate a 0).
+    if (Math.abs(state.doorsActual - target) < 0.01 && !doorAnim) {
+      resolve();
+      return;
+    }
+    if (!doorAnim) {
+      doorAnim = { from: state.doorsActual, to: target, dur, t: 0, resolve };
+    }
+    else {
+      // Animazione in corso: accoda (FIFO). La Promise verra' risolta
+      // quando questa animazione specifica termina (non quando la coda
+      // finisce), cosi' le await/.then() del chiamante sono rispettati.
+      doorAnimQueue.push({ target, dur, resolve });
+    }
   });
 }
 function tickDoors(dt) {
@@ -6836,6 +6910,24 @@ function tickDoors(dt) {
     state.doorsActual = doorAnim.from + (doorAnim.to - doorAnim.from) * e;
     if (t >= 1) {
       const r = doorAnim.resolve; doorAnim = null; r && r();
+      // Polish Pack V3 Step 2 (Q2.3=B): processa coda animazioni porte.
+      // Se ci sono animazioni in attesa, avviala subito (dal valore attuale).
+      if (doorAnimQueue.length > 0) {
+        const next = doorAnimQueue.shift();
+        // Edge case: se il target coincide con la posizione attuale, skip
+        if (Math.abs(state.doorsActual - next.target) < 0.01) {
+          if (next.resolve) next.resolve();
+          // Continua a processare la coda (potrebbe esserci un'altra anim.)
+          // Riassegna doorAnim alla prossima iterazione del tick successivo
+          // inserendo in testa la prossima entry, se esiste.
+          if (doorAnimQueue.length > 0) {
+            const n2 = doorAnimQueue.shift();
+            doorAnim = { from: state.doorsActual, to: n2.target, dur: n2.dur, t: 0, resolve: n2.resolve };
+          }
+        } else {
+          doorAnim = { from: state.doorsActual, to: next.target, dur: next.dur, t: 0, resolve: next.resolve };
+        }
+      }
       // Polish Pack V2 Step 1d: emetti evento fine animazione porte.
       // scheduleAutoClose e drawModernDisplay ascoltano 'door:opened' invece
       // di fare polling ogni frame su state.doorsActual.
@@ -6850,7 +6942,28 @@ function tickDoors(dt) {
 }
 
 function setDoors(open) {
-  if (state.alarmOn && open) return; // non aprire durante allarme? ok in realtà le porte si bloccano
+  // Polish Pack V3 Step 2 (Q2.6 A+B): gate apertura durante allarme / OOO.
+  // Prima il silent fail senza feedback creava UX ambigua ("perché non si aprono?").
+  // Ora: beep 220Hz + subtitle breve per spiegare il blocco.
+  // La chiusura forzata da toggleAlarm/setDoors(false) bypassa il gate perché
+  // `open=false` non è soggetto al check (l'allarme PUÒ chiudere le porte).
+  if (open && state.alarmOn) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    const msg = (STRINGS[state.lang] && STRINGS[state.lang].doorBlockedAlarm) || 'Porte bloccate per allarme';
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 1500);
+    return;
+  }
+  if (open && state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    const msg = (STRINGS[state.lang] && STRINGS[state.lang].doorBlockedOOO) || 'Fuori servizio';
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 1500);
+    return;
+  }
+  // Polish Pack V3 Step 2 (Q2.6 C): no-op se la chiusura è già in corso
+  // (evita di ri-annunciare "porte si chiudono" su click ripetuti del tasto close).
+  if (!open && !state.doorsOpen && state.doorsTarget === 0 && state.doorsActual < 0.05) {
+    return;
+  }
   state.doorsOpen = open;
   state.doorsTarget = open ? 1 : 0;
   playDoorSound(open);
@@ -6858,7 +6971,11 @@ function setDoors(open) {
     cancelDoorCountdown();
     cancelAutoClose(); // l'utente ha appena aperto: timer si resettera' quando le porte sono completamente aperte
   } else {
-    if (typeof announceDoorClosing === 'function') announceDoorClosing();
+    // Annuncio "porte in chiusura" solo se le porte erano effettivamente aperte
+    // o in fase di apertura (no spam su click multipli a porta gia' chiusa).
+    if (state.doorsActual > 0.05) {
+      if (typeof announceDoorClosing === 'function') announceDoorClosing();
+    }
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
     cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
@@ -6877,6 +6994,20 @@ function toggleAlarm() {
   const wasOn = state.alarmOn;
   state.alarmOn = !state.alarmOn;
   if (state.alarmOn) {
+    // Polish Pack V3 Step 2 (Q2.4=A): SOS forza OOO OFF. L'allarme hard
+    // presuppone che l'impianto sia sotto controllo soccorsi (NON 'guasto'):
+    // due stati 'fuori servizio' sovrapposti sono ambigui per l'utente.
+    // Azzeriamo OOO prima di attivare il SOS + emettiamo l'evento per i
+    // consumatori (display, HUD) che ascoltano 'ooo:off'.
+    if (state.outOfOrder) {
+      state.outOfOrder = false;
+      queueClear();
+      bus.emit('ooo:off');
+      if (typeof markDisplayDirty === 'function') markDisplayDirty();
+      const oooMsg = (STRINGS[state.lang] && STRINGS[state.lang].oooCancelledByAlarm)
+        || 'Allarme attivato. Fuori servizio annullato.';
+      if (typeof showSubtitle === 'function') showSubtitle(oooMsg, 2000);
+    }
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
     state.isMoving = false;
     movePaused = true;
@@ -8223,6 +8354,8 @@ window.BossHotelPure = {
   computeSubtitleDuration, shouldDisableMotion,
   // Polish Pack V3 Step 1d: helper contrasto WCAG
   relativeLuminance, contrastRatio,
+  // Polish Pack V3 Step 2: helper corner case UX
+  canOpenDoors, shouldAnnounceDoorClose, sosCancelsOOO, currentMovementDirection,
   // costanti utili per i test
   NUM_FLOORS
 };
