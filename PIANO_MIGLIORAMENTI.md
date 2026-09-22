@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.1 — Polish Pack V3, Step 1 + Step 2 ✅** · Aggiornato 2026-09-18
+**Versione 5.2 — Polish Pack V3, Step 1 + Step 2 + Step 3 ✅** · Aggiornato 2026-09-22
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,9 +1772,10 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **2/9 step completati (22%)** dopo due sessioni.
-Step 1 (Accessibility) merged su main. Step 2 (Bug fix UX) implementato su
-branch dedicato `feature/v3-step-2-bugfix-ux`, merge pending.
+**Risultato parziale V3**: **3/9 step completati (33%)** dopo tre sessioni.
+Step 1 (Accessibility) + Step 2 (Bug fix UX) merged su main. Step 3
+(Settings QoL) implementato su branch dedicato `feature/v3-step-3-settings-qol`,
+merge pending. **Tier T1 (high impact) completo (3/3) ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -1890,3 +1891,75 @@ approvate). Fix implementati chirurgicamente.
   allarme/OOO) erano particolarmente gravi perche' l'utente pensava fosse
   rotto il click. Aggiungere feedback (anche minimo) è sempre meglio del
   silent return.
+
+---
+
+### Fase 20 — Polish Pack V3 Step 3: Settings QoL (T1c) ✅ (2026-09-22, branch `feature/v3-step-3-settings-qol`)
+
+Settings persistenti aggiuntivi. 5 Decision Questions approvate via `question`
+tool. Pattern: 3 canali audio (effects/music/tts) + luminosità display +
+snapshot JSON export.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q3.1 | Scope completo (audio + display + export) | Tutto |
+| Q3.2 | 4 slider nel pannello Personalizza hotel (H): Effetti sonori (100%), Musica cabina (50%), Annunci vocali TTS (85%), Luminosità display (100%) | UI |
+| Q3.3 | `ctx.filter = 'brightness(X)'` in `drawModernDisplay()` con reset finale. Range 0.5..1.5 | Canvas |
+| Q3.4 | Bottone "Esporta stato JSON" nel maintenance overlay (visibile solo in maintenance mode). Download `boss-hotel-state-<timestamp>.json` con meta + state deep-clone + exportLog 50 entry | Export |
+| Q3.5 | Due chiavi localStorage separate: `bossHotelAudio@v1` (effects/music/tts) + `bossHotelDisplay@v1` (brightness). v=1 esplicito per migrazione | Persistenza |
+
+### Modifiche audio canale-specifico
+
+- `playBeep`: `g.gain.value = vol * state.audio.effects`
+- `whooshGain` (in tickMove): `0.025 * speed * state.audio.effects`
+- `startMusic` (cabin): `gain.gain.linearRampToValueAtTime(0.04 * state.audio.music, ...)`
+- `startCorridorAudio` (corridoio): `0.8 * state.audio.music`
+- `startRistoranteAudio`: `0.9 * state.audio.music`
+- `speak()` TTS: `u.volume = opts.volume || state.audio.tts`
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `clampAudio(v, fallback)`: clamp 0..1 con fallback difensivo per NaN/null
+- `clampBrightness(v, fallback)`: clamp 0.5..1.5 con fallback difensivo
+- `formatVolumePercent(v)`: formatta 0..1 come "0%".."100%"
+- `stateShapeForExport(s)`: deep clone shallow escludendo funzioni (state → export JSON shape)
+
+### Nuove chiavi STRINGS.it / STRINGS.en
+
+- `settingsTitle`, `audioSection`, `audioEffects`, `audioMusic`, `audioTts`
+- `displaySection`, `displayBrightness`, `settingsReset`, `settingsSaved`, `settingsExportReady`
+
+### Test
+
+93 → 113+ assert (+20 nuovi su 4 helper puri).
+
+### Contratto D-key nuovo
+
+- **D14**: Settings QoL persistiti in 2 chiavi separate `@v1`. Init order:
+  `loadAudioSettings()` → `loadDisplaySettings()` → `initSettingsQoL()`
+  (sliders riflettono preferenze salvate, non default).
+
+### Bug intermedio risolto
+
+Il primo tentativo di posizionamento del blocco init QoL è finito dentro
+la funzione `loop()` (scope locale, initSettingsQoL non visibile a livello
+modulo). Spostato dopo `requestAnimationFrame(loop);` per scope globale.
+Errore rilevato immediatamente dallo smoke test in-browser.
+
+### Lessons learned V3 Step 3
+
+- **Bootstrap order è critico**: init Settings QoL DOPO loadSettings (sliders
+  riflettono preferenze utente salvate). Pattern replicato da Step 2
+  (SOS check DOPO state init). Lezione dei bug TDZ V2 ancora valida.
+- **Smoke test in-browser sempre**: il bug "init dentro loop()" è stato
+  rilevato immediatamente dal test Playwright (ReferenceError). Senza smoke
+  test, sarebbe arrivato in produzione.
+- **Persistence granularity**: due chiavi separate `@v1` > una chiave unica.
+  Permette evoluzione indipendente (audio settings cambiano più spesso di
+  display settings). Forward-compatible via `v` field.
+- **Auto-save su slider input**: nessun bottone "Salva" — l'utente si aspetta
+  che lo slider salvi automaticamente (pattern OS-standard). Meno friction.
+- **Export JSON in maintenance overlay**: scope appropriato (è debug tool,
+  non UI quotidiana). Visibilità condizionata a `state.maintenanceMode`.

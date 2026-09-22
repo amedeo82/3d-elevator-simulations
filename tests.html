@@ -609,6 +609,93 @@
           assertEq(P.currentMovementDirection(undefined), null);
         });
       });
+
+      // ---- clampAudio (Polish Pack V3 Step 3: Q3.5) --------------
+      describe('clampAudio', () => {
+        test('valori in range [0..1] invariati', () => {
+          assertEq(P.clampAudio(0, 1.0), 0);
+          assertEq(P.clampAudio(0.5, 1.0), 0.5);
+          assertEq(P.clampAudio(1, 1.0), 1);
+        });
+        test('sotto 0 → 0', () => {
+          assertEq(P.clampAudio(-0.1, 1.0), 0);
+          assertEq(P.clampAudio(-10, 1.0), 0);
+        });
+        test('sopra 1 → 1', () => {
+          assertEq(P.clampAudio(1.1, 1.0), 1);
+          assertEq(P.clampAudio(5, 1.0), 1);
+        });
+        test('NaN/undefined/null → fallback', () => {
+          assertEq(P.clampAudio(NaN, 0.5), 0.5);
+          assertEq(P.clampAudio(undefined, 0.5), 0.5);
+          assertEq(P.clampAudio(null, 0.5), 0.5);
+          assertEq(P.clampAudio('0.5', 0.5), 0.5);
+        });
+      });
+
+      // ---- clampBrightness (Polish Pack V3 Step 3: display) -------
+      describe('clampBrightness', () => {
+        test('valori in range [0.5..1.5] invariati', () => {
+          assertEq(P.clampBrightness(0.5, 1.0), 0.5);
+          assertEq(P.clampBrightness(1, 1.0), 1);
+          assertEq(P.clampBrightness(1.5, 1.0), 1.5);
+        });
+        test('sotto 0.5 → 0.5', () => {
+          assertEq(P.clampBrightness(0.3, 1.0), 0.5);
+          assertEq(P.clampBrightness(0, 1.0), 0.5);
+        });
+        test('sopra 1.5 → 1.5', () => {
+          assertEq(P.clampBrightness(2, 1.0), 1.5);
+          assertEq(P.clampBrightness(10, 1.0), 1.5);
+        });
+        test('NaN/non-number → fallback', () => {
+          assertEq(P.clampBrightness(NaN, 1.2), 1.2);
+          assertEq(P.clampBrightness(undefined, 1.0), 1.0);
+          assertEq(P.clampBrightness('1', 1.0), 1.0);
+        });
+      });
+
+      // ---- formatVolumePercent (Polish Pack V3 Step 3: UI label) -
+      describe('formatVolumePercent', () => {
+        test('0 → "0%"', () => assertEq(P.formatVolumePercent(0), '0%'));
+        test('0.5 → "50%"', () => assertEq(P.formatVolumePercent(0.5), '50%'));
+        test('1 → "100%"', () => assertEq(P.formatVolumePercent(1), '100%'));
+        test('0.855 → "86%" (arrotondamento)', () => assertEq(P.formatVolumePercent(0.855), '86%'));
+        test('input invalido → "--"', () => {
+          assertEq(P.formatVolumePercent(NaN), '--');
+          assertEq(P.formatVolumePercent(undefined), '--');
+          assertEq(P.formatVolumePercent(null), '--');
+        });
+      });
+
+      // ---- stateShapeForExport (Polish Pack V3 Step 3: export) ----
+      describe('stateShapeForExport', () => {
+        test('rimuove funzioni', () => {
+          const res = P.stateShapeForExport({ a: 1, b: () => 'fn', c: 'str' });
+          assertEq(res.a, 1);
+          assertEq(res.c, 'str');
+          assert(res.b === undefined);
+        });
+        test('deep clone di nested object (audio/display)', () => {
+          const res = P.stateShapeForExport({
+            audio: { effects: 0.5, music: 0.3 },
+            display: { brightness: 1.2 }
+          });
+          assertEq(res.audio.effects, 0.5);
+          assertEq(res.display.brightness, 1.2);
+        });
+        test('input null/non-object → null', () => {
+          assertEq(P.stateShapeForExport(null), null);
+          assertEq(P.stateShapeForExport(undefined), null);
+        });
+        test('nested functions rimosse', () => {
+          const res = P.stateShapeForExport({
+            audio: { effects: 0.7, fn: () => {} }
+          });
+          assertEq(res.audio.effects, 0.7);
+          assert(res.audio.fn === undefined);
+        });
+      });
     }
 
     // ============================================================
