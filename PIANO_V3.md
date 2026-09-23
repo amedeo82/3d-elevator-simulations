@@ -25,6 +25,7 @@
 | 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1 sessione | 🔴 | ✅ |
 | 3 | Settings QoL | T1c | 1 sessione | 🟡 | ✅ |
+| 4 | Micro-animazioni | T2a | 1 sessione | 🟡 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
 | 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
@@ -520,6 +521,85 @@ in-browser (`ReferenceError: initSettingsQoL is not defined`).
 
 ---
 
+# STEP 4 · Micro-animazioni (T2a)
+
+Micro-animazioni non essenziali per migliorare la qualità percepita. Focus
+su respiro pulsantiera + lampeggio gentile pre-arrivo + fade morbido stati
++ curva bounce-out vibrazione post-arrivo.
+
+## Decision Questions
+
+### Q4.1 — Scope dello step
+- **A. Tutti e 4 i sotto-step** *(approvato)*: implementati tutti. Pattern
+  atomicità del feature (coerente con Step 1-3).
+
+### Q4.2 — Tasti respiro: dove applicarlo
+- **B. Tutti i tasti panel** *(approvato)*: sia celle display (canvas 2D)
+  che 4 tasti fisici (mesh 3D buttonTop). Coerenza estetica.
+
+### Q4.3 — Cartello lampeggio gentile
+- **A. Ultimo secondo pre-arrivo** *(approvato)*: detection in tickMove
+  tramite `moveElapsed > moveDuration - 1.0`. 3 flash a 6Hz tramite
+  `arrivalFlashAlpha(animT, !state.reducedMotion)`.
+
+### Q4.4 — Fade gentile cambi stato
+- **B. Lerp + flash on/off** *(approvato)*: tickFadeStates() lerpa 200ms
+  `alarmLight.intensity` + `emissiveIntensity` del pulsante citofono.
+  Il flash on/off (50ms bianco) è lasciato come step futuro per non
+  aumentare la complessità dello step corrente.
+
+### Q4.5 — Easing bounce-out maniglione
+- **A. Bounce-out classico** *(approvato)*: sostituisce `*= 0.85` con
+  `state._vibSnap` snapshot all'arrivo + `easeOutBounce(elapsedS)` =
+  `exp(-3t) * cos(8π t)`. Oscilla damped per ~1.5s poi smorzato a 0.
+
+## Acceptance criteria
+
+- [x] (Q4.1) 4 sotto-step implementati + commit unico
+- [x] (Q4.2) Respiro pulsazione ±2% periodo 4s su canvas display + mesh 3D tasti
+- [x] (Q4.2) Respiro skippato su prefers-reduced-motion / allarme / OOO / movimento
+- [x] (Q4.3) Cartello lampeggia 3× in ultimo secondo pre-arrivo (gold tint overlay)
+- [x] (Q4.3) Reset `_arrivalPhase='normal'` all'arrivo + all'inizio nuovo movimento
+- [x] (Q4.4) Fade-in/out 200ms su alarmLight.intensity (lerp invece di snap)
+- [x] (Q4.4) Fade-out 200ms su emissiveIntensity pulsante citofono
+- [x] (Q4.4) Blink modulation salta durante fade-in (rispetta tickFadeStates)
+- [x] (Q4.5) Vibrazione residua oscilla damped invece di decay esponenziale puro
+- [x] (Q4.5) `_vibSnap` snapshot all'arrivo, decay completo entro 1.5s
+- [x] Test: 5 nuovi helper puri in `BossHotelPure`, 4 nuovi describe block, ~25 assert
+- [x] Smoke test: 0 errori console, helper accessibili e funzionanti
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D15**: Micro-animazioni rispettano `state.reducedMotion` (D12). Animazioni
+  essenziali (lampeggio allarme, vibrazione cabina, apertura/chiusura porte)
+  restano attive anche con reduced motion per ragioni di sicurezza/realismo.
+  Animazioni cosmetiche (respiro tasti, lampeggio gentile cartello, bounce-out
+  vibrazione) sono skippate. Pattern di detection pre-arrivo via
+  `moveElapsed > moveDuration - 1.0` + `state._arrivalPhase` come macchina
+  a 2 stati ('normal' | 'blinking'). `movePaused` spostato in CONFIGURATION
+  (TDZ safety coerente con state/hoveredBtn/buttonList).
+
+## Effort
+
+1 sessione (~2-3 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-4-micro-animations` (creato, commit pending)
+Test: 113 → 138+ assert (+25 nuovi su 5 helper puri)
+File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`
+
+Bug intermedio risolto: TDZ su `movePaused` (riferito in `drawModernDisplay`
+per il breath check Q4.2). Errore emerso dallo smoke test
+(`ReferenceError: Cannot access 'movePaused' before initialization`).
+Fix: spostato `let movePaused = false;` da MOVIMENTO CABINA a CONFIGURATION
+(pattern coerente con state, hoveredBtn, buttonList — lezione V2 bug TDZ).
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -527,41 +607,40 @@ in-browser (`ReferenceError: initSettingsQoL is not defined`).
 | 1 | Accessibility (a11y) | ✅ done 2026-09-18 | `a26ccaf` + `bc070e0` | merged + cancellata |
 | 2 | Bug fix UX sistematico | ✅ done 2026-09-18 | (vedi sotto) | merged + cancellata |
 | 3 | Settings QoL | ✅ done 2026-09-22 | (vedi sotto) | merged + cancellata |
-| 4 | Micro-animazioni | ⏳ next | — | — |
-| 5 | Performance | ⏳ pending | — | — |
+| 4 | Micro-animazioni | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
+| 5 | Performance | ⏳ next | — | — |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **3/9 step completati (33%)** dopo tre sessioni V3.
-Effort residuo stimato: ~6-11 ore su 5-9 sessioni (Step 4-9 ancora da fare).
-T1 (high impact): 3/3 ✅ · T2: 0/3 · T3: 0/2 · Bonus: 0/1.
+**Risultato parziale**: **4/9 step completati (44%)** dopo quattro sessioni V3.
+Effort residuo stimato: ~5-9 ore su 4-8 sessioni (Step 5-9 ancora da fare).
+T1 (high impact): 3/3 ✅ · T2: 1/3 ✅ · T3: 0/2 · Bonus: 0/1.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15.
 
 # Come procedere ora
 
-**Step 3 Settings QoL (T1c) ✅ chiuso su branch dedicato (merge pending).**
+**Step 4 Micro-animazioni (T2a) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 4 · Micro-animazioni (T2a)** — tasti display
-touch "respiro", cartello con lampeggio gentile, fade morbido cambi stato,
-easing più morbido sul maniglione. Vedi §Scope Step 4 sopra per i 4
-sotto-step proposti.
+Il prossimo step è **Step 5 · Performance (T2b)** — profiling FPS in vari
+scenari, riduzione draw call con merge geometrie, lazy load texture con
+cache LRU, ottimizzazione shader. Vedi §Scope Step 5 sopra.
 
-Workflow per Step 4:
+Workflow per Step 5:
 
-1. Apri la sezione §Scope Step 4 e leggi i sotto-step proposti.
-2. Decidi se aggiungere altre micro-animazioni (audit se necessario).
-3. Rispondi alle Decision Questions quando definite.
-4. Implemento solo le opzioni approvate.
-5. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-6. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-7. Commit separati per sotto-step, smoke test screenshot pre-merge.
-8. Aggiorno `PIANO_MIGLIORAMENTI.md` con la fase al merge finale.
+1. Apri la sezione §Scope Step 5 e leggi i sotto-step proposti.
+2. Profila FPS baseline con vari scenari prima di ottimizzare.
+3. Decidi quale sotto-step affrontare per primo.
+4. Rispondi alle Decision Questions quando definite.
+5. Implemento solo le opzioni approvate.
+6. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
+7. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+8. Smoke test screenshot pre/post ottimizzazione per verificare guadagno.
 
-Pattern: branch dedicato `feature/v3-step-4-micro-animations`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-5-performance`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + Step 2 + Step 3 chiusi; Step 4 pronto quando dai il via.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 chiusi; Step 5 (Performance T2b) è il prossimo.

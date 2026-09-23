@@ -1647,8 +1647,24 @@ const state = {
   // Persistenza: localStorage 'bossHotelAudio@v1' + 'bossHotelDisplay@v1'
   audio: { effects: 1.0, music: 0.5, tts: 0.85 },
   display: { brightness: 1.0 },
-  _exportLog: []              // log esteso (50 entry) usato per export JSON
+  _exportLog: [],             // log esteso (50 entry) usato per export JSON
+  // Polish Pack V3 Step 4 (Q4.3): fase del cartello corridoio.
+  // 'normal' = idle/movimento normale, 'blinking' = ultimi 1s pre-arrivo
+  // (cartello lampeggia 3 volte). Settato in tickMove, consumato in
+  // drawMovingSign per overlay gold.
+  _arrivalPhase: 'normal',
+  // Polish Pack V3 Step 4 (Q4.4): transizioni fade per cambi stato.
+  // Ogni campo traccia il valore target + timestamp di inizio transizione.
+  // Lerp gestito in tickFadeStates() ogni frame.
+  _fadeAlarm: { target: 0, from: 0, startMs: 0 },
+  _fadeOOO: { target: 0, from: 0, startMs: 0 },
+  _fadeInterphone: { target: 0, from: 0, startMs: 0 }
 };
+
+// Polish Pack V3 Step 4 (Q4.2): movePaused dichiarato in CONFIGURATION
+// per evitare TDZ in drawModernDisplay (chiamato durante init prima della
+// dichiarazione originaria). Pattern coerente con state, hoveredBtn, buttonList.
+let movePaused = false;
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
 const hoveredBtn = { current: null };
@@ -2972,6 +2988,27 @@ function tickArrowFade(now) {
   // Lerp alpha 1.0 → 0.0 durante ARROW_FADE_MS
   arrowFadeMat.opacity = 1.0 - (elapsed / ARROW_FADE_MS);
 }
+
+// Polish Pack V3 Step 4 (Q4.2): tasti "respiro" anche per i 4 tasti fisici
+// della pulsantiera (◄| |► STOP !). Stessa logica del canvas breath:
+// periodo 4s, ampiezza ±2%, skip su reduced-motion/allarme/OOO/movimento.
+// buttonTop e' la mesh 3D del tasto (vedi linee 4347, 2710, 3325).
+function tickBreathButtons(now) {
+  // breathEnabled identico a quello in drawModernDisplay per coerenza visiva.
+  const breathEnabled = !state.reducedMotion && !state.alarmOn
+    && !state.outOfOrder && !state.isMoving && !movePaused;
+  const animT = now / 1000;
+  const breathMul = typeof breathScale === 'function'
+    ? breathScale(animT, breathEnabled) : 1.0;
+  // Itera buttonList e applica scale ai tasti fisici (no celle, che sono canvas).
+  for (let i = 0; i < buttonList.length; i++) {
+    const b = buttonList[i];
+    if (b && b.userData && b.userData.buttonTop) {
+      b.userData.buttonTop.scale.setScalar(breathMul);
+    }
+  }
+}
+
 setArrow('idle');
 
 // ============================================================
@@ -3142,6 +3179,23 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
   g.font = 'italic 16px Georgia, serif';
   g.textAlign = 'center';
   g.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
+  // Polish Pack V3 Step 4 (Q4.3): overlay lampeggio gentile pre-arrivo.
+  // Attivo SOLO quando state._arrivalPhase === 'blinking' (settato in tickMove
+  // quando moveElapsed > moveDuration - 1.0). 3 flash in 1s (freq 6Hz).
+  // Skip se reduced-motion. Gold tint semi-trasparente sovrapposto al cartello.
+  if (state._arrivalPhase === 'blinking') {
+    const flashAlpha = typeof arrivalFlashAlpha === 'function'
+      ? arrivalFlashAlpha(performance.now() / 1000, !state.reducedMotion)
+      : 0;
+    if (flashAlpha > 0) {
+      g.fillStyle = `rgba(255, 215, 107, ${flashAlpha * 0.35})`;
+      g.fillRect(0, 0, 512, 128);
+      // bordo lampeggia più intenso
+      g.strokeStyle = `rgba(255, 235, 170, ${flashAlpha * 0.9})`;
+      g.lineWidth = 3;
+      g.strokeRect(12, 12, 488, 104);
+    }
+  }
   signTex.needsUpdate = true;
 }
 
@@ -5289,6 +5343,49 @@ function currentMovementDirection(s) {
     : s.targetFloor < s.currentFloor ? 'down' : null;
 }
 
+// pure: fattore di scala "respiro" pulsante per i tasti della pulsantiera.
+// Periodo 4s (Math.sin con freq=PI/2 => T=2*PI/(PI/2)=4s), ampiezza ±2%.
+// Se enabled=false ritorna 1.0 (no animation). Usato da drawModernDisplay
+// per la canvas e da tickBreathButtons per le mesh 3D dei tasti fisici.
+// Polish Pack V3 Step 4 (Q4.2).
+function breathScale(animT, enabled) {
+  if (!enabled) return 1.0;
+  return 1.0 + 0.02 * Math.sin(animT * Math.PI / 2);
+}
+
+// pure: alpha per il cartello "lampeggio gentile" pre-arrivo.
+// 3 flash in 1s = freq 6Hz (Math.sin con freq=6*PI), alpha oscillante 0..1.
+// enabled=false => alpha=0 (nessun overlay). Usato in drawMovingSign.
+// Polish Pack V3 Step 4 (Q4.3).
+function arrivalFlashAlpha(animT, enabled) {
+  if (!enabled) return 0;
+  return 0.5 + 0.5 * Math.abs(Math.sin(animT * 6 * Math.PI));
+}
+
+// pure: easing bounce-out classico. t in [0..1], ritorna posizione [0..1].
+// Decay esponenziale con oscillazione smorzata (effetto 'maniglione che
+// rimbalza dopo l'arrivo'). Usato per sostituire `*= 0.85` decay vibrazione.
+// Polish Pack V3 Step 4 (Q4.5).
+function easeOutBounce(t) {
+  if (t < 0 || t > 1) return 0;
+  // Oscillazione smorzata: ampiezza decade con exp(-3t), freq 8Hz
+  // Risultato: 1.0 a t=0, oscilla tra +/-0.3, smorzato a ~0 entro 1.5s.
+  return Math.exp(-3 * t) * Math.cos(t * 8 * Math.PI);
+}
+
+// pure: durata del fade-in per cambi stato (OOO/alarm/citofono).
+// Ritorna millisecondi. Coerente con Q4.4 = 200ms.
+// Polish Pack V3 Step 4 (Q4.4).
+function stateFadeDurationMs() {
+  return 200;
+}
+
+// pure: easing lineare per lerp fade-in. t in [0..1], ritorna 0..1.
+// Polish Pack V3 Step 4 (Q4.4): lerp semplice, easing lineare (più 'snappy').
+function easeOutLinear(t) {
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+
 // ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -5627,10 +5724,25 @@ function drawModernDisplay() {
   const bright = (state.display && typeof state.display.brightness === 'number')
     ? state.display.brightness : 1.0;
   ctx.filter = `brightness(${bright})`;
+  // Polish Pack V3 Step 4 (Q4.2): tasti respiro - scale pulsante ±2%
+  // con periodo 4s quando la cabina è idle (no movimento, no allarme, no OOO).
+  // Respettato prefers-reduced-motion (D12): se state.reducedMotion,
+  // breathMul = 1.0 (no animation).
+  const breathEnabled = !state.reducedMotion && !state.alarmOn
+    && !state.outOfOrder && !state.isMoving && !movePaused;
+  const breathMul = typeof breathScale === 'function'
+    ? breathScale(animT, breathEnabled) : 1.0;
+  if (breathMul !== 1.0) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(breathMul, breathMul);
+    ctx.translate(-W / 2, -H / 2);
+  }
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(displayStaticCanvas, 0, 0);
   ctx.drawImage(displaySemistaticCanvas, 0, 0);
   renderDisplayDynamicLayer(ctx, animT);
+  if (breathMul !== 1.0) ctx.restore();
   ctx.filter = 'none'; // reset per evitare side-effect su altri contesti
 
   displayTex.needsUpdate = true;
@@ -6836,7 +6948,7 @@ let moveFrom = 0;
 let moveTo = 0;
 let moveDuration = 0;
 let moveElapsed = 0;
-let movePaused = false;
+// Polish Pack V3 Step 4: movePaused spostato in CONFIGURATION (TDZ safety).
 
 // ============================================================
 // POLISH PACK V2 STEP 7a — Coda con direzione (intenzione viaggio)
@@ -6977,6 +7089,8 @@ function actuallyStartMove() {
   playBeep(700, 0.1, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 120);
   moveT = 0; moveElapsed = 0;
+  // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
+  state._arrivalPhase = 'normal';
   // annuncia l'inizio del movimento (direzione + piano target) dopo i beep
   if (typeof announceMoveStart === 'function') announceMoveStart(moveFrom, moveTo);
   updateFloorDisplay();
@@ -6989,10 +7103,34 @@ function tickMove(dt) {
   if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
   // decay dello shake quando la cabina è ferma
   if (!state.isMoving || movePaused) {
-    state.vibrationX *= 0.85;
-    state.vibrationZ *= 0.85;
-    state.vibrationRoll *= 0.85;
-    state.vibrationPitch *= 0.85;
+    // Polish Pack V3 Step 4 (Q4.5): curva bounce-out per vibrazione residua.
+    // Prima: `*= 0.85` decay esponenziale puro (troppo 'flat').
+    // Ora: oscilla damped (exp(-3t) * cos(8π t)) per ~1.5s dopo l'arrivo,
+    // simulando il 'maniglione che rimbalza'. easeOutBounce e' in BossHotelPure.
+    if (state._vibSnap) {
+      const elapsedS = (now - state._vibSnap.stopTimeMs) / 1000;
+      if (elapsedS >= 1.5) {
+        // dopo 1.5s, vibrazione completamente smorzata
+        state.vibrationX = 0;
+        state.vibrationZ = 0;
+        state.vibrationRoll = 0;
+        state.vibrationPitch = 0;
+      } else {
+        const k = typeof easeOutBounce === 'function'
+          ? easeOutBounce(elapsedS)
+          : Math.exp(-3 * elapsedS) * Math.cos(elapsedS * 8 * Math.PI);
+        state.vibrationX = state._vibSnap.x * k;
+        state.vibrationZ = state._vibSnap.z * k;
+        state.vibrationRoll = state._vibSnap.roll * k;
+        state.vibrationPitch = state._vibSnap.pitch * k;
+      }
+    } else {
+      // fallback: comportamento originale (decay esponenziale) se _vibSnap non c'e'
+      state.vibrationX *= 0.85;
+      state.vibrationZ *= 0.85;
+      state.vibrationRoll *= 0.85;
+      state.vibrationPitch *= 0.85;
+    }
     return;
   }
   moveElapsed += dt;
@@ -7033,8 +7171,18 @@ function tickMove(dt) {
   state.floorShown = floorShown;
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  // Polish Pack V3 Step 4 (Q4.3): detection fase lampeggio gentile pre-arrivo.
+  // Negli ultimi 1s prima dell'arrivo, setta _arrivalPhase='blinking'.
+  // drawMovingSign viene chiamato ogni frame per animare l'overlay.
+  const remainingMs = (moveDuration - moveElapsed) * 1000;
+  const newArrivalPhase = (moveElapsed > 0 && remainingMs < 1000 && remainingMs > 0)
+    ? 'blinking' : 'normal';
+  if (newArrivalPhase !== state._arrivalPhase) {
+    state._arrivalPhase = newArrivalPhase;
+  }
   // Polish Pack v1.3 #4: cartello "passo passo" — aggiorna solo quando cambia il piano mostrato
-  if (floorShown !== state._lastShownFloor) {
+  // OPPURE durante la fase di lampeggio gentile (animazione overlay).
+  if (floorShown !== state._lastShownFloor || state._arrivalPhase === 'blinking') {
     state._lastShownFloor = floorShown;
     drawMovingSign(moveFrom, moveTo, floorShown);
   }
@@ -7044,6 +7192,18 @@ function tickMove(dt) {
     state.currentFloor = moveTo;
     state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
     state.isMoving = false;
+    // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
+    state._arrivalPhase = 'normal';
+    // Polish Pack V3 Step 4 (Q4.5): snapshot vibrazione per bounce-out post-arrivo.
+    // tickMove poi usa questi valori come baseline per la curva bounce-out
+    // (sostituisce il decay esponenziale `* 0.85` che era troppo 'flat').
+    state._vibSnap = {
+      x: state.vibrationX,
+      z: state.vibrationZ,
+      roll: state.vibrationRoll,
+      pitch: state.vibrationPitch,
+      stopTimeMs: now
+    };
     lightFloorButton(moveTo, false);
     state.requestedFloors = state.requestedFloors.filter(r => r.floor !== moveTo);
     // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
@@ -7219,12 +7379,23 @@ function toggleAlarm() {
     movePaused = true;
     cancelAutoClose(); // l'allarme chiude le porte manualmente, niente auto-close
     setDoors(false);
-    alarmLight.intensity = 4;
+    // Polish Pack V3 Step 4 (Q4.4): fade-in 200ms invece di snap.
+    // tickFadeStates() lerpa alarmLight.intensity da current → 4 in 200ms.
+    state._fadeAlarm = {
+      from: alarmLight.intensity,
+      target: 4,
+      startMs: performance.now()
+    };
     playAlarm();
     if (typeof announceAlarm === 'function') announceAlarm();
   } else {
     movePaused = false;
-    alarmLight.intensity = 0;
+    // Polish Pack V3 Step 4 (Q4.4): fade-out 200ms invece di snap.
+    state._fadeAlarm = {
+      from: alarmLight.intensity,
+      target: 0,
+      startMs: performance.now()
+    };
     if (state._alarmId) clearInterval(state._alarmId);
   }
   // Polish Pack V2 Step 1d: emetti evento allarme (consumatori: display, audio)
@@ -7340,6 +7511,38 @@ function tickInterphoneCall(now) {
   if (elapsed >= INTERPHONE_DURATION_MS) stopInterphoneCall('timeout');
 }
 
+// Polish Pack V3 Step 4 (Q4.4): fade gentile per cambi stato.
+// Lerp 200ms su alarmLight.intensity (rosso allarme) + emissiveIntensity
+// del pulsante citofono. Lo stato fade target/from/startMs e' in
+// state._fadeAlarm e state._fadeInterphone, inizializzato nei toggle
+// corrispondenti. Skip completo se state.reducedMotion (snap immediato).
+// Chiamato ogni frame dal loop RAF.
+function tickFadeStates(now) {
+  if (state.reducedMotion) return;
+  const dur = 200; // ms, coerente con stateFadeDurationMs()
+  // alarm light
+  if (state._fadeAlarm && alarmLight) {
+    const elapsed = now - state._fadeAlarm.startMs;
+    const t = Math.min(1, elapsed / dur);
+    alarmLight.intensity = state._fadeAlarm.from
+      + (state._fadeAlarm.target - state._fadeAlarm.from) * t;
+  }
+  // interphone button emissive (base level, NON sostituisce il blink di
+  // tickInterphoneCall — quello continua a pulsare sopra il base).
+  if (state._fadeInterphone && state._interphoneButton && state._interphoneButton.material) {
+    const elapsed = now - state._fadeInterphone.startMs;
+    const t = Math.min(1, elapsed / dur);
+    const baseEmissive = state._fadeInterphone.from
+      + (state._fadeInterphone.target - state._fadeInterphone.from) * t;
+    // Il blink attivo (tickInterphoneCall) sovrascrive emissiveIntensity,
+    // quindi questo e' solo un base level per quando la chiamata NON e'
+    // attiva. tickInterphoneCall continua a gestire il blink attivo.
+    if (!state.interphoneCalling) {
+      state._interphoneButton.material.emissiveIntensity = baseEmissive;
+    }
+  }
+}
+
 // stopInterphoneCall: termina la chiamata citofono. Chiamato da
 // tickInterphoneCall al timeout o manualmente. Ripristina emissive
 // intensity del pulsante e pulisce stato.
@@ -7347,7 +7550,15 @@ function stopInterphoneCall(reason) {
   if (!state.interphoneCalling) return;
   state.interphoneCalling = false;
   const btn = state._interphoneButton;
-  if (btn && btn.material) btn.material.emissiveIntensity = 0.3;  // valore originale
+  // Polish Pack V3 Step 4 (Q4.4): fade-out 200ms invece di snap.
+  // tickFadeStates() lerpa emissiveIntensity al valore base (0.3).
+  if (btn && btn.material) {
+    state._fadeInterphone = {
+      from: btn.material.emissiveIntensity,
+      target: 0.3,
+      startMs: performance.now()
+    };
+  }
   if (typeof logEvent === 'function') logEvent('interphone:stop:' + (reason || 'manual'));
   if (typeof bus !== 'undefined' && bus) bus.emit('interphone:off');
   if (typeof savePrefs === 'function') savePrefs();
@@ -8035,10 +8246,14 @@ function loop(now) {
   tickInactivityPrompt();
   // Polish Pack V2 Step 14: gestione chiamata citofono (lampeggio + voce reception + timeout)
   tickInterphoneCall(now);
+  // Polish Pack V3 Step 4 (Q4.4): fade gentile alarm + citofono (lerp 200ms)
+  tickFadeStates(now);
   // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
   tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
   tickArrowFade(now);
+  // Polish Pack V3 Step 4 (Q4.2): tasti "respiro" pulsantiera 3D
+  tickBreathButtons(now);
   // Polish Pack V2 Step 10c: re-check dayPhase (ogni 60s via setInterval, ma ridondante sicuro)
   tickTimeOfDay();
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
@@ -8049,7 +8264,13 @@ function loop(now) {
   // lampeggio allarme / modalità notte (Fase 8)
   if (state.alarmOn) {
     const k = 0.5 + 0.5 * Math.sin(now * 0.012);
-    alarmLight.intensity = 2 + k * 4;
+    // Polish Pack V3 Step 4 (Q4.4): durante il fade-in (primi 200ms dopo
+    // toggleAlarm) salta il blink modulation di alarmLight cosi' tickFadeStates()
+    // lerp ha effetto visibile. Dopo i 200ms, blink modulation normale.
+    const fadeElapsed = state._fadeAlarm ? (now - state._fadeAlarm.startMs) : Infinity;
+    if (fadeElapsed >= 200) {
+      alarmLight.intensity = 2 + k * 4;
+    }
     ceilingLight.intensity = 0.6 + (1 - k) * 0.4;
     scene.fog.color.setHSL(0, 1, 0.05 + 0.02 * k);
   } else if (state.nightMode) {
@@ -8762,6 +8983,8 @@ window.BossHotelPure = {
   canOpenDoors, shouldAnnounceDoorClose, sosCancelsOOO, currentMovementDirection,
   // Polish Pack V3 Step 3: helper Settings QoL (audio + display + export)
   clampAudio, clampBrightness, formatVolumePercent, stateShapeForExport,
+  // Polish Pack V3 Step 4: helper micro-animazioni (respiro + flash + bounce)
+  breathScale, arrivalFlashAlpha, easeOutBounce, stateFadeDurationMs, easeOutLinear,
   // costanti utili per i test
   NUM_FLOORS
 };

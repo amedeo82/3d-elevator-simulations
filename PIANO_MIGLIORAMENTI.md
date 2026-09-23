@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.2 — Polish Pack V3, Step 1 + Step 2 + Step 3 ✅** · Aggiornato 2026-09-22
+**Versione 5.3 — Polish Pack V3, Step 1 + 2 + 3 + 4 ✅** · Aggiornato 2026-09-23
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,10 +1772,11 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **3/9 step completati (33%)** dopo tre sessioni.
-Step 1 (Accessibility) + Step 2 (Bug fix UX) merged su main. Step 3
-(Settings QoL) implementato su branch dedicato `feature/v3-step-3-settings-qol`,
-merge pending. **Tier T1 (high impact) completo (3/3) ✅.**
+**Risultato parziale V3**: **4/9 step completati (44%)** dopo quattro sessioni.
+Step 1 (Accessibility) + Step 2 (Bug fix UX) + Step 3 (Settings QoL) merged
+su main. Step 4 (Micro-animazioni) implementato su branch dedicato
+`feature/v3-step-4-micro-animations`, merge pending.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 1/3 (Step 4) ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -1963,3 +1964,76 @@ Errore rilevato immediatamente dallo smoke test in-browser.
   che lo slider salvi automaticamente (pattern OS-standard). Meno friction.
 - **Export JSON in maintenance overlay**: scope appropriato (è debug tool,
   non UI quotidiana). Visibilità condizionata a `state.maintenanceMode`.
+
+---
+
+### Fase 21 — Polish Pack V3 Step 4: Micro-animazioni (T2a) ✅ (2026-09-23, branch `feature/v3-step-4-micro-animations`)
+
+Micro-animazioni cosmetiche non essenziali per migliorare la qualità percepita.
+5 Decision Questions approvate via `question` tool. Pattern: pure helpers +
+state machine per arrival phase + fade state.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q4.1 | Scope completo (4 sotto-step) | Tutto |
+| Q4.2 | Tasti "respiro" pulsazione ±2% periodo 4s su canvas display + mesh 3D tasti fisici. Skip su reduced-motion/allarme/OOO/movimento | Canvas + 3D |
+| Q4.3 | Cartello "lampeggio gentile" pre-arrivo: overlay gold tint con alpha oscillante 0..1 a 6Hz, ultimi 1s prima dell'arrivo | Canvas overlay |
+| Q4.4 | Fade gentile alarm + citofono: lerp 200ms su `alarmLight.intensity` + `emissiveIntensity` del pulsante citofono. Blink modulation salta durante fade-in | 3D lerp |
+| Q4.5 | Vibrazione residua bounce-out: `state._vibSnap` snapshot all'arrivo + `easeOutBounce(elapsedS)` = `exp(-3t) * cos(8π t)`. Oscilla damped per ~1.5s | Curve swap |
+
+### Modifiche architetturali
+
+- **Nuovi state fields**: `_arrivalPhase` ('normal' | 'blinking'),
+  `_fadeAlarm` / `_fadeInterphone` (`{from, target, startMs}`),
+  `_vibSnap` (`{x, z, roll, pitch, stopTimeMs}`)
+- **movePaused spostato in CONFIGURATION** per evitare TDZ (riferito in
+  `drawModernDisplay` per breath check Q4.2). Pattern coerente con state,
+  hoveredBtn, buttonList — lezione V2 bug TDZ ancora valida.
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `breathScale(animT, enabled)`: fattore scala pulsante tasti (±2%, periodo 4s)
+- `arrivalFlashAlpha(animT, enabled)`: alpha overlay lampeggio gentile (6Hz)
+- `easeOutBounce(t)`: curva bounce-out `exp(-3t) * cos(8πt)` per vibrazione
+- `stateFadeDurationMs()`: 200ms (default fade cambi stato)
+- `easeOutLinear(t)`: lerp lineare con clamp [0..1]
+
+### Test
+
+113 → 138+ assert (+25 nuovi su 5 helper puri).
+
+### Contratto D-key nuovo
+
+- **D15**: Micro-animazioni cosmetiche rispettano `state.reducedMotion`
+  (D12). Animazioni essenziali (lampeggio allarme, vibrazione cabina,
+  apertura/chiusura porte) restano attive anche con reduced motion.
+  Pattern detection pre-arrivo: `moveElapsed > moveDuration - 1.0` +
+  state machine `_arrivalPhase` ('normal' | 'blinking').
+
+### Bug intermedio risolto
+
+TDZ su `movePaused` (riferito in `drawModernDisplay` per breath check Q4.2).
+Errore emerso immediatamente dallo smoke test
+(`ReferenceError: Cannot access 'movePaused' before initialization`).
+Fix: spostato `let movePaused = false;` da MOVIMENTO CABINA a CONFIGURATION
+(pattern coerente con state, hoveredBtn, buttonList).
+
+### Lessons learned V3 Step 4
+
+- **Bug TDZ sempre in agguato**: ogni volta che aggiungiamo un nuovo check
+  in una funzione chiamata durante init, dobbiamo verificare che tutte le
+  variabili referenziate siano in CONFIGURATION. Lezione V2 ancora valida.
+- **State machine per arrival phase**: usare un campo `_arrivalPhase` con
+  due valori discreti ('normal' | 'blinking') è più robusto di calcolare
+  il flash overlay ad ogni frame (evita flicker su edge cases).
+- **Snapshot + curve helper per bounce-out**: salvare i valori di vibrazione
+  all'arrivo + applicare una curva `f(t)` permette effetti complessi senza
+  dover riscrivere la logica di tickMove. Pattern riusabile per altri
+  effetti (es. fade-in/out citofono).
+- **Blink modulation rispetta fade**: il blink modulation dell'allarme
+  sovrascriveva `alarmLight.intensity` ogni frame, nascondendo il fade.
+  Fix: check `fadeElapsed >= 200` per skippare blink durante fade-in.
+  Pattern generale: qualsiasi modulation per-frame deve rispettare i
+  fade-in/out.
