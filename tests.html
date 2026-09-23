@@ -785,6 +785,103 @@
           assertEq(P.easeOutLinear(2), 1);
         });
       });
+
+      // ---- aggregateFpsStats (Polish Pack V3 Step 5: Q5.4) --------
+      describe('aggregateFpsStats (benchmark aggregation)', () => {
+        test('array vuoto o invalido → stats zero', () => {
+          const r1 = P.aggregateFpsStats([]);
+          assertEq(r1.min, 0);
+          assertEq(r1.max, 0);
+          assertEq(r1.avg, 0);
+          assertEq(r1.count, 0);
+          assertEq(P.aggregateFpsStats(null).count, 0);
+          assertEq(P.aggregateFpsStats(undefined).count, 0);
+        });
+        test('calcola min/max/avg corretti', () => {
+          const r = P.aggregateFpsStats([30, 60, 45, 50, 55]);
+          assertEq(r.min, 30);
+          assertEq(r.max, 60);
+          assertNear(r.avg, 48, 0.01);
+          assertEq(r.count, 5);
+        });
+        test('ignora valori non numerici', () => {
+          const r = P.aggregateFpsStats([30, NaN, 'foo', 50, null]);
+          assertEq(r.count, 2);
+          assertEq(r.min, 30);
+          assertEq(r.max, 50);
+        });
+      });
+
+      // ---- formatFpsDelta (Polish Pack V3 Step 5: Q5.4) ---------
+      describe('formatFpsDelta', () => {
+        test('miglioramento (after > before)', () => {
+          assertEq(P.formatFpsDelta(30, 35), '+5.0 FPS (+17%)');
+        });
+        test('regressione (after < before)', () => {
+          assertEq(P.formatFpsDelta(60, 50), '-10.0 FPS (-17%)');
+        });
+        test('identico (after === before)', () => {
+          assertEq(P.formatFpsDelta(40, 40), '+0.0 FPS (+0%)');
+        });
+        test('input invalido → "--"', () => {
+          assertEq(P.formatFpsDelta(null, 30), '--');
+          assertEq(P.formatFpsDelta(30, undefined), '--');
+        });
+      });
+
+      // ---- createLruCache (Polish Pack V3 Step 5: Q5.3) ----------
+      describe('createLruCache (LRU cache)', () => {
+        test('set + get base', () => {
+          const c = P.createLruCache(3);
+          c.set('a', 1);
+          c.set('b', 2);
+          assertEq(c.get('a'), 1);
+          assertEq(c.get('b'), 2);
+        });
+        test('LRU eviction quando pieno', () => {
+          const c = P.createLruCache(2);
+          c.set('a', 1);
+          c.set('b', 2);
+          c.set('c', 3);  // 'a' dovrebbe essere evictato
+          assertEq(c.get('a'), undefined);
+          assertEq(c.get('b'), 2);
+          assertEq(c.get('c'), 3);
+        });
+        test('get() refresha LRU order', () => {
+          const c = P.createLruCache(2);
+          c.set('a', 1);
+          c.set('b', 2);
+          c.get('a'); // 'a' è ora MRU
+          c.set('c', 3); // 'b' dovrebbe essere evictato (era LRU)
+          assertEq(c.get('a'), 1);
+          assertEq(c.get('b'), undefined);
+          assertEq(c.get('c'), 3);
+        });
+        test('delete + clear + has', () => {
+          const c = P.createLruCache(3);
+          c.set('a', 1);
+          assertEq(c.has('a'), true);
+          c.delete('a');
+          assertEq(c.has('a'), false);
+          c.set('b', 2);
+          c.clear();
+          assertEq(c.size, 0);
+        });
+        test('capacity clamp a >= 1', () => {
+          const c = P.createLruCache(0);  // invalid → 1
+          assertEq(c.capacity, 1);
+          c.set('a', 1);
+          c.set('b', 2); // evict 'a'
+          assertEq(c.get('a'), undefined);
+        });
+        test('keys() ritorna tutte le chiavi in LRU order', () => {
+          const c = P.createLruCache(3);
+          c.set('a', 1);
+          c.set('b', 2);
+          c.set('c', 3);
+          assert(JSON.stringify(c.keys()) === JSON.stringify(['a', 'b', 'c']));
+        });
+      });
     }
 
     // ============================================================

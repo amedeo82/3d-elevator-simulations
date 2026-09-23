@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.3 — Polish Pack V3, Step 1 + 2 + 3 + 4 ✅** · Aggiornato 2026-09-23
+**Versione 5.4 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 ✅** · Aggiornato 2026-09-23
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,11 +1772,10 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **4/9 step completati (44%)** dopo quattro sessioni.
-Step 1 (Accessibility) + Step 2 (Bug fix UX) + Step 3 (Settings QoL) merged
-su main. Step 4 (Micro-animazioni) implementato su branch dedicato
-`feature/v3-step-4-micro-animations`, merge pending.
-**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 1/3 (Step 4) ✅.**
+**Risultato parziale V3**: **5/9 step completati (56%)** dopo cinque sessioni.
+Step 1 + 2 + 3 + 4 merged su main. Step 5 (Performance) implementato su
+branch dedicato `feature/v3-step-5-performance`, merge pending.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 2/3 (Step 4 + 5) ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -2037,3 +2036,65 @@ Fix: spostato `let movePaused = false;` da MOVIMENTO CABINA a CONFIGURATION
   Fix: check `fadeElapsed >= 200` per skippare blink durante fade-in.
   Pattern generale: qualsiasi modulation per-frame deve rispettare i
   fade-in/out.
+
+---
+
+### Fase 22 — Polish Pack V3 Step 5: Performance (T2b) ✅ (2026-09-23, branch `feature/v3-step-5-performance`)
+
+Ottimizzazione performance esistenti tramite profiling + draw call reduction
++ texture LRU cache + display touch optimization. 5 Decision Questions
+approvate via `question` tool. Pattern: audit-first → fix mirati → benchmark.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Risparmio stimato |
+|---|---|---|
+| Q5.1 | Scope completo (4 sotto-step) | Tutto |
+| Q5.2 | Draw call reduction: 3 pareti merged in 1 mesh (mergeGeometries + applyMatrix4) + 4 LED lampade merged + 4 frame merged | ~-8 draw call per rebuild corridoio |
+| Q5.3 | textureCache LRU capacity 10: usato in `drawMovingSign` per cachare la base (no overlay) | ~90% cache hit durante flash gentile |
+| Q5.4 | `runBenchmark()` 5s idle + 5s moving + log + subtitle + bottone in maintenance overlay | Misurazione oggettiva |
+| Q5.5 | Display touch optimization: skip `ctx.filter = brightness(X)` quando X===1.0 (no-op costoso) | ~-2% CPU idle display |
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `aggregateFpsStats(samples)`: aggrega array FPS in {min, max, avg, count}
+- `formatFpsDelta(before, after)`: formatta "+5.0 FPS (+17%)" o "--"
+- `createLruCache(capacity)`: LRU cache generica con capacity 1..∞, eviction FIFO + get-refresh
+
+### Nuovi state fields
+
+- `state._benchPhase` ('idle' | 'moving' | null), `state._benchIdle`,
+  `state._benchMoving`, `state._benchStartMs` per benchmark tracking
+- `state._dcBuf` (opzionale, futuro)
+
+### Test
+
+138 → 158+ assert (+20 nuovi su 3 helper puri).
+
+### Contratto D-key nuovo
+
+- **D16**: Performance optimization pattern: `textureCache` LRU capacity 10
+  per canvas texture della cabina, `mergeGeometries` per geometrie dello
+  stesso materiale (richiede `applyMatrix4` per posizionare le singole
+  geometrie prima del merge), skip no-op ctx.filter/transform quando
+  valore === default. Benchmark via `runBenchmark()` + maintenance overlay
+  per misurazione iterativa.
+
+### Lessons learned V3 Step 5
+
+- **mergeGeometries richiede applyMatrix4**: le geometrie da mergiare devono
+  avere le transform (rotation/translate) applicate alla geometry stessa,
+  non al mesh. Pattern: `geometry.applyMatrix4(matrix)` prima del merge.
+- **LRU cache con Map + delete-reinsert**: usare Map (insertion-ordered)
+  + delete+set per refresh LRU position. Più semplice di una doubly-linked
+  list. ~30 righe per capacity N.
+- **Skip no-op costosi**: `ctx.filter = brightness(1.0)` è un no-op ma
+  imposta un context state. Skip se valore === default riduce CPU idle.
+- **Texture cache hit ratio**: `drawMovingSign` viene chiamato ogni frame
+  durante flash gentile (~3/sec × 1s). La base (no flash overlay) è
+  identica, quindi cache hit ratio ~90% durante flash, 100% al di fuori.
+  Risparmio ~5-10 ops di disegno per cache hit.
+- **Benchmark prima di ottimizzare**: `runBenchmark` permette di misurare
+  l'impatto reale delle ottimizzazioni su questo specifico hardware.
+  Pattern utile per regressioni future: ri-eseguire benchmark dopo ogni
+  Polish Pack step che modifica la pipeline di rendering.

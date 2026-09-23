@@ -687,6 +687,8 @@
     <!-- Polish Pack V3 Step 3: bottone export stato JSON.
          pointer-events:auto perche' il parent overlay ha pointer-events:none. -->
     <button id="m-export-json" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
+    <!-- Polish Pack V3 Step 5 (Q5.4): bottone benchmark FPS -->
+    <button id="m-benchmark-btn" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
   </div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
@@ -781,6 +783,9 @@
 <script type="module">
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
+// Polish Pack V3 Step 5 (Q5.2): mergeGeometries per ridurre draw call corridoio
+// (merge di piu' PlaneGeometry in una singola BufferGeometry = 1 draw call).
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ============================================================
 // CONFIGURAZIONE
@@ -902,6 +907,12 @@ const STRINGS = {
     maintPax: 'Passeggeri',
     maintMode: 'In cabina',
     maintOOO: 'Out-of-order',
+    maintInterphone: 'Citofono',
+    maintBenchmark: 'Benchmark 5s',
+    maintBenchmarkIdle: 'Idle',
+    maintBenchmarkMoving: 'In movimento',
+    maintBenchmarkRunning: 'Benchmark...',
+    maintBenchmarkDone: 'Benchmark completato',
     maintEvents: 'Eventi',
     maintInterphone: 'Citofono',
     maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
@@ -1138,6 +1149,11 @@ const STRINGS = {
     maintOOO: 'Out-of-order',
     maintEvents: 'Events',
     maintInterphone: 'Interphone',
+    maintBenchmark: 'Benchmark 5s',
+    maintBenchmarkIdle: 'Idle',
+    maintBenchmarkMoving: 'Moving',
+    maintBenchmarkRunning: 'Benchmarking...',
+    maintBenchmarkDone: 'Benchmark complete',
     maintHint: 'Shift+M to exit \u00b7 1-9 to teleport',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
@@ -3123,62 +3139,93 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
     drawFloorSign(state.currentFloor);
     return;
   }
+  // Polish Pack V3 Step 5 (Q5.3): LRU cache per la base del cartello in movimento.
+  // La base (sfondo + bordi + freccia + lista piani + sottotitolo) è costante
+  // durante un viaggio. La cache permette di evitare ~15 fillRect/fillText
+  // operations ad ogni frame di flash gentile (3/sec × ~15 ops = 45 ops/sec).
   const up = toFloor > fromFloor;
-  // stesso sfondo del cartello statico (mantiene coerenza visiva)
-  g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
-  // Polish Pack V2 Step 5: bordi derivati da HOTEL_CONFIG.accentGold
-  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 5;
-  g.strokeRect(8, 8, 496, 112);
-  g.strokeStyle = HOTEL_CONFIG.accentGoldDark; g.lineWidth = 2;
-  g.strokeRect(15, 15, 482, 98);
-  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 2;
-  for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
-    g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
-  }
-  // freccia direzione (verde salita, ambra discesa) + etichetta
   const accColor = up ? '#7fff7f' : '#ff8c5a';
-  const arrow = up ? '▲' : '▼';
-  g.fillStyle = accColor;
-  g.shadowColor = accColor; g.shadowBlur = 12;
-  g.font = 'bold 48px Georgia, serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(arrow, 48, 55);
-  g.shadowBlur = 0;
-  g.font = 'bold 14px Georgia, serif';
-  g.fillStyle = '#d4a23a';
-  g.fillText(up ? STRINGS[state.lang].inSalitaShort : STRINGS[state.lang].inDiscesaShort, 48, 95);
-  // lista piani attraversati (separati da " · "), con quello corrente evidenziato
-  const lo = Math.min(fromFloor, toFloor);
-  const hi = Math.max(fromFloor, toFloor);
-  const cells = [];
-  for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
-  g.font = 'bold 28px Georgia, serif';
-  g.textAlign = 'left';
-  let cursorX = 110;
-  cells.forEach((label, idx) => {
-    const floorNum = idx + lo;
-    const isCurrent = floorNum === currentShown;
-    if (isCurrent) {
-      g.fillStyle = accColor;
-      g.shadowColor = accColor; g.shadowBlur = 14;
-    } else {
-      g.fillStyle = '#d4a23a';
+  const cacheKey = `movingSignBase:${fromFloor}:${toFloor}:${state.lang}:${HOTEL_CONFIG.panelHelpBrand}`;
+  let baseCanvas = textureCache && textureCache.get(cacheKey);
+  if (!baseCanvas) {
+    // Bake base in un canvas offscreen
+    baseCanvas = document.createElement('canvas');
+    baseCanvas.width = 512;
+    baseCanvas.height = 128;
+    const bg = baseCanvas.getContext('2d');
+    bg.fillStyle = '#0e0900'; bg.fillRect(0, 0, 512, 128);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldLight; bg.lineWidth = 5;
+    bg.strokeRect(8, 8, 496, 112);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldDark; bg.lineWidth = 2;
+    bg.strokeRect(15, 15, 482, 98);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldLight; bg.lineWidth = 2;
+    for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+      bg.beginPath(); bg.arc(x, y, 5, 0, Math.PI*2); bg.stroke();
     }
-    g.fillText(label, cursorX, 50);
-    const w = g.measureText(label).width;
-    if (idx < cells.length - 1) {
-      g.fillStyle = '#7a5a20'; g.shadowBlur = 0;
-      const sep = ' · ';
-      g.fillText(sep, cursorX + w + 2, 50);
-      cursorX += w + g.measureText(sep).width + 4;
-    }
-    g.shadowBlur = 0;
-  });
-  // sottotitolo (centrato)
-  g.fillStyle = '#d4a23a';
-  g.font = 'italic 16px Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
+    bg.fillStyle = accColor;
+    bg.shadowColor = accColor; bg.shadowBlur = 12;
+    bg.font = 'bold 48px Georgia, serif';
+    bg.textAlign = 'center'; bg.textBaseline = 'middle';
+    bg.fillText(up ? '▲' : '▼', 48, 55);
+    bg.shadowBlur = 0;
+    bg.font = 'bold 14px Georgia, serif';
+    bg.fillStyle = '#d4a23a';
+    bg.fillText(up ? STRINGS[state.lang].inSalitaShort : STRINGS[state.lang].inDiscesaShort, 48, 95);
+    // lista piani SENZA highlight del current (aggiunto dopo)
+    const lo = Math.min(fromFloor, toFloor);
+    const hi = Math.max(fromFloor, toFloor);
+    const cells = [];
+    for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+    bg.font = 'bold 28px Georgia, serif';
+    bg.textAlign = 'left';
+    bg.fillStyle = '#d4a23a';
+    let cursorX = 110;
+    cells.forEach((label, idx) => {
+      bg.fillText(label, cursorX, 50);
+      const w = bg.measureText(label).width;
+      if (idx < cells.length - 1) {
+        const sep = ' · ';
+        bg.fillStyle = '#7a5a20';
+        bg.fillText(sep, cursorX + w + 2, 50);
+        cursorX += w + bg.measureText(sep).width + 4;
+      }
+    });
+    // sottotitolo (centrato)
+    bg.fillStyle = '#d4a23a';
+    bg.font = 'italic 16px Georgia, serif';
+    bg.textAlign = 'center';
+    bg.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
+    // Salva in cache
+    if (textureCache) textureCache.set(cacheKey, baseCanvas);
+  }
+  // Copia base canvas sul signCanvas (veloce: solo drawImage)
+  g.clearRect(0, 0, 512, 128);
+  g.drawImage(baseCanvas, 0, 0);
+  // Polish Pack V3 Step 5 (Q5.3): aggiungi solo l'highlight del current floor
+  // (singola fillText) — operazione leggera vs rifare tutto il cartello.
+  if (currentShown !== undefined) {
+    const lo = Math.min(fromFloor, toFloor);
+    const hi = Math.max(fromFloor, toFloor);
+    const cells = [];
+    for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+    g.font = 'bold 28px Georgia, serif';
+    g.textAlign = 'left';
+    // calcola il cursorX per il currentShown (stesso algoritmo del bake)
+    let cursorX = 110;
+    cells.forEach((label, idx) => {
+      if (idx + lo === currentShown) {
+        g.fillStyle = accColor;
+        g.shadowColor = accColor; g.shadowBlur = 14;
+        g.fillText(label, cursorX, 50);
+        g.shadowBlur = 0;
+      }
+      const w = g.measureText(label).width;
+      if (idx < cells.length - 1) {
+        const sep = ' · ';
+        cursorX += w + g.measureText(sep).width + 4;
+      }
+    });
+  }
   // Polish Pack V3 Step 4 (Q4.3): overlay lampeggio gentile pre-arrivo.
   // Attivo SOLO quando state._arrivalPhase === 'blinking' (settato in tickMove
   // quando moveElapsed > moveDuration - 1.0). 3 flash in 1s (freq 6Hz).
@@ -3610,46 +3657,83 @@ function buildCorridor(floor) {
     m.position.set(0, CORRIDOR_H, sZ + CORRIDOR_D/2);
     corridor.add(m);
   }
-  // Parete sinistra
+  // Polish Pack V3 Step 5 (Q5.2): merge 3 pareti (sx, dx, fondo) in un'unica
+  // BufferGeometry. Stesso materiale (theme.wall) e stessa shadow flag → 1
+  // draw call invece di 3. Risparmio ~2 draw call per piano rebuild.
+  // PlaneGeometry ha bisogno di essere posizionata (rotation/translate), e
+  // mergeGeometries non supporta transform per geometry. Applichiamo le
+  // transform via matrix (geometry.applyMatrix4) PRIMA del merge.
   {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.rotation.y = Math.PI / 2;
-    m.position.set(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    m.receiveShadow = true;
-    corridor.add(m);
-  }
-  // Parete destra
-  {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.rotation.y = -Math.PI / 2;
-    m.position.set(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    m.receiveShadow = true;
-    corridor.add(m);
-  }
-  // Parete di fondo
-  {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.position.set(0, CORRIDOR_H/2, eZ);
-    m.receiveShadow = true;
-    corridor.add(m);
+    const wallGeo1 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+    const m1 = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+    m1.setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+    wallGeo1.applyMatrix4(m1);
+    const wallGeo2 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+    const m2 = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
+    m2.setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+    wallGeo2.applyMatrix4(m2);
+    const wallGeo3 = new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H);
+    const m3 = new THREE.Matrix4();
+    m3.setPosition(0, CORRIDOR_H/2, eZ);
+    wallGeo3.applyMatrix4(m3);
+    const mergedWalls = mergeGeometries([wallGeo1, wallGeo2, wallGeo3], false);
+    if (mergedWalls) {
+      const wallMesh = new THREE.Mesh(mergedWalls,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
+      );
+      wallMesh.receiveShadow = true;
+      corridor.add(wallMesh);
+    } else {
+      // Fallback: 3 mesh separate (impossibile con Three.js 0.160, ma per sicurezza)
+      corridor.add(new THREE.Mesh(wallGeo1,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+      corridor.add(new THREE.Mesh(wallGeo2,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+      corridor.add(new THREE.Mesh(wallGeo3,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+    }
   }
 
   // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
   addExternalCallPanel(floor);
 
   // Luci soffitto corridoio
+  // Polish Pack V3 Step 5 (Q5.2): merge 4 lampade LED (4 PlaneGeometry stesso
+  // materiale MeshBasicMaterial) + 4 frame (4 BoxGeometry stesso materiale)
+  // in 2 BufferGeometry uniche. Risparmio ~6 draw call per piano rebuild.
   const lampPositions = [sZ + 2.0, sZ + 4.5, sZ + 7.0, sZ + 9.5];
   for (const z of lampPositions) {
-    addCeilingLamp(corridor, 0, CORRIDOR_H - 0.04, z, theme);
+    const x = 0, y = CORRIDOR_H - 0.04;
+    // PointLight (no draw, ma presente per illuminare il corridoio)
+    const light = new THREE.PointLight(0xfff1c8, 0.5, 5, 1.5);
+    light.position.set(x, y, z);
+    corridor.add(light);
+  }
+  // Merge LED planes (4 PlaneGeometry stesse caratteristiche)
+  const ledGeos = lampPositions.map(z => {
+    const g = new THREE.PlaneGeometry(0.5, 0.5);
+    const m = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+    m.setPosition(0, CORRIDOR_H - 0.04 + 0.01, z);
+    g.applyMatrix4(m);
+    return g;
+  });
+  const mergedLeds = mergeGeometries(ledGeos, false);
+  if (mergedLeds) {
+    corridor.add(new THREE.Mesh(mergedLeds,
+      new THREE.MeshBasicMaterial({ color: 0xfff1c8 })));
+  }
+  // Merge frame boxes (4 BoxGeometry stesso materiale)
+  const frameGeos = lampPositions.map(z => {
+    const g = new THREE.BoxGeometry(0.55, 0.03, 0.55);
+    const m = new THREE.Matrix4();
+    m.setPosition(0, CORRIDOR_H - 0.04 - 0.02, z);
+    g.applyMatrix4(m);
+    return g;
+  });
+  const mergedFrames = mergeGeometries(frameGeos, false);
+  if (mergedFrames) {
+    corridor.add(new THREE.Mesh(mergedFrames,
+      new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 })));
   }
 
   // Arredi specifici per tema
@@ -5386,6 +5470,72 @@ function easeOutLinear(t) {
   return t < 0 ? 0 : t > 1 ? 1 : t;
 }
 
+// pure: aggrega samples FPS in statistiche riassuntive. samples = array di FPS.
+// Ritorna {min, max, avg, count}. Usato da runBenchmark per sintesi risultati.
+// Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler.
+function aggregateFpsStats(samples) {
+  if (!Array.isArray(samples) || samples.length === 0) {
+    return { min: 0, max: 0, avg: 0, count: 0 };
+  }
+  let mn = Infinity, mx = -Infinity, sum = 0;
+  for (const v of samples) {
+    if (typeof v !== 'number' || isNaN(v)) continue;
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+    sum += v;
+  }
+  if (mn === Infinity) return { min: 0, max: 0, avg: 0, count: 0 };
+  return { min: mn, max: mx, avg: sum / samples.length, count: samples.length };
+}
+
+// pure: confronta due snapshot FPS (before/after). Ritorna stringa tipo
+// "+5.2 FPS (+12%)". Usato per visualizzare l'impatto di un'ottimizzazione.
+// Polish Pack V3 Step 5 (Q5.4): benchmark comparison.
+function formatFpsDelta(before, after) {
+  if (typeof before !== 'number' || typeof after !== 'number') return '--';
+  const diff = after - before;
+  const pct = before > 0 ? (diff / before) * 100 : 0;
+  const sign = diff >= 0 ? '+' : '';
+  return `${sign}${diff.toFixed(1)} FPS (${sign}${pct.toFixed(0)}%)`;
+}
+
+// pure: crea una semplice cache LRU (Least Recently Used).
+// capacity = numero massimo di entry. Quando la cache e' piena, l'entry
+// meno recentemente usata viene scartata per fare spazio alla nuova.
+// Usato da textureCache (Q5.3) per evitare re-bake di canvas texture.
+// Polish Pack V3 Step 5 (Q5.3): texture LRU cache.
+function createLruCache(capacity) {
+  const cap = Math.max(1, capacity || 10);
+  const map = new Map(); // insertion-ordered (LRU oldest first)
+  return {
+    get(key) {
+      if (!map.has(key)) return undefined;
+      // Refresh: rimuovi e reinserisci per marcare come MRU
+      const v = map.get(key);
+      map.delete(key);
+      map.set(key, v);
+      return v;
+    },
+    set(key, value) {
+      if (map.has(key)) {
+        map.delete(key);
+      } else if (map.size >= cap) {
+        // Scarta LRU (primo elemento)
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+      }
+      map.set(key, value);
+      return value;
+    },
+    has(key) { return map.has(key); },
+    delete(key) { return map.delete(key); },
+    clear() { map.clear(); },
+    get size() { return map.size; },
+    get capacity() { return cap; },
+    keys() { return Array.from(map.keys()); }
+  };
+}
+
 // ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -5721,9 +5871,16 @@ function drawModernDisplay() {
   // Polish Pack V3 Step 3: brightness filter applicato al canvas display.
   // Range 0.5..1.5 (default 1.0 = nessuna modifica). ctx.filter influenza
   // TUTTE le operazioni di disegno successive (drawImage + fillRect + testo).
+  // Polish Pack V3 Step 5 (Q5.5): ottimizzazione — skip ctx.filter quando
+  // brightness === 1.0 (default ~99% utenti). Assegnare filter='none' quando
+  // non serve evita un no-op costoso ad ogni frame.
   const bright = (state.display && typeof state.display.brightness === 'number')
     ? state.display.brightness : 1.0;
-  ctx.filter = `brightness(${bright})`;
+  if (bright !== 1.0) {
+    ctx.filter = `brightness(${bright})`;
+  } else {
+    ctx.filter = 'none';
+  }
   // Polish Pack V3 Step 4 (Q4.2): tasti respiro - scale pulsante ±2%
   // con periodo 4s quando la cabina è idle (no movimento, no allarme, no OOO).
   // Respettato prefers-reduced-motion (D12): se state.reducedMotion,
@@ -6557,6 +6714,85 @@ function exportStateJSON() {
   }
 }
 
+// Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler.
+// Misura FPS idle (cabina ferma) per 5s, poi muove automaticamente la cabina
+// per 5s e misura FPS durante movimento. Output: min/max/avg FPS + avg draw
+// calls per scenario. Mostra risultato in subtitle HUD + log event.
+// Usa state._fpsBuf esistente (tickMaintenance) + state._dcBuf (nuovo).
+// Bottone trigger: #m-benchmark-btn (visibile solo in maintenance overlay).
+function runBenchmark() {
+  if (!state.maintenanceMode) return;
+  if (typeof logEvent !== 'function') return;
+  const lang = state.lang;
+  const s = STRINGS[lang] || STRINGS.it;
+  if (typeof showSubtitle === 'function') {
+    showSubtitle(s.maintBenchmarkRunning || 'Benchmarking...', 2500);
+  }
+  logEvent('Benchmark START');
+  // Inizializza buffer di campioni
+  state._dcBuf = []; // draw calls per frame
+  state._benchIdle = { samples: [], dc: [] };
+  state._benchMoving = { samples: [], dc: [] };
+  state._benchPhase = 'idle';
+  state._benchStartMs = performance.now();
+  // tickBenchmark viene chiamato ogni frame dal loop RAF.
+}
+
+// Polish Pack V3 Step 5 (Q5.4): tick benchmark. Campiona FPS + draw calls.
+// Fase 1 (0-5s): idle. Fase 2 (5-10s): muovi cabina al piano opposto + misura.
+// Fase 3 (10s): termina, mostra risultati.
+function tickBenchmark(now) {
+  if (!state._benchPhase) return;
+  const elapsedMs = now - state._benchStartMs;
+  // Calcola FPS corrente dal buffer
+  const fpsBuf = state._fpsBuf || [];
+  let fps = 0;
+  if (fpsBuf.length > 1) {
+    const span = (fpsBuf[fpsBuf.length-1] - fpsBuf[0]) / 1000;
+    fps = Math.round((fpsBuf.length - 1) / span);
+  }
+  const dc = (renderer.info && renderer.info.render && renderer.info.render.calls) || 0;
+  const phase = state._benchPhase === 'idle' ? state._benchIdle : state._benchMoving;
+  if (phase) {
+    phase.samples.push(fps);
+    phase.dc.push(dc);
+  }
+  // Transizione di fase
+  if (state._benchPhase === 'idle' && elapsedMs >= 5000) {
+    state._benchPhase = 'moving';
+    // Avvia movimento: vai al piano opposto
+    if (!state.isMoving && typeof requestFloor === 'function') {
+      const opposite = NUM_FLOORS - 1 - state.currentFloor;
+      requestFloor(opposite);
+    }
+  }
+  if (elapsedMs >= 10000) {
+    // Benchmark completo
+    const idleStats = aggregateFpsStats(state._benchIdle.samples);
+    const movingStats = aggregateFpsStats(state._benchMoving.samples);
+    const idleDc = state._benchIdle.dc.reduce((a,b)=>a+b, 0) / Math.max(1, state._benchIdle.dc.length);
+    const movingDc = state._benchMoving.dc.reduce((a,b)=>a+b, 0) / Math.max(1, state._benchMoving.dc.length);
+    const lang = state.lang;
+    const s = STRINGS[lang] || STRINGS.it;
+    const idleLbl = s.maintBenchmarkIdle || 'Idle';
+    const movLbl = s.maintBenchmarkMoving || 'Moving';
+    const done = s.maintBenchmarkDone || 'Done';
+    const msg = `${done}: ${idleLbl} ${idleStats.avg.toFixed(1)} FPS / ${Math.round(idleDc)} dc | ${movLbl} ${movingStats.avg.toFixed(1)} FPS / ${Math.round(movingDc)} dc`;
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 6000);
+    if (typeof logEvent === 'function') {
+      logEvent(`Benchmark: idle ${idleStats.avg.toFixed(1)} avg / moving ${movingStats.avg.toFixed(1)} avg`);
+    }
+    // Salva nel maintenance log
+    if (state._eventLog) {
+      state._eventLog.unshift(`${idleStats.avg.toFixed(1)}/${movingStats.avg.toFixed(1)} FPS idle/moving`);
+      if (state._eventLog.length > 10) state._eventLog.length = 10;
+    }
+    state._benchPhase = null;
+    state._benchIdle = null;
+    state._benchMoving = null;
+  }
+}
+
 // Polish Pack V2 Step 10d · Log manutenzione realistica
 // Ogni 30 secondi, il 12% di probabilita' di generare un evento di log
 // tecnico che simula un sistema di manutenzione interno dell'hotel.
@@ -6637,6 +6873,9 @@ function toggleMaintenance() {
   // in base a maintenanceMode (visibile solo in maintenance).
   const expBtn = document.getElementById('m-export-json');
   if (expBtn) expBtn.style.display = state.maintenanceMode ? 'block' : 'none';
+  // Polish Pack V3 Step 5 (Q5.4): benchmark button visibility
+  const benchBtn = document.getElementById('m-benchmark-btn');
+  if (benchBtn) benchBtn.style.display = state.maintenanceMode ? 'block' : 'none';
   if (state.maintenanceMode) {
     overlay.classList.add('show');
     applyWireframe(true);
@@ -6737,6 +6976,13 @@ function tickMaintenance(now) {
 let ttsEnabled = true;
 let italianVoice = null;
 let englishVoice = null;
+
+// Polish Pack V3 Step 5 (Q5.3): textureCache LRU per le canvas texture della
+// cabina (targa, citofono, header pulsantiera). Evita re-bake inutili quando
+// la lingua o il brand hotel cambiano + l'utente ri-clicca "Indietro".
+// capacity 10 entry (piu' che sufficiente per ~4-6 cabin textures).
+const textureCache = (typeof createLruCache === 'function')
+  ? createLruCache(10) : null;
 // Polish Pack V2 Step 8c: carica voci IT (priorità it-XX) e EN (en-GB > en-US > en-XX).
 function loadVoices() {
   if (!('speechSynthesis' in window)) return;
@@ -8248,6 +8494,8 @@ function loop(now) {
   tickInterphoneCall(now);
   // Polish Pack V3 Step 4 (Q4.4): fade gentile alarm + citofono (lerp 200ms)
   tickFadeStates(now);
+  // Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler (idle 5s + moving 5s)
+  tickBenchmark(now);
   // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
   tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
@@ -8349,12 +8597,14 @@ function refreshSettingsQoLLabels() {
   const lblT = document.getElementById('hc-lbl-tts');
   const lblB = document.getElementById('hc-lbl-brightness');
   const expBtn = document.getElementById('m-export-json');
+  const benchBtn = document.getElementById('m-benchmark-btn');
   if (titleEl) titleEl.textContent = s.settingsTitle || 'Settings';
   if (lblE) lblE.textContent = s.audioEffects || 'Effects';
   if (lblM) lblM.textContent = s.audioMusic || 'Music';
   if (lblT) lblT.textContent = s.audioTts || 'TTS';
   if (lblB) lblB.textContent = s.displayBrightness || 'Brightness';
   if (expBtn) expBtn.textContent = (s.settingsExportReady || 'Export') + ' JSON';
+  if (benchBtn) benchBtn.textContent = s.maintBenchmark || 'Benchmark 5s';
 }
 
 function updateSettingsQoLValueDisplays() {
@@ -8416,7 +8666,15 @@ function initSettingsQoL() {
       exportStateJSON();
     });
   }
-  // Mostra/nascondi bottone export in base a maintenanceMode.
+  // Polish Pack V3 Step 5 (Q5.4): bottone benchmark FPS.
+  const benchBtn = document.getElementById('m-benchmark-btn');
+  if (benchBtn) {
+    benchBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      runBenchmark();
+    });
+  }
+  // Mostra/nascondi bottone export + benchmark in base a maintenanceMode.
   syncExportBtnVisibility();
   refreshSettingsQoLLabels();
   updateSettingsQoLValueDisplays();
@@ -8424,7 +8682,10 @@ function initSettingsQoL() {
 
 function syncExportBtnVisibility() {
   const eb = document.getElementById('m-export-json');
-  if (eb) eb.style.display = state.maintenanceMode ? 'block' : 'none';
+  const bb = document.getElementById('m-benchmark-btn');
+  const vis = state.maintenanceMode ? 'block' : 'none';
+  if (eb) eb.style.display = vis;
+  if (bb) bb.style.display = vis;
 }
 
 // Refresh visibility export button + labels quando si apre il customizer.
@@ -8985,6 +9246,8 @@ window.BossHotelPure = {
   clampAudio, clampBrightness, formatVolumePercent, stateShapeForExport,
   // Polish Pack V3 Step 4: helper micro-animazioni (respiro + flash + bounce)
   breathScale, arrivalFlashAlpha, easeOutBounce, stateFadeDurationMs, easeOutLinear,
+  // Polish Pack V3 Step 5: helper Performance (benchmark + LRU cache)
+  aggregateFpsStats, formatFpsDelta, createLruCache,
   // costanti utili per i test
   NUM_FLOORS
 };
