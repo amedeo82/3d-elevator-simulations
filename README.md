@@ -15,6 +15,60 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 > piani 7-9 (prima privi di porte) di 2 suite per piano con legno pregiato e targhetta
 > "Suite NNN". Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 19.
 >
+> **⚡ Polish Pack V3 Step 5 (2026-09-23)** — Performance (T2b). `textureCache`
+> LRU capacity 10 cacha la base di `drawMovingSign` (hit ratio ~90% durante il
+> flash gentile pre-arrivo); `mergeGeometries` riduce ~8 draw call per rebuild
+> corridoio (3 pareti + 4 LED + 4 frame); `ctx.filter = brightness(X)` skippato
+> quando `X===1.0` (no-op costoso). Nuovi helper puri `aggregateFpsStats`,
+> `formatFpsDelta`, `createLruCache`. Bottone "Esegui benchmark (5s idle +
+> 5s moving)" nel maintenance overlay (Shift+M). Nuovi state `_benchPhase`,
+> `_benchIdle`, `_benchMoving`, `_benchStartMs`. 134 test / ~228 assert
+> (era 138 / ~209). Branch `feature/v3-step-5-performance`. Dettaglio:
+> `PIANO_MIGLIORAMENTI.md` §Fase 22 e `PIANO_V3.md` §Stato V3.
+>
+> **🎬 Polish Pack V3 Step 4 (2026-09-23)** — Micro-animazioni (T2a). "Respiro"
+> pulsazione ±2% periodo 4s su tutti i tasti del display (canvas + mesh 3D);
+> cartello corridoio lampeggia 3× in ultimo secondo pre-arrivo (gold tint
+> overlay); fade-in/out 200ms su `alarmLight.intensity` e pulsante citofono
+> via `tickFadeStates()`; easing `easeOutBounce` su vibrazione residua post-
+> arrivo (oscilla damped ~1.5s invece di decay esponenziale puro). Tutte le
+> micro-animazioni rispettano `state.reducedMotion`. Nuovi helper puri
+> `breathScale`, `arrivalFlashAlpha`, `easeOutBounce`, `stateFadeDurationMs`,
+> `easeOutLinear`. Nuovi state `_arrivalPhase`, `_fadeAlarm`, `_fadeOOO`,
+> `_fadeInterphone`. `movePaused` spostato in CONFIGURATION (TDZ safety).
+> Branch `feature/v3-step-4-micro-animations`. Dettaglio: `PIANO_MIGLIORAMENTI.md`
+> §Fase 21 e `PIANO_V3.md` §Stato V3.
+>
+> **🎛️ Polish Pack V3 Step 3 (2026-09-22)** — Settings QoL (T1c). 4 slider nel
+> pannello "Personalizza hotel" (H): effetti (100%), musica (50%), TTS (85%),
+> luminosità display (100%). Persistenza in `localStorage` con due chiavi
+> separate `bossHotelAudio@v1` + `bossHotelDisplay@v1` (v=1 forward-
+> compatible). Luminosità via `ctx.filter = brightness(X)`. Nuovo bottone
+> "Esporta stato JSON" nel maintenance overlay (Shift+M) per issue reporting.
+> Nuovi helper puri `clampAudio`, `clampBrightness`, `formatVolumePercent`,
+> `stateShapeForExport`. ~20 nuovi assert. Branch `feature/v3-step-3-settings-qol`.
+> Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 20 e `PIANO_V3.md` §Stato V3.
+>
+> **🐛 Polish Pack V3 Step 2 (2026-09-18)** — Bug fix UX sistematico (T1b).
+> Audit di 5 corner case + 4 bug latenti aggiuntivi (A/B/C/D), con 4 fix
+> (Q2.6 A/B/C + promise-chaining Q2.3) e 1 "leave alone" documentato (D).
+> Feedback audio+visivo su `requestFloor()` in coda (440Hz+subtitle 1.5s),
+> `setDoors(true)` con allarme/OOO, niente spam annuncio chiusura ripetuta.
+> Allarme SOS forza OOO OFF (TTS notifica). Nuovi helper puri `canOpenDoors`,
+> `shouldAnnounceDoorClose`, `sosCancelsOOO`, `currentMovementDirection`.
+> 4 nuovi describe block in `tests.html`. Branch `feature/v3-step-2-bugfix-ux`.
+> Dettaglio: `PIANO_MIGLIORAMENTI.md` §Fase 19 e `PIANO_V3.md` §Stato V3.
+>
+> **♿ Polish Pack V3 Step 1 (2026-09-18)** — Accessibility (T1a). Sottotitoli
+> TTS automatici via `speakWithSubtitle()` (D11); `prefers-reduced-motion`
+> OS-level → `state.reducedMotion` (D12, animazioni essenziali invariate);
+> focus ring dorato brand su tutti i bottoni HUD (`.hud-action`, `.tt-btn`,
+> `.hc-btn`, `.start-btn`); contrasto display touch WCAG AA verificato e
+> corretto (gold #c9a449, bianco su blu #4a90e2). Nuovi helper puri
+> `computeSubtitleDuration`, `shouldDisableMotion`, `relativeLuminance`,
+> `contrastRatio`. Branch `feature/v3-step-1-accessibility`. Dettaglio:
+> `PIANO_MIGLIORAMENTI.md` §Fase 18 e `PIANO_V3.md` §Stato V3.
+>
 > **🧪 Polish Pack V2 Step 12 (2026-09-17)** — Test framework leggero. `elevator.html`
 > espone `window.BossHotelPure` (13 funzioni pure: `clamp`, `lerp`, `smoothstep`,
 > `clampFloor`, `floorLabel`, `computePassengerDelta`, `pickNextFloor`,
@@ -106,7 +160,7 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 - Ricevere **annunci vocali** in italiano all'arrivo al piano
 - Vedere **meteo casuale**, **orologio in tempo reale**, **mappa edificio** sul display
 
-Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza dipendenze npm.
+Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticamente, senza dipendenze npm.
 
 ---
 
@@ -346,9 +400,9 @@ Il tutto in **un singolo file HTML** di ~178KB, deployato staticamente, senza di
   - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
 
-### 🧪 Test framework (Step 12)
-- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 13 funzioni pure (vedi sopra). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`
-- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **47 assert vanilla** su `iframe.contentWindow.BossHotelPure`. Organizzati in 12 sezioni: `clamp`(3) `lerp`(4) `smoothstep`(4) `floorLabel`(2) `clampFloor`(3) `floorRoomRange`(4) `getThemeForFloor`(4) `parseHexColor`(4) `getDayPhase`(3) `easeInOutCubic`(3) `computePassengerDelta`(6) `pickNextFloor`(7)
+### 🧪 Test framework (V2 Step 12 + V3 Step 1–5)
+- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 30+ funzioni pure (V2 Step 12 + V3 Step 1–5). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`
+- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **134 test (~228 assert vanilla)** su `iframe.contentWindow.BossHotelPure`. Organizzati in 32 sezioni (`describe` block): helper matematici (`clamp`, `lerp`, `smoothstep`, `floorLabel`, `clampFloor`, `easeInOutCubic`), routing (`pickNextFloor`, `computePassengerDelta`, `floorRoomRange`, `getThemeForFloor`), configur (`parseHexColor`, `getDayPhase`), citofono (`interphoneDurationMs`, `isInterphoneActive`, `interphoneStatusLabel`), accessibility (`computeSubtitleDuration`, `shouldDisableMotion`, `relativeLuminance`, `contrastRatio`), corner case UX (`canOpenDoors`, `shouldAnnounceDoorClose`, `sosCancelsOOO`, `currentMovementDirection`), settings QoL (`clampAudio`, `clampBrightness`, `formatVolumePercent`, `stateShapeForExport`), micro-animazioni (`breathScale`, `arrivalFlashAlpha`, `easeOutBounce`, `stateFadeDurationMs`, `easeOutLinear`), performance (`aggregateFpsStats`, `formatFpsDelta`, `createLruCache`)
 - **Reporter DOM** con raggruppamento per sezione, banner sommario colorato (verde se tutti pass, rosso con dettaglio errore se falliscono), `<details>` con JSON esportabile (`window.__testResults`), bottone "Esporta risultati JSON" che scarica file `.json` timestampato
 - **CI integration leggera** — secondo job in `.github/workflows/ci.yml` (`tests`) valida staticamente: presenza di `window.BossHotelPure` in `elevator.html`, presenza di `tests.html`, conteggio test ≥ 30 (soglia acceptance Q12.4), referenziamento `elevator.html`. Nessuna installazione Playwright/Puppeteer — esecuzione browser resta manuale (Q12.5=C, "export JSON per futura CI headless")
 - **Esecuzione locale**: `python -m http.server` → apri `tests.html` → la suite gira automaticamente al caricamento dell'iframe
@@ -419,8 +473,8 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 
 ```
 .
-├── elevator.html          # File principale (~178 KB, ~4.770 righe) — tutta la simulazione
-├── tests.html             # Test framework (47 assert vanilla su window.BossHotelPure)
+├── elevator.html          # File principale (~390 KB, ~9.250 righe) — tutta la simulazione
+├── tests.html             # Test framework (134 test / ~228 assert vanilla su window.BossHotelPure)
 ├── scripts/
 │   └── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
 ├── dist/
@@ -466,7 +520,7 @@ Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in
 24. **MOVIMENTO FPS** — WASD + collisioni nel corridoio
 25. **LOOP** — render loop con tutti i tick (display, ads, luci, vibrazione, ecc.)
 26. **AVVIO** — inizializzazione + start screen
-27. **BOSS HOTEL PURE** — namespace `window.BossHotelPure` con funzioni pure testabili (Polish Pack V2 Step 12)
+27. **BOSS HOTEL PURE** — namespace `window.BossHotelPure` con 30+ funzioni pure testabili (Polish Pack V2 Step 12 + V3 Step 1–5)
 
 ### Modello dati principale
 
@@ -493,7 +547,17 @@ const state = {
   onboarded: false,       // true dopo tutorial contestuale prima volta
   tutorialActive: false,  // true durante overlay tutorial
   tutorialStep: 0,        // step corrente del tutorial
-  lastInteractionTs: 0    // timestamp ultima interazione (per prompt 30s)
+  lastInteractionTs: 0,   // timestamp ultima interazione (per prompt 30s)
+  lang: 'it',             // lingua corrente UI ('it'|'en'), persistita
+  dayPhase: 'day',        // fase giorno ('day'|'evening'|'night'), auto-update
+  interphoneCalling: false, // citofono attivo (V2 Step 14, separato da SOS)
+  reducedMotion: false,   // OS prefers-reduced-motion (V3 Step 1b)
+  audio: { effects: 1.0, music: 0.5, tts: 0.85 },   // V3 Step 3
+  display: { brightness: 1.0 },                      // V3 Step 3
+  _arrivalPhase: 'normal',                           // V3 Step 4
+  _fadeAlarm: { target: 0, from: 0, startMs: 0 },    // V3 Step 4
+  _fadeOOO: { target: 0, from: 0, startMs: 0 },      // V3 Step 4
+  _fadeInterphone: { target: 0, from: 0, startMs: 0 } // V3 Step 4
 };
 
 const HOTEL_CONFIG = {
@@ -508,7 +572,7 @@ const HOTEL_CONFIG = {
 };
 ```
 
-Per il dettaglio completo di tutti i 26+ campi di `state` con `scritto da` / `letto da` / contratti, vedi `STATE.md`.
+Per il dettaglio completo di tutti i 40+ campi di `state` con `scritto da` / `letto da` / contratti, vedi `STATE.md`.
 
 ---
 
@@ -546,9 +610,9 @@ php -S localhost:8000
 
 > ⚠️ Il Pointer Lock e la Web Speech API funzionano solo su `http://localhost` o `https://`. Aprire il file direttamente con `file://` può dare warning.
 
-### Test (Polish Pack V2 Step 12)
+### Test (Polish Pack V2 Step 12 + V3 Step 1–5)
 
-Il progetto include un mini test framework vanilla in `tests.html`. Esegue 47 assert su funzioni pure esposte in `window.BossHotelPure`.
+Il progetto include un mini test framework vanilla in `tests.html`. Esegue 134 test (~228 assert interni) su funzioni pure esposte in `window.BossHotelPure`.
 
 ```bash
 # Avvia un server locale
@@ -558,7 +622,7 @@ python3 -m http.server 8000
 # http://localhost:8000/tests.html
 
 # I test girano automaticamente al caricamento dell'iframe.
-# Risultato: banner "TUTTI I TEST PASSATI (47/47)" verde.
+# Risultato: banner "TUTTI I TEST PASSATI (134/134)" verde.
 # Esporta JSON con il bottone "Esporta risultati JSON".
 ```
 
@@ -678,10 +742,19 @@ D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 H
 
 **Lessons learned V2** (input per V3): 10 insegnamenti in `PIANO_V2.md` §Stato finale. Punti chiave: decisioni via `question` funzionano, test framework cross-step, commit separati, D-key emergono organicamente, scope creep elevato (accettare riscritture).
 
-### 🎨 Polish Pack V3 — pianificazione (vedi `PIANO_V3.md`)
-- [ ] **Step 1** Scope discovery — decidere i 4-6 step V3 da menu Tier 1/2/3
-- [ ] **Step 2+** TBD (accessibility, bug fix UX, micro-animazioni, performance, settings QoL, docs, test coverage estesa)
-- **Contratti V3**: nessuna feature additiva grossa, ogni step aggiunge almeno 1 test/smoke test, workflow `question` tool, acceptance criteria espliciti, smoke test screenshot pre-merge.
+### 🎨 Polish Pack V3 — **in corso** (5/9 step, 56%) — vedi `PIANO_V3.md`
+- [x] **Step 1** Accessibility (T1a) — `speakWithSubtitle()` + `prefers-reduced-motion` + focus ring dorato + contrasto WCAG AA. Branch `feature/v3-step-1-accessibility`.
+- [x] **Step 2** Bug fix UX sistematico (T1b) — 5 corner case + 4 bug latenti (4 fix, 1 "leave alone"). Branch `feature/v3-step-2-bugfix-ux`.
+- [x] **Step 3** Settings QoL (T1c) — 4 slider (volume effetti/musica/TTS + luminosità display) + export JSON. 2 chiavi localStorage @v1. Branch `feature/v3-step-3-settings-qol`.
+- [x] **Step 4** Micro-animazioni (T2a) — respiro pulsantiera, cartello lampeggio gentile pre-arrivo, fade stati 200ms, bounce-out vibrazione. Branch `feature/v3-step-4-micro-animations`.
+- [x] **Step 5** Performance (T2b) — `textureCache` LRU capacity 10 + `mergeGeometries` (8 draw call saved) + skip no-op costosi + bottone benchmark in maintenance overlay. Branch `feature/v3-step-5-performance`.
+- [ ] **Step 6** QoL manutenzione (T2c) — log eventi categorizzato + contatori allarmi/interphonate.
+- [ ] **Step 7** Documentazione completa (T3a) — commentare `tickMove`/`tickDoors`/`tickPlayer`/`buildCorridor`/`getThemeForFloor` + diagrammi ASCII dipendenze + `STRINGS[lang]` reference.
+- [ ] **Step 8** Test coverage estesa (T3b) — 134 → 200+ test (casi limite routing, edge cases passeggeri, integrazione, helper citofono, stress test, state invariant check).
+- [ ] **Step 9** Mobile responsive layout (Bonus) — touch controls, HUD scalato, landscape forzato, pulsantiera touch adattata.
+
+**Decisioni D-key** (16 contratti di progetto, vedi `AGENTS.md`):
+D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti · D11 speakWithSubtitle · D12 prefers-reduced-motion · D13 bug latenti documentati · D14 settings QoL 2 chiavi @v1 · D15 micro-animazioni + movePaused in CONFIGURATION · D16 textureCache LRU + mergeGeometries.
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

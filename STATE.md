@@ -28,7 +28,7 @@ per evitare TDZ — vedi `AGENTS.md` § "Lezione state in cima").
 | `doorsTarget` | 0 \| 1 | `setDoors`, `tickPlayer` (prenotazione) | `tickDoors` | `=== doorsOpen ? 1 : 0`. |
 | `doorsActual` | float 0..1 | `tickDoors` (animazione), `setDoors` (init) | `tickDoors`, `tickPlayer` (prenotazione), `scheduleAutoClose`, `drawFloorSign` | Quando `>= 0.99` e `doorsOpen`, `scheduleAutoClose` parte. |
 | `alarmOn` | bool | `toggleAlarm` | `setDoors` (rifiuta open), `requestFloor` (rifiuta), `tickMove`, `tickMusic`, `scheduleAutoClose`, `tickDisplay`, overlay debug | Se `true`, `doorsOpen === false` e cabina ferma. |
-| `requestedFloors` | `Set<int>` | `requestFloor` (add), OOO toggle (clear), `tickMove` arrival (delete next) | `drawModernDisplay` (queue size), `tickMove`, `tickMaintenance` | Sempre subset di `0..9`. Vuoto quando `!isMoving` e cabin ferma da >1s. |
+| `requestedFloors` | `Array<{floor, direction}>` | `requestFloor` (push), OOO toggle (clear), `tickMove` arrival (splice), `queueNextSmart` (gestione routing) | `drawModernDisplay` (queue size), `tickMove` (estrazione prossimo piano), `tickMaintenance` | Array con elementi `{floor: 0..9, direction: 'up'\|'down'\|null}`. FIFO con dedup per piano (ultimo input vince). Vuoto quando `!isMoving` e cabin ferma da >1s. |
 | `muted` | bool | toggle M, `loadPrefs` | `playDoorSound`, `playChime`, `playAlarm`, `tickMusic`, `speak` | Persiste in `localStorage.bossHotelPrefs@v1`. |
 | `playerInCabin` | bool | `exitCabin`, `enterCabin` | `tickPlayer` (gate FPS movement), `scheduleAutoClose` (hotfix v1.7), `tickMaintenance` (HUD) | Quando `false`, `passengers === 0` (l'utente è l'unico passeggero). |
 | `nightMode` | bool | toggle N, `loadPrefs` | `tickDisplay` (illumination), overlay debug | Persiste in `localStorage.bossHotelPrefs@v1`. |
@@ -50,6 +50,20 @@ per evitare TDZ — vedi `AGENTS.md` § "Lezione state in cima").
 | `tutorialActive` | bool | `startTutorial` / `endTutorial` | keydown handler (`Enter/Space/Esc` durante tutorial) | True quando overlay tutorial è visibile. Blocca altri handler di tasto. |
 | `tutorialStep` | int 0..4 | `nextTip` (++) / `endTutorial` (=0) | `renderTutorialStep` | Indice step corrente del tutorial (0..4, totale 5 step). |
 | `lastInteractionTs` | float (ms) | `noteInteraction()` su keydown | `tickInactivityPrompt` | Timestamp ultima interazione. Trigger prompt vocale "Premi ? per aiuto" dopo 30s. |
+| `lang` | `'it' \| 'en'` | toggle L, `loadLang()` (default auto-detect) | `t(key)`, `applyLangToDOM()`, `speak()` (selezione voce TTS) | Lingua corrente UI. Persiste in `localStorage.bossHotelLang@v1`. Step 8 V2. |
+| `dayPhase` | `'day' \| 'evening' \| 'night'` | `tickDayNight()` ogni 60s in base a `new Date().getHours()` | `tickDisplay` (illuminazione cabina) | day: 6-18, evening: 18-22, night: 22-6. Step 10c V2. |
+| `interphoneCalling` | bool | `triggerInterphone()` (=true), tick citofono (auto-reset a 5s) | `toggleAlarm`, `tickPlayer`, `tickDisplay` (lampeggio pulsante), overlay manutentore | True durante chiamata citofono (5s). Persiste in `localStorage.bossHotelPrefs@v1`. Indipendente da `alarmOn`. Step 14 V2. |
+| `_interphoneStart` | float (ms) | `triggerInterphone()` (=performance.now()) | tick citofono (calcola elapsed) | Timestamp inizio chiamata corrente. Step 14 V2. |
+| `_interphoneReceptionAnnounced` | bool | tick citofono (set dopo 2s) | tick citofono | Evita di annunciare la voce reception più volte. Step 14 V2. |
+| `_interphoneButton` | `THREE.Mesh` | lazy init dopo costruzione cabina | tick citofono (lampeggio emissiveIntensity) | Reference al mesh del pulsante verde per animazione flash. Step 14 V2. |
+| `reducedMotion` | bool | `initReducedMotion()` (legge `matchMedia('(prefers-reduced-motion: reduce)')`) | `shouldDisableMotion(state)` → respiro tasti, lampeggio gentile, bounce-out | True se l'utente ha richiesto motion ridotto OS-level. Animazioni essenziali (porte, vibrazione, allarme) restano attive. Step 1b V3. |
+| `audio` | `{effects: float 0..1, music: float 0..1, tts: float 0..1}` | slider UI H (input), `loadAudioSettings()` (init) | `playBeep`, `playChime`, `playAlarm`, `playDoorSound`, `playWhoosh`, `speak`, musica cabin/corridoio/ristorante | Default: effects=1.0, music=0.5, tts=0.85. Persiste in `localStorage.bossHotelAudio@v1`. Step 3 V3 (D14). |
+| `display` | `{brightness: float 0.5..1.5}` | slider UI H (input), `loadDisplaySettings()` (init) | `drawModernDisplay()` via `ctx.filter = 'brightness(X)'` (skip quando X===1.0, no-op costoso) | Default 1.0. Persiste in `localStorage.bossHotelDisplay@v1`. Step 3 V3 (D14). |
+| `_exportLog` | `Array<{ts, msg}>` | `logEvent()` separato dal log UI (50 entry) | overlay manutentore (Shift+M), bottone "Esporta stato JSON" | Log esteso per issue reporting, separato da `_eventLog` (10 entry UI). Step 3 V3. |
+| `_arrivalPhase` | `'normal' \| 'blinking'` | `tickMove` (settato a 'blinking' quando `moveElapsed > moveDuration - 1.0`) | `drawMovingSign` (overlay gold lampeggiante) | Macchina a 2 stati per il cartello "lampeggio gentile" pre-arrivo. Reset a 'normal' all'arrivo. Step 4 V3 (D15). |
+| `_fadeAlarm` | `{target: float, from: float, startMs: float}` | `toggleAlarm`/`tickAlarm` (set target) | `tickFadeStates()` (lerp 200ms `alarmLight.intensity`) | Transizione smooth invece di snap immediato. Step 4 V3 (D15). |
+| `_fadeOOO` | `{target, from, startMs}` | toggle O (set target) | `tickFadeStates()` (lerp 200ms) | Idem per fuori-servizio. Step 4 V3 (D15). |
+| `_fadeInterphone` | `{target, from, startMs}` | `triggerInterphone()`/tick citofono (set target) | `tickFadeStates()` (lerp 200ms `emissiveIntensity` pulsante) | Idem per citofono. Step 4 V3 (D15). |
 
 ---
 

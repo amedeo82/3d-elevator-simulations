@@ -1,16 +1,17 @@
 # Piano V3 — Roadmap Polish Qualitativo
 **Documento di design e implementazione iterativa per BOSS HOTEL Elevator 3D**
 
-> Versione 0.2 — Aperto 2026-09-17 (chiusura V2) · Step 1 ✅ 2026-09-18
+> Versione 0.5 — Aperto 2026-09-17 (chiusura V2) · Step 1–5 ✅ 2026-09-23
 >
 > V3 sposta il focus da **aggiungere feature** a **migliorare la qualità**
 > di quelle esistenti. Niente nuove funzionalità grosse (rimandate a V4+):
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato attuale: **1/9 step completati (11%)** — vedi §Stato V3 in fondo
-> al documento. Step 1 Accessibility merged su `main` (commit `b2497f1`).
-> Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che informano V3.
+> Stato attuale: **5/9 step completati (56%)** — vedi §Stato V3 in fondo
+> al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
+> prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
+> informano V3.
 >
 > Workflow: stesso pattern di V2 — file `PIANO_V3.md` con step numerati,
 > Decision Questions via `question` tool, branch dedicati per step,
@@ -24,21 +25,17 @@
 |---|---|---|---|---|---|
 | 1 | Accessibility (a11y) | T1a | 1 sessione | 🔴 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1 sessione | 🔴 | ✅ |
-| 3 | Settings QoL | T1c | 1 sessione | 🟡 | ✅ |
-| 4 | Micro-animazioni | T2a | 1 sessione | 🟡 | ✅ |
-| 5 | Performance | T2b | 1 sessione | 🟡 | ✅ |
-| 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
-| 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
-| 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
-| 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ⏳ |
+| 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ✅ |
+| 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ✅ |
+| 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ✅ |
 | 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ⏳ |
 | 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ⏳ |
-| 8 | Test coverage estesa (53 → 100+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
+| 8 | Test coverage estesa (134 → 200+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
 | 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
 
 **Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
 
-**Progress attuale**: 1/9 step done · Tier T1: 1/3 done (33%) · Tier T2: 0/3 · Tier T3: 0/2 · Bonus: 0/1.
+**Progress attuale**: 5/9 step done · Tier T1: 3/3 done (100%) · Tier T2: 2/3 (67%) · Tier T3: 0/2 · Bonus: 0/1.
 
 **Legenda stato**: ⏳ pending · 🔄 in corso · ✅ done · ❌ scartato
 
@@ -692,7 +689,7 @@ T1 (high impact): 3/3 ✅ · T2: 2/3 ✅ · T3: 0/2 · Bonus: 0/1.
 
 # Come procedere ora
 
-**Step 5 Performance (T2b) ✅ chiuso su branch dedicato (merge pending).**
+**Step 5 Performance (T2b) ✅ chiuso su branch dedicato (merge ✅ su `main`, commit `00cde81`).**
 
 Il prossimo step è **Step 6 · QoL manutenzione (T2c)** — log eventi più
 ricco (severity + category), export stato JSON (gia' presente da Step 3),

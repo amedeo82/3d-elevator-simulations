@@ -2,12 +2,16 @@
 
 ## Cos'è il progetto
 Simulatore 3D prima-persona di una cabina ascensore di hotel di lusso.
-Single-file HTML (~190 KB, ~5000 righe) con JS inline (modulo ES).
-Tre.js 0.160 via importmap. Nessuna build step, nessuna dipendenza npm.
+Single-file HTML (~390 KB, ~9250 righe) con JS inline (modulo ES).
+Three.js r160 via importmap. Nessuna build step, nessuna dipendenza npm.
 
-Stato: **22/22 funzionalità implementate** (Polish Pack v1.6 merged).
-Roadmap attiva: `PIANO_V2.md` (13 step, tutti ⏳).
-Log implementativo: `PIANO_MIGLIORAMENTI.md`.
+Stato: **22/22 funzionalità backlog implementate (100%)** — V1 chiuso con v1.8.
+Polish Pack V2 **chiuso 2026-09-17** (10/13 step, 77%; Step 6 PWA, 11 L-block,
+13 WebXR rinviati).
+Polish Pack V3 **in corso** (5/9 step, 56%; Step 1–5 ✅, Step 6–9 ⏳).
+Roadmap attiva: `PIANO_V3.md`.
+Log implementativo: `PIANO_MIGLIORAMENTI.md` (fasi 1–22).
+Audit oggetto `state`: `STATE.md`.
 
 ---
 
@@ -16,29 +20,41 @@ Log implementativo: `PIANO_MIGLIORAMENTI.md`.
 | Sezione | Riga ~ | Contenuto |
 |---|---|---|
 | Importmap + script module | 459–468 | Bootstrap three.js |
-| CONFIGURAZIONE + STATE | 473–533 | Costanti, `state`, `hoveredBtn`, `buttonList` (dichiarati in cima) |
-| Scena / Renderer / Camera | 535–560 | three.js core |
-| Illuminazione | 562–580 | ceilingLight, fillLight, alarmLight |
-| Texture procedurali | 588–680 | makeBrushedMetalTexture, makeMarbleTexture, makeCeilingTexture |
-| Cabina | 705–1595 | Pavimento, soffitto, pareti, specchio, pannello pubblicitario |
-| Dettagli premium cabina | 1207–1595 | Profili alluminio, battiscopa, LED, telecamera, citofono, targhe |
-| Porte | 1597–1675 | Anta sx/dx, indicatore direzione |
-| Corridoio tematico | 1678–2775 | Costruzione corridoio per piano, pulsantiera esterna ▲/▼ |
-| Pulsantiera moderna | 2781–2975 | Display touch + 4 tasti fisici (◄\| \|► STOP !) |
-| Display touch (rendering) | 2979–3568 | 3-layer caching (Polish Pack v1.6 #18) |
-| Funzioni di stato | 3609–3656 | updateFloorDisplay, refreshHudButtons |
-| Audio | 3656–3965 | whoosh, musica contestuale, vocale (TTS), comandi |
-| Overlay manutentore | 3970–4068 | Shift+M: FPS, draw calls, wireframe, teletrasporto |
-| Annunci vocali TTS | 4070–4147 | announceArrival, announceAlarm, announceDoorClosing |
-| Movimento cabina | 4150–4285 | requestFloor, actuallyStartMove, tickMove |
-| Animazione porte | 4287–4332 | setDoors, animateDoorsTo, tickDoors, scheduleAutoClose |
-| Allarme | 4334–4355 | toggleAlarm |
-| Esci/Rientra cabina | 4357–4435 | exitCabin, enterCabin, prenotazione |
-| Raycasting | 4437–4572 | Click + hover pulsanti 3D |
-| Pointer lock | 4575–4615 | First-person mouse look |
-| Movimento FPS + tastiera | 4617–4812 | tickPlayer, keydown listener |
-| Loop | 4834–4908 | RAF + tutte le tick* |
-| Avvio | 4910–4974 | buildCorridor iniziale, start screen, init |
+| CONFIGURAZIONE | 791–1452 | Costanti (CABIN, NUM_FLOORS, FLOOR_HEIGHT, preset hotel, i18n) |
+| STATO GLOBALE (`state` + `hoveredBtn` + `buttonList` + `movePaused`) | 1579–1683 | Dichiarati in cima per evitare TDZ (D2, D15) |
+| Mini event bus | 1693–1724 | `bus.emit/on` homemade (Polish Pack V2 Step 1d) |
+| Scena / Renderer / Camera | 1725–1752 | three.js core |
+| Illuminazione | 1753–1777 | ceilingLight, fillLight, alarmLight |
+| Texture procedurali | 1778–1894 | makeBrushedMetalTexture, makeMarbleTexture, makeCeilingTexture |
+| Cabina (gruppo radice) | 1895–2040 | Pavimento, soffitto, pareti, specchio, maniglione |
+| Pannello pubblicitario laterale | 2041–2461 | Display 5 schermate rotanti (Fase 2) |
+| Dettagli premium cabina | 2462–2868 | Profili alluminio, battiscopa, LED, telecamera, citofono, targhe (Fase 1) |
+| Porte | 2869–3030 | Anta sx/dx + indicatori direzione |
+| Corridoio tematico + arredi + cartello piano | 3031–4331 | Costruzione corridoio per piano, pulsantiera esterna ▲/▼, helper arredi |
+| Pulsantiera moderna digitale | 4332–4529 | Display touch + 4 tasti fisici (◄ \| \| ► STOP !) |
+| Render display touch | 4530–5163 | `drawModernDisplay()` + 3-layer caching (Polish Pack v1.6 #18) |
+| Tutorial contestuale prima volta | 5164–5344 | Polish Pack V2 Step 2b (5 step, tasto `?`) |
+| Helper matematici puri | 5346–5555 | Polish Pack V2 Step 12 (`clamp`, `lerp`, ...) |
+| 3-layer rendering caching | 5557–5948 | Polish Pack v1.6 #18 (statico / semi-statico / dinamico) |
+| Funzioni di stato | 5950–6002 | updateFloorDisplay, refreshHudButtons |
+| Audio (WebAudio sintetizzato) | 6004–6209 | Whoosh, musica contestuale cabin/corridoio/ristorante |
+| Audio contestuale corridoio | 6211–6415 | Polish Pack V2 Step 3a (4 temi corridoio) |
+| Musica ristorante "La Terrazza" | 6417–6972 | Polish Pack V2 Step 3b |
+| Annunci vocali TTS | 6974–7188 | `speak`, `speakWithSubtitle`, `announceArrival`, `announceAlarm`, ecc. |
+| Movimento cabina | 7190–7483 | requestFloor, actuallyStartMove, tickMove (con envelope sin/π) |
+| Animazione porte | 7484–7678 | setDoors, animateDoorsTo, tickDoors, scheduleAutoClose, sensor IR |
+| Allarme | 7603–7678 | toggleAlarm (luci rosse, sirena 660/880Hz) |
+| Citofono interattivo (EN 81-28) | 7680–7812 | Polish Pack V2 Step 14 (lampeggio 4Hz, reception simulata) |
+| Esci / Rientra cabina | 7814–7901 | exitCabin, enterCabin, prenotazione, ADA compliance |
+| Raycasting & click pulsanti | 7903–8049 | Click + hover pulsanti 3D |
+| Pointer lock — mouse look | 8051–8180 | First-person mouse look |
+| Movimento FPS + tastiera | 8182–8443 | tickPlayer, keydown listener, NPC passeggeri |
+| assert runtime contratti state | 8445–8479 | Polish Pack V2 Step 1c (`assertStateInvariants`) |
+| LOOP (RAF + tick*) | 8480–8583 | `loop()`, `tickDisplay`, `tickMove`, `tickDoors`, `tickPlayer`, `tickFadeStates` |
+| Settings QoL UI wiring | 8585–8704 | Polish Pack V3 Step 3 (sliders volume + brightness + export JSON) |
+| AVVIO | 8706–8742 | buildCorridor iniziale, start screen, init eventi |
+| Preferenze persistenti (localStorage) | 8743–9223 | 5 chiavi @v1: prefs, lang, config, audio, display, onboarded |
+| `window.BossHotelPure` namespace | 9229–9253 | 30+ helper puri per `tests.html` |
 
 ---
 
@@ -75,7 +91,7 @@ Log implementativo: `PIANO_MIGLIORAMENTI.md`.
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
-| Aprire `tests.html` in browser (via server locale) | Esegue 47 assert vanilla su `window.BossHotelPure` |
+| Aprire `tests.html` in browser (via server locale) | Esegue 134 test (~228 assert vanilla) su `window.BossHotelPure` |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
 | Copia `elevator.html` → `dist/index.html` | Build per deploy (vedi ultimo commit di ogni Polish Pack) |
 | `git checkout feature/<branch>` | Lavorare su branch dedicato, merge solo dopo validazione |
@@ -119,6 +135,10 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D10 | **Due sistemi di emergenza distinti: citofono (soft) vs SOS (hard)** | Polish Pack V2 Step 14 (EN 81-28). Citofono (`state.interphoneCalling`) chiama la reception dell'hotel: nessun blocco cabina, nessuna luce rossa, lampeggio pulsante verde a 4Hz, TTS soft "Chiamata in corso. Attendere prego.". SOS (`state.alarmOn` via `toggleAlarm`) chiama i soccorsi: blocco cabina immediato, luci rosse pulsanti, sirena alternata 660/880Hz, TTS hard "Allarme. Chiamata di soccorsi in corso. Restate calmi.". I due sistemi sono indipendenti e possono coesistere. Nessuna escalation automatica citofono → SOS. |
 | D11 | **`speak()` puro + `speakWithSubtitle()` helper esplicito** | Polish Pack V3 Step 1a (accessibility). `speak(text, opts)` resta pura sintesi TTS (no side-effect visivi). Nuovo helper `speakWithSubtitle(text, opts)` wrappa `speak()` + `showSubtitle()` con durata calcolata via `computeSubtitleDuration(text)` (default ~150 parole/min, clampata in [2000, 6000] ms). Tutti gli announce* pubblici (announceArrival, announceAlarm, announceDoorClosing, announceMoveStart) usano `speakWithSubtitle`. `opts.durationMs` opzionale per override esplicito. |
 | D12 | **`prefers-reduced-motion` OS-level → `state.reducedMotion`** | Polish Pack V3 Step 1b. `initReducedMotion()` legge `window.matchMedia('(prefers-reduced-motion: reduce)').matches` e ascolta i cambi a runtime. `shouldDisableMotion(state)` decide se skippare le micro-animazioni non essenziali (crossfade freccia 200ms, futuri "respiro" tasti dello Step 4). Animazioni essenziali (apertura/chiusura porte, vibrazione cabina, lampeggio allarme) restano attive per ragioni di sicurezza/realismo. Helper puro, esposto in `BossHotelPure` per test. |
+| D13 | **Bug latenti documentati con decisione esplicita (fix o "leave alone")** | Polish Pack V3 Step 2. L'audit corner case dei 5 noti + ricerca attiva di bug latenti ha prodotto 4 fix (Q2.6 A/B/C + promise-chaining Q2.3) e 1 "leave alone" con razionale (D = memory leak promise, risolto indirettamente dal refactor Q2.3). Pattern: ogni bug latente emerso durante l'audit viene documentato con decisione esplicita, non lasciato implicito. |
+| D14 | **Settings QoL in due chiavi localStorage separate @v1** | Polish Pack V3 Step 3. `bossHotelAudio@v1` (effects / music / tts, default 1.0/0.5/0.85) + `bossHotelDisplay@v1` (brightness, default 1.0). Init `initSettingsQoL()` chiamato DOPO `loadAudioSettings/loadDisplaySettings` per garantire che gli sliders riflettano le preferenze salvate dell'utente e non i default. `v=1` esplicito per migrazione forward-compatible. |
+| D15 | **Micro-animazioni rispettano `state.reducedMotion` + `movePaused` in CONFIGURATION** | Polish Pack V3 Step 4. Animazioni cosmetiche (respiro tasti panel, lampeggio gentile cartello, bounce-out vibrazione, fade stati) skippate se `shouldDisableMotion(state) === true`. Animazioni essenziali (lampeggio allarme, vibrazione cabina, apertura/chiusura porte) restano attive. `movePaused` dichiarato in CONFIGURATION (riga ~1683) per evitare TDZ in `drawModernDisplay` (chiamato durante init prima della dichiarazione originaria). Pattern coerente con `state`/`hoveredBtn`/`buttonList` — lezione V2 bug TDZ. |
+| D16 | **Performance: `textureCache` LRU + `mergeGeometries` + skip no-op costosi** | Polish Pack V3 Step 5. `textureCache` LRU capacity 10 cacha canvas texture della cabina (es. base di `drawMovingSign` durante flash gentile, hit ratio ~90%). `mergeGeometries` per geometrie dello stesso materiale (richiede `geometry.applyMatrix4(matrix)` per posizionare le singole geometrie prima del merge). Skip no-op costosi (`ctx.filter = brightness(1.0)` quando default). Benchmark via `runBenchmark()` (5s idle + 5s moving) + bottone in maintenance overlay (Shift+M) per misurazione iterativa. |
 
 ---
 
@@ -139,19 +159,23 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 
 ---
 
-## Backlog attivo (V2)
+## Backlog attivo (V3)
 
-Vedi `PIANO_V2.md` per i 13 step pianificati. Stato: tutti ⏳ pending.
-Step 1 (questo branch): salute del codice (CI + AGENTS.md + audit state + event bus).
+Vedi `PIANO_V3.md` per i 9 step pianificati (T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
+**Stato attuale**: 5/9 step ✅ (Step 1 Accessibility, 2 Bug fix UX, 3 Settings QoL,
+4 Micro-animazioni, 5 Performance). Prossimo: Step 6 QoL manutenzione.
+Polish Pack V2 è chiuso al 77% (10/13 step; Step 6 PWA, 11 L-block, 13 WebXR
+rinviati a V4+).
 
 ---
 
-## Workflow di sessione interattiva (per PIANO_V2)
+## Workflow di sessione interattiva (per PIANO_V3)
 
 1. Apri la sezione dello step, leggi le Decision Questions
 2. Usa il tool `question` per chiedere 1 domanda alla volta
 3. Implementa SOLO le opzioni approvate, nello scope approvato
-4. Aggiorna `PIANO_V2.md` segnando lo step ✅
+4. Aggiorna `PIANO_V3.md` segnando lo step ✅
 5. Esegui `node scripts/check-balance.js elevator.html` dopo ogni modifica
-6. Fai commit separati per ogni sotto-step (Q1.5 = opzione C)
+6. Fai commit separati per ogni sotto-step (Q5.1 = opzione A nel pattern V3)
 7. Aggiorna `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge finale
+8. Smoke test screenshot pre/post ottimizzazione (obbligo V3, lezione V2)
