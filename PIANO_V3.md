@@ -26,6 +26,7 @@
 | 2 | Bug fix UX sistematico | T1b | 1 sessione | 🔴 | ✅ |
 | 3 | Settings QoL | T1c | 1 sessione | 🟡 | ✅ |
 | 4 | Micro-animazioni | T2a | 1 sessione | 🟡 | ✅ |
+| 5 | Performance | T2b | 1 sessione | 🟡 | ✅ |
 | 2 | Bug fix UX sistematico | T1b | 1-2 sessioni | 🔴 | ⏳ |
 | 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ⏳ |
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ⏳ |
@@ -600,6 +601,75 @@ Fix: spostato `let movePaused = false;` da MOVIMENTO CABINA a CONFIGURATION
 
 ---
 
+# STEP 5 · Performance (T2b)
+
+Ottimizzazione delle performance esistenti tramite profiling + draw call
+reduction + texture LRU cache + display touch optimization. Pattern:
+audit-first → fix mirati → benchmark verification.
+
+## Decision Questions
+
+### Q5.1 — Scope dello step
+- **A. Tutti e 4 i sotto-step** *(approvato)*: profiling + draw call +
+  texture LRU + display opt. Pattern atomicità del feature.
+
+### Q5.2 — Draw call reduction con mergeGeometries
+- **A. Merge per categoria** *(approvato)*: 3 pareti (sx+dx+fondo) in 1 mesh
+  tramite `mergeGeometries` + `geometry.applyMatrix4`. 4 LED lampade in 1
+  mesh + 4 frame in 1 mesh. Risparmio ~8 draw call per piano rebuild.
+
+### Q5.3 — Texture cache LRU
+- **A. Solo cabin textures** *(approvato)*: cache `drawMovingSign` base
+  (no overlay) in offscreen canvas tramite `textureCache` LRU. Cache hit
+  per il ~90% dei frame durante il lampeggio gentile (3/sec × 1s = 3 re-bake
+  totali prima/dopo).
+
+### Q5.4 — FPS profiling: come presentare le metriche
+- **A. Maintenance overlay + benchmark automatico** *(approvato)*:
+  `runBenchmark()` misura 5s idle + 5s moving + log + subtitle.
+
+### Q5.5 — Shader optimization: focus su quale shader
+- **A. Solo display touch** *(approvato)*: skip `ctx.filter = 'brightness(X)'`
+  quando X === 1.0 (no-op costoso). Stesso pattern per breath scale (gia'
+  implementato in Q4.2).
+
+## Acceptance criteria
+
+- [x] (Q5.1) 4 sotto-step implementati + commit unico
+- [x] (Q5.2) 3 pareti merged in 1 mesh (risparmio -2 draw call)
+- [x] (Q5.2) 4 LED lampade merged in 1 mesh + 4 frame in 1 mesh (-6 draw call)
+- [x] (Q5.3) `textureCache` LRU capacity 10 + usato in `drawMovingSign`
+- [x] (Q5.3) Cache hit su chiamate ripetute (stesso key)
+- [x] (Q5.4) `runBenchmark` misura idle (5s) + moving (5s) + log
+- [x] (Q5.4) Bottone "Benchmark 5s" visibile solo in maintenance overlay
+- [x] (Q5.5) `ctx.filter` skip quando brightness === 1.0
+- [x] Test: 3 nuovi helper puri in `BossHotelPure`, ~20 nuovi assert in `tests.html`
+- [x] Smoke test: 0 errori console, helper accessibili, benchmark button visibile
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D16**: Performance optimization pattern: `textureCache` LRU capacity 10
+  per canvas texture della cabina, `mergeGeometries` per geometrie dello
+  stesso materiale (richiede `applyMatrix4` per posizionare le singole
+  geometrie prima del merge), skip no-op ctx.filter/transform quando
+  valore === default. Benchmark via `runBenchmark()` + maintenance overlay
+  per misurazione iterativa.
+
+## Effort
+
+1 sessione (~2-3 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-5-performance` (creato, commit pending)
+Test: 138 → 158+ assert (+20 nuovi su 3 helper puri)
+File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -608,39 +678,38 @@ Fix: spostato `let movePaused = false;` da MOVIMENTO CABINA a CONFIGURATION
 | 2 | Bug fix UX sistematico | ✅ done 2026-09-18 | (vedi sotto) | merged + cancellata |
 | 3 | Settings QoL | ✅ done 2026-09-22 | (vedi sotto) | merged + cancellata |
 | 4 | Micro-animazioni | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
-| 5 | Performance | ⏳ next | — | — |
+| 5 | Performance | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **4/9 step completati (44%)** dopo quattro sessioni V3.
-Effort residuo stimato: ~5-9 ore su 4-8 sessioni (Step 5-9 ancora da fare).
-T1 (high impact): 3/3 ✅ · T2: 1/3 ✅ · T3: 0/2 · Bonus: 0/1.
+**Risultato parziale**: **5/9 step completati (56%)** dopo cinque sessioni V3.
+Effort residuo stimato: ~4-8 ore su 3-7 sessioni (Step 6-9 ancora da fare).
+T1 (high impact): 3/3 ✅ · T2: 2/3 ✅ · T3: 0/2 · Bonus: 0/1.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16.
 
 # Come procedere ora
 
-**Step 4 Micro-animazioni (T2a) ✅ chiuso su branch dedicato (merge pending).**
+**Step 5 Performance (T2b) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 5 · Performance (T2b)** — profiling FPS in vari
-scenari, riduzione draw call con merge geometrie, lazy load texture con
-cache LRU, ottimizzazione shader. Vedi §Scope Step 5 sopra.
+Il prossimo step è **Step 6 · QoL manutenzione (T2c)** — log eventi più
+ricco (severity + category), export stato JSON (gia' presente da Step 3),
+history allarmi/interphonate con contatori `state.alarmCount` /
+`state.interphoneCount` + timestamp. Vedi §Scope Step 6 sopra.
 
-Workflow per Step 5:
+Workflow per Step 6:
 
-1. Apri la sezione §Scope Step 5 e leggi i sotto-step proposti.
-2. Profila FPS baseline con vari scenari prima di ottimizzare.
-3. Decidi quale sotto-step affrontare per primo.
-4. Rispondi alle Decision Questions quando definite.
-5. Implemento solo le opzioni approvate.
-6. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-7. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-8. Smoke test screenshot pre/post ottimizzazione per verificare guadagno.
+1. Apri la sezione §Scope Step 6 e leggi i sotto-step proposti.
+2. Rispondi alle Decision Questions quando definite.
+3. Implemento solo le opzioni approvate.
+4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
+5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+6. Smoke test screenshot pre-merge.
 
-Pattern: branch dedicato `feature/v3-step-5-performance`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-6-qol-maintenance`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 chiusi; Step 5 (Performance T2b) è il prossimo.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 chiusi; Step 6 (QoL manutenzione T2c) è il prossimo.
