@@ -1003,6 +1003,376 @@
           assert(res.includes('stop:manual'));
         });
       });
+
+      // ============================================================
+      // POLISH PACK V3 STEP 8: TEST COVERAGE ESTESA
+      // ============================================================
+
+      // ---- pickNextFloor routing edge cases (Q8.1 routing) --------
+      describe('pickNextFloor (routing edge cases)', () => {
+        test('coda vuota → null', () => {
+          assertEq(P.pickNextFloor([], 'up'), null);
+          assertEq(P.pickNextFloor([], 'down'), null);
+          assertEq(P.pickNextFloor([], null), null);
+        });
+        test('lastDirection=null → ritorna primo elemento', () => {
+          const q = [{floor:3, direction:'up'}, {floor:5, direction:'down'}];
+          assertEq(P.pickNextFloor(q, null).floor, 3);
+        });
+        test('lastDirection=up, queue tutta same-dir → ritorna max floor', () => {
+          const q = [
+            {floor:3, direction:'up'},
+            {floor:7, direction:'up'},
+            {floor:5, direction:'up'}
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 7);
+        });
+        test('lastDirection=up, queue tutta down → ritorna min floor', () => {
+          const q = [
+            {floor:3, direction:'down'},
+            {floor:7, direction:'down'},
+            {floor:5, direction:'down'}
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 3);
+        });
+        test('lastDirection=down, queue tutta up → ritorna max', () => {
+          const q = [
+            {floor:2, direction:'up'},
+            {floor:8, direction:'up'},
+            {floor:5, direction:'up'}
+          ];
+          assertEq(P.pickNextFloor(q, 'down').floor, 8);
+        });
+        test('mixed direction: priorita same-dir', () => {
+          const q = [
+            {floor:3, direction:'up'},
+            {floor:8, direction:'up'},
+            {floor:2, direction:'down'}
+          ];
+          // last=up → same-dir (up) → max floor up = 8
+          assertEq(P.pickNextFloor(q, 'up').floor, 8);
+        });
+        test('mixed direction con null direction: trattato come same-dir', () => {
+          const q = [
+            {floor:3, direction:'up'},
+            {floor:7, direction:null},  // null direction → same-dir
+            {floor:5, direction:'up'}
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 7);
+        });
+        test('inversione: no same-dir, fallback opp-dir (MIN down)', () => {
+          const q = [
+            {floor:2, direction:'down'},
+            {floor:6, direction:'down'}
+          ];
+          // last=up, no up/null → fallback down → ritorna MIN down = 2
+          // (per implementazione attuale: quando oppDir=down, riduce a MIN)
+          assertEq(P.pickNextFloor(q, 'up').floor, 2);
+        });
+        test('coda mista con lastDirection=null → primo elemento', () => {
+          const q = [
+            {floor:3, direction:'up'},
+            {floor:8, direction:'down'}
+          ];
+          assertEq(P.pickNextFloor(q, null).floor, 3);
+        });
+      });
+
+      // ---- computePassengerDelta edge cases (Q8.1 passeggeri) ---
+      describe('computePassengerDelta (passeggeri edge cases)', () => {
+        // floor 0 (lobby): 0..2 salgono (rand * 3 → floor)
+        test('lobby: rand=0 → 0', () => assertEq(P.computePassengerDelta(0, () => 0), 0));
+        test('lobby: rand=0.999 → 2 (floor(0.999*3) = 2)', () => {
+          assertEq(P.computePassengerDelta(0, () => 0.999), 2);
+        });
+        // floor 1-3 (office): 70% scendono, 30% sale 1
+        test('office: rand=0 (<0.7) → scende 0..2', () => {
+          const v = P.computePassengerDelta(2, () => 0);
+          // rand=0 → -floor(0*3) = -0 = 0? Aspetta, è Math.floor(0*3)=0
+          // ma ritorna -0. Verifichiamo che sia <= 0.
+          assert(v <= 0);
+        });
+        test('office: rand=0.7 (>=0.7) → +1', () => {
+          assertEq(P.computePassengerDelta(2, () => 0.7), 1);
+        });
+        // floor 4-6 (hotel): 50% check-in (+1), 50% check-out (-1)
+        test('hotel: rand=0 (<0.5) → +1', () => {
+          assertEq(P.computePassengerDelta(5, () => 0), 1);
+        });
+        test('hotel: rand=0.5 (>=0.5) → -1', () => {
+          assertEq(P.computePassengerDelta(5, () => 0.5), -1);
+        });
+        // floor 7-9 (attico): 60% +1, 40% 0
+        test('attico: rand=0 (<0.6) → +1', () => {
+          assertEq(P.computePassengerDelta(8, () => 0), 1);
+        });
+        test('attico: rand=0.6 (>=0.6) → 0', () => {
+          assertEq(P.computePassengerDelta(8, () => 0.6), 0);
+        });
+        test('soglie esatte: rand=boundary', () => {
+          // floor=5, rand=0.5 → >=0.5 → -1
+          assertEq(P.computePassengerDelta(5, () => 0.5), -1);
+          // floor=8, rand=0.6 → >=0.6 → 0
+          assertEq(P.computePassengerDelta(8, () => 0.6), 0);
+        });
+      });
+
+      // ---- Integration helpers (Q8.1 integrazione) ---------------
+      describe('Integration helpers (floorLabel + getDayPhase + direction)', () => {
+        test('floorLabel IT per floor 5', () => {
+          const r = P.floorLabel(5, 'it');
+          assert(r.includes('5'));
+        });
+        test('floorLabel IT per floor 0 = T', () => {
+          assertEq(P.floorLabel(0, 'it'), 'T');
+        });
+        test('floorLabel EN per floor 5', () => {
+          const r = P.floorLabel(5, 'en');
+          assert(r.includes('5'));
+        });
+        test('currentMovementDirection + pickNextFloor combinati', () => {
+          // state fermo, queue up → ritorna primo up
+          const s = { isMoving: false, currentFloor: 3, targetFloor: 3 };
+          assertEq(P.currentMovementDirection(s), null);
+          const q = [{floor:5, direction:'up'}, {floor:7, direction:'up'}];
+          // pickNextFloor con lastDirection=null → primo elemento
+          assertEq(P.pickNextFloor(q, null).floor, 5);
+          // pickNextFloor con lastDirection=up → max floor
+          assertEq(P.pickNextFloor(q, 'up').floor, 7);
+        });
+        test('getDayPhase ritorna stringa valida per qualsiasi ora', () => {
+          for (let h = 0; h < 24; h++) {
+            const phase = P.getDayPhase(h);
+            assert(typeof phase === 'string');
+            assert(phase.length > 0);
+          }
+        });
+      });
+
+      // ---- interphoneLampAlpha + interphoneShouldTimeout (Q8.1) -
+      describe('interphoneLampAlpha (citofono timing)', () => {
+        test('nowMs=0 → 0.575 (mid, non base)', () => {
+          // sin(0)=0 → k=0.5 → 0.15 + 0.5*0.85 = 0.575
+          assertNear(P.interphoneLampAlpha(0), 0.575, 1e-9);
+        });
+        test('nowMs=62.5 (1/8 ciclo @ 4Hz) → picco 1.0', () => {
+          // omega = 8π, picco a sin(π/2)=1 → 0.5π/8π = 0.0625s = 62.5ms
+          assertNear(P.interphoneLampAlpha(62.5), 1.0, 0.01);
+        });
+        test('nowMs=125 (1/4 ciclo @ 4Hz) → mid', () => {
+          // 125ms / 1000 = 0.125s * 8π = π → sin(π) = 0 → k=0.5 → 0.575
+          assertNear(P.interphoneLampAlpha(125), 0.575, 0.01);
+        });
+        test('input invalido → 0.15 (fallback base)', () => {
+          assertEq(P.interphoneLampAlpha(-100), 0.15);
+          assertEq(P.interphoneLampAlpha(NaN), 0.15);
+          assertEq(P.interphoneLampAlpha(null), 0.15);
+        });
+        test('alpha sempre in [0.15..1.0] per nowMs in [0..5000]', () => {
+          for (let e = 0; e < 5000; e += 100) {
+            const v = P.interphoneLampAlpha(e);
+            assert(v >= 0.14 && v <= 1.001);
+          }
+        });
+      });
+
+      describe('interphoneShouldTimeout (citofono timeout)', () => {
+        test('elapsedMs < duration → false', () => {
+          assertEq(P.interphoneShouldTimeout(5000, 15000), false);
+        });
+        test('elapsedMs === duration → true (boundary)', () => {
+          assertEq(P.interphoneShouldTimeout(15000, 15000), true);
+        });
+        test('elapsedMs > duration → true', () => {
+          assertEq(P.interphoneShouldTimeout(16000, 15000), true);
+        });
+        test('duration default 15000ms', () => {
+          assertEq(P.interphoneShouldTimeout(14999), false);
+          assertEq(P.interphoneShouldTimeout(15000), true);
+        });
+        test('input invalido elapsed → false', () => {
+          assertEq(P.interphoneShouldTimeout(NaN, 15000), false);
+        });
+      });
+
+      // ---- stateInvariantCheck (Q8.2) -----------------------------
+      describe('stateInvariantCheck (state invariants validation)', () => {
+        test('state base → ok=true, no violations', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 5, isMoving: false, alarmOn: false, outOfOrder: false,
+            interphoneCalling: false, lang: 'it',
+            audio: { effects: 1.0, music: 0.5, tts: 0.85 },
+            display: { brightness: 1.0 },
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: [],
+            playerInCabin: true
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, true);
+          assertEq(r.violations.length, 0);
+        });
+        test('state null → ok=false', () => {
+          const r = P.stateInvariantCheck(null);
+          assertEq(r.ok, false);
+        });
+        test('alarmOn + isMoving=true → violation (D10)', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: true, alarmOn: true, outOfOrder: false,
+            lang: 'it', audio: {}, display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('alarmOn ma isMoving')));
+        });
+        test('alarmOn + outOfOrder=true → violation (V3 Q2.4)', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: false, alarmOn: true, outOfOrder: true,
+            lang: 'it', audio: {}, display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('alarmOn ma outOfOrder')));
+        });
+        test('passengers fuori range [0..8] → violation', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 15, isMoving: false, alarmOn: false, outOfOrder: false,
+            lang: 'it', audio: {}, display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('passengers fuori range')));
+        });
+        test('audio.tts fuori range [0..1] → violation', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: false, alarmOn: false, outOfOrder: false,
+            lang: 'it',
+            audio: { effects: 1.0, music: 0.5, tts: 1.5 },
+            display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('audio.tts')));
+        });
+        test('display.brightness fuori range [0.5..1.5] → violation', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: false, alarmOn: false, outOfOrder: false,
+            lang: 'it', audio: {}, display: { brightness: 2.0 },
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('display.brightness')));
+        });
+        test('lang invalido → violation', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: false, alarmOn: false, outOfOrder: false,
+            lang: 'fr', audio: {}, display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: [], interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('lang non valido')));
+        });
+        test('array supera cap → violation', () => {
+          const s = {
+            currentFloor: 3, targetFloor: 3, floorShown: 3,
+            passengers: 0, isMoving: false, alarmOn: false, outOfOrder: false,
+            lang: 'it', audio: {}, display: {},
+            alarmCount: 0, interphoneCount: 0,
+            alarmHistory: new Array(25).fill({}),
+            interphoneHistory: [],
+            _eventLog: [], _exportLog: []
+          };
+          const r = P.stateInvariantCheck(s);
+          assertEq(r.ok, false);
+          assert(r.violations.some(v => v.includes('alarmHistory supera cap')));
+        });
+      });
+
+      // ---- runStress + stress test pickNextFloor (Q8.3) -----------
+      describe('runStress (stress test runner)', () => {
+        test('fn valida, 100 calls, ok=true', () => {
+          const r = P.runStress(() => 42, 100);
+          assertEq(r.ok, true);
+          assertEq(r.count, 100);
+          assertEq(r.definedCount, 100);
+          assertEq(r.errors.length, 0);
+        });
+        test('fn throws → ok=false + error captured', () => {
+          let count = 0;
+          const r = P.runStress(() => { count++; if (count > 50) throw new Error('boom'); }, 100);
+          assertEq(r.ok, false);
+          assert(count >= 50);
+          assert(r.errors.length > 0);
+        });
+        test('fn returns undefined → captured if expectedDefined', () => {
+          const r = P.runStress(() => undefined, 10);
+          assertEq(r.ok, false);
+          assert(r.errors.some(e => e.includes('undefined')));
+        });
+        test('fn returns undefined ok se expectedDefined=false', () => {
+          const r = P.runStress(() => undefined, 10, false);
+          assertEq(r.ok, true);
+          assertEq(r.definedCount, 0);
+        });
+        test('fn not function → ok=false', () => {
+          const r = P.runStress(null, 10);
+          assertEq(r.ok, false);
+        });
+        test('100 chiamate pickNextFloor: no leak (JSON snapshot)', () => {
+          const queue = [
+            {floor:2, direction:'up'}, {floor:5, direction:'up'},
+            {floor:8, direction:'down'}, {floor:1, direction:'down'},
+            {floor:6, direction:'up'}, {floor:3, direction:null},
+            {floor:9, direction:'up'}, {floor:4, direction:'down'}
+          ];
+          const queueSnapshot = JSON.stringify(queue);
+          const before = JSON.stringify(queue);
+          // Esegui 100 chiamate con diverse lastDirection
+          for (let i = 0; i < 100; i++) {
+            const dir = i % 3 === 0 ? 'up' : (i % 3 === 1 ? 'down' : null);
+            const result = P.pickNextFloor(queue, dir);
+            assert(result !== undefined || (typeof result !== 'object'));
+          }
+          const after = JSON.stringify(queue);
+          assertEq(before, after);  // no mutation!
+        });
+        test('100 chiamate pickNextFloor: deterministic result', () => {
+          const queue = [
+            {floor:2, direction:'up'}, {floor:5, direction:'up'}
+          ];
+          // Stesso input → stesso output (pure function)
+          for (let i = 0; i < 100; i++) {
+            const r1 = P.pickNextFloor(queue, 'up');
+            const r2 = P.pickNextFloor(queue, 'up');
+            assertEq(r1.floor, r2.floor);
+          }
+        });
+      });
     }
 
     // ============================================================

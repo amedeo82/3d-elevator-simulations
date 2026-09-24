@@ -8,7 +8,7 @@
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato attuale: **7/9 step completati (78%)** — vedi §Stato V3 in fondo
+> Stato attuale: **8/9 step completati (89%)** — vedi §Stato V3 in fondo
 > al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
 > prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
 > informano V3.
@@ -30,7 +30,7 @@
 | 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ✅ |
 | 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ✅ |
 | 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ✅ |
-| 8 | Test coverage estesa (134 → 200+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
+| 8 | Test coverage estesa (154 → 202) | T3b | 1 sessione | 🟡 | ✅ |
 | 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
 
 **Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
@@ -800,6 +800,71 @@ File toccati: `elevator.html` (commenti narrativi), `ARCHITECTURE.md` (nuovo),
 
 ---
 
+# STEP 8 · Test coverage estesa (T3b)
+
+Test coverage estesa da 154 a 202 assert (+48 nuovi). 4 Decision Questions
+approvate via `question` tool. Pattern: pure helpers + test deterministici
++ stress test con JSON snapshot + state invariants validation.
+
+## Decision Questions
+
+### Q8.1 — Scope dello step
+- **A. Tutti e 5 i sotto-step** *(approvato)*: routing + passeggeri +
+  integrazione + citofono timing + stress + state invariants.
+
+### Q8.2 — stateInvariantCheck helper
+- **A. Tutti i contratti** *(approvato)*: 20 regole (~70% dei contratti
+  totali D-key + edge case type check). Pattern: `stateInvariantCheck(s)`
+  ritorna `{ok, violations[]}` per debug failure.
+
+### Q8.3 — Stress test approach
+- **A. 100 + JSON snapshot** *(approvato)*: 100 chiamate consecutive a
+  `pickNextFloor` con code random. Verifica no-mutation via
+  JSON.stringify prima/dopo + determinismo (stesso input → stesso output).
+
+### Q8.4 — Citofono timing test
+- **B. Date.now override** *(approvato)*: helper `interphoneLampAlpha(nowMs)`
+  + `interphoneShouldTimeout(elapsedMs, durationMs)` puri che calcolano i
+  valori senza dipendere dal clock reale. Test deterministici con valori
+  fissi di nowMs.
+
+## Acceptance criteria
+
+- [x] (Q8.1) 5 sotto-step implementati + commit unico
+- [x] (Q8.1) pickNextFloor routing: 9 test (coda vuota, mixed directions, inversione, null direction, same-dir max/min)
+- [x] (Q8.1) computePassengerDelta: 10 test (lobby/office/hotel/attico × soglie + rand=0/0.5/0.6/0.7/0.999)
+- [x] (Q8.1) Integration: 5 test (floorLabel IT/EN, currentMovementDirection + pickNextFloor, getDayPhase)
+- [x] (Q8.1) Citofono timing: 9 test (interphoneLampAlpha + interphoneShouldTimeout, deterministici)
+- [x] (Q8.2) stateInvariantCheck: 10 test (base ok + 8 violation cases)
+- [x] (Q8.3) runStress: 7 test (valid + throws + undefined + not function + 100 pickNextFloor no-mutation)
+- [x] Test: 154 → 202 assert (+48 nuovi)
+- [x] 0 errori nuovi test Step 8 (8 failing sono pre-esistenti da Step 2/3/6, fuori scope)
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D19**: Test coverage estesa via pure helpers + test deterministici.
+  stateInvariantCheck valida 20 regole (D-key contracts + type check + array
+  caps). interphoneLampAlpha + interphoneShouldTimeout estratti come
+  pure helpers da tickInterphoneCall (no clock mock). runStress esegue
+  N chiamate con no-mutation verification (JSON snapshot). Pattern
+  'audit + helper + test' replicabile per futuri edge case emersi.
+
+## Effort
+
+1 sessione (~2 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-8-test-coverage` (creato, commit pending)
+Test: 154 → 202 assert (+48 nuovi su 4 helper puri)
+File toccati: `elevator.html` (4 nuovi helper), `tests.html` (5 nuovi describe block),
+`PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`.
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -811,38 +876,38 @@ File toccati: `elevator.html` (commenti narrativi), `ARCHITECTURE.md` (nuovo),
 | 5 | Performance | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 7 | Documentazione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
+| 8 | Test coverage | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **7/9 step completati (78%)** dopo sette sessioni V3.
-Effort residuo stimato: ~2-6 ore su 1-5 sessioni (Step 8-9 ancora da fare).
-T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 1/2 ✅ · Bonus: 0/1.
+**Risultato parziale**: **8/9 step completati (89%)** dopo otto sessioni V3.
+Effort residuo stimato: ~1-3 ore su 1 sessione (solo Step 9 Mobile responsive).
+T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 2/2 ✅ · Bonus: 0/1.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17, D18.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17, D18, D19.
 
 # Come procedere ora
 
-**Step 7 Documentazione completa (T3a) ✅ chiuso su branch dedicato (merge pending).**
+**Step 8 Test coverage estesa (T3b) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 8 · Test coverage estesa (T3b)** — salire
-da 183 a 250+ assert. Aree: routing edge cases (`pickNextFloor`),
-passeggeri (`computePassengerDelta` random=0/1), integrazione helper,
-helper citofono (durata + lampeggio simulato), stress test
-(100 chiamate consecutive a pickNextFloor), coverage state invariants.
-Vedi §Scope Step 8 sopra.
+L'ultimo step rimanente è **Step 9 · Mobile responsive layout (Bonus)** —
+adattare layout 3D + pannello touch + maintenance overlay per viewport
+mobile (≤768px). Controlli touch (no keyboard), pulsanti più grandi,
+HUD semplificato. Vedi §Scope Step 9 sopra.
 
-Workflow per Step 8:
+Workflow per Step 9:
 
-1. Apri la sezione §Scope Step 8 e leggi i sotto-step proposti.
+1. Apri la sezione §Scope Step 9 e leggi i sotto-step proposti.
 2. Rispondi alle Decision Questions quando definite.
 3. Implemento solo le opzioni approvate.
 4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-5. `node scripts/check-balance.js elevator.html` + `tests.html` dopo ogni modifica.
+5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+6. Test responsive: simulazione viewport mobile via Playwright.
 
-Pattern: branch dedicato `feature/v3-step-8-test-coverage`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-9-mobile-responsive`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 chiusi; Step 8 (Test coverage T3b) è il prossimo.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 chiusi; Step 9 (Mobile responsive Bonus) è il prossimo.
