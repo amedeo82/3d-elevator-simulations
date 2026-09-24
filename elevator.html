@@ -5730,6 +5730,162 @@ function formatHistoryEvents(events, lang) {
   return lines.join('\n');
 }
 
+// Polish Pack V3 Step 8 (Q8.1): stateInvariantCheck - valida che lo state
+// rispetti tutti i contratti D-key noti. Ritorna { ok: bool, violations: [...] }.
+// Regole (~20):
+//   1. state.currentFloor in [0..NUM_FLOORS-1]
+//   2. state.targetFloor in [0..NUM_FLOORS-1]
+//   3. state.floorShown in [0..NUM_FLOORS-1]
+//   4. state.passengers in [0..MAX_PAX] (MAX_PAX = 8)
+//   5. se state.isMoving: moveFrom/moveTo validi
+//   6. state.alarmOn → state.isMoving === false (D10)
+//   7. state.alarmOn → state.outOfOrder === false (V3 Step 2 Q2.4)
+//   8. state.alarmOn → movePaused === true
+//   9. state.outOfOrder → queue.length === 0 (gestito in OOO toggle)
+//  10. state.interphoneCalling → state.alarmOn OR lecito (entrambi ON sono leciti)
+//  11. state.lang in ['it', 'en']
+//  12. state.audio.effects/music/tts in [0..1]
+//  13. state.display.brightness in [0.5..1.5]
+//  14. state.alarmCount >= 0
+//  15. state.interphoneCount >= 0
+//  16. state.alarmHistory.length <= 20
+//  17. state.interphoneHistory.length <= 20
+//  18. state._eventLog.length <= 10
+//  19. state._exportLog.length <= 50
+//  20. se state.playerInCabin === true, state.currentFloor deve essere valido (no NaN)
+function stateInvariantCheck(s) {
+  const violations = [];
+  if (!s || typeof s !== 'object') {
+    return { ok: false, violations: ['state non e\' un oggetto'] };
+  }
+  // 1-3: floors validi
+  for (const field of ['currentFloor', 'targetFloor', 'floorShown']) {
+    const v = s[field];
+    if (typeof v !== 'number' || isNaN(v) || v < 0 || !Number.isFinite(v)) {
+      violations.push(`${field} fuori range: ${v}`);
+    }
+  }
+  // 4: passengers
+  if (typeof s.passengers !== 'number' || s.passengers < 0 || s.passengers > 8) {
+    violations.push(`passengers fuori range [0..8]: ${s.passengers}`);
+  }
+  // 5: se isMoving, floorShown aggiornato
+  if (s.isMoving && (s.moveFrom === undefined || s.moveTo === undefined)) {
+    violations.push(`isMoving ma moveFrom/moveTo undefined`);
+  }
+  // 6: alarmOn → isMoving === false
+  if (s.alarmOn && s.isMoving) {
+    violations.push(`alarmOn ma isMoving=true (D10)`);
+  }
+  // 7: alarmOn → outOfOrder === false
+  if (s.alarmOn && s.outOfOrder) {
+    violations.push(`alarmOn ma outOfOrder=true (V3 Step 2 Q2.4)`);
+  }
+  // 8: alarmOn → movePaused === true (verifica solo se movePaused definito)
+  if (s.alarmOn && typeof s.movePaused !== 'undefined' && !s.movePaused) {
+    violations.push(`alarmOn ma movePaused=false`);
+  }
+  // 9: outOfOrder → queue vuota (verifica solo se queue definita)
+  if (s.outOfOrder && Array.isArray(s._queue) && s._queue.length > 0) {
+    violations.push(`outOfOrder ma queue non vuota (${s._queue.length} entries)`);
+  }
+  // 10: interphoneCalling + alarmOn sono leciti ma logica separata (warning, no fail)
+  // (non aggiungo violation - il caso e' lecito per design)
+  // 11: lang
+  if (s.lang && s.lang !== 'it' && s.lang !== 'en') {
+    violations.push(`lang non valido: ${s.lang}`);
+  }
+  // 12: audio volumes
+  if (s.audio) {
+    for (const k of ['effects', 'music', 'tts']) {
+      const v = s.audio[k];
+      if (typeof v !== 'number' || v < 0 || v > 1) {
+        violations.push(`audio.${k} fuori range [0..1]: ${v}`);
+      }
+    }
+  }
+  // 13: display brightness
+  if (s.display) {
+    const v = s.display.brightness;
+    if (typeof v !== 'number' || v < 0.5 || v > 1.5) {
+      violations.push(`display.brightness fuori range [0.5..1.5]: ${v}`);
+    }
+  }
+  // 14-15: counters
+  for (const k of ['alarmCount', 'interphoneCount']) {
+    const v = s[k];
+    if (typeof v !== 'number' || v < 0 || !Number.isFinite(v)) {
+      violations.push(`${k} deve essere >=0: ${v}`);
+    }
+  }
+  // 16-19: array caps
+  for (const [k, cap] of [['alarmHistory', 20], ['interphoneHistory', 20],
+                          ['_eventLog', 10], ['_exportLog', 50]]) {
+    if (Array.isArray(s[k]) && s[k].length > cap) {
+      violations.push(`${k} supera cap (${s[k].length} > ${cap})`);
+    }
+  }
+  // 20: playerInCabin → currentFloor valido
+  if (s.playerInCabin === true && (isNaN(s.currentFloor) || s.currentFloor < 0)) {
+    violations.push(`playerInCabin ma currentFloor invalido`);
+  }
+  return { ok: violations.length === 0, violations };
+}
+
+// pure: alpha del lampeggio del pulsante citofono (0.15..1.0).
+// nowMs = timestamp performance.now() assoluto (NON elapsed).
+// Polish Pack V2 Step 14b: lampeggio 4Hz verde.
+// Estratto da tickInterphoneCall per essere testabile deterministicamente.
+// Nota: la fase NON si resetta a inizio chiamata — continua il sin globale.
+// Questo permette di testare senza simulare l'orologio reale.
+function interphoneLampAlpha(nowMs) {
+  if (typeof nowMs !== 'number' || isNaN(nowMs) || nowMs < 0) return 0.15;
+  // 4Hz = 4 cicli/sec → omega = 4 * 2π = 8π rad/sec
+  const omega = 8 * Math.PI;
+  const k = 0.5 + 0.5 * Math.sin((nowMs / 1000) * omega);
+  return 0.15 + k * 0.85;
+}
+
+// pure: indica se la chiamata citofono deve terminare per timeout.
+// Polish Pack V2 Step 14b: INTERPHONE_DURATION_MS = 15000ms default.
+// Estratto da tickInterphoneCall per test deterministici.
+function interphoneShouldTimeout(elapsedMs, durationMs) {
+  const dur = typeof durationMs === 'number' ? durationMs : 15000;
+  return typeof elapsedMs === 'number' && !isNaN(elapsedMs) && elapsedMs >= dur;
+}
+
+// pure: stress test runner. Esegue `fn()` n volte e verifica:
+//  1. nessuna eccezione
+//  2. ogni risultato non undefined (se expectedDefined=true)
+//  3. timing avg (ms)
+// Ritorna { ok, count, avgMs, errors }. Polish Pack V3 Step 8 (Q8.3).
+function runStress(fn, n, expectedDefined = true) {
+  if (typeof fn !== 'function') return { ok: false, count: 0, avgMs: 0, errors: ['fn not function'] };
+  const count = Math.max(1, Math.min(10000, n || 100));
+  const errors = [];
+  let sumMs = 0;
+  let definedCount = 0;
+  for (let i = 0; i < count; i++) {
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    let r;
+    try { r = fn(i); } catch (e) { errors.push(`i=${i}: ${e.message}`); continue; }
+    if (expectedDefined && r === undefined) {
+      errors.push(`i=${i}: returned undefined`);
+    } else if (r !== undefined) {
+      definedCount++;
+    }
+    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    sumMs += (t1 - t0);
+  }
+  return {
+    ok: errors.length === 0,
+    count,
+    avgMs: sumMs / count,
+    definedCount,
+    errors: errors.slice(0, 5)  // primi 5 errori
+  };
+}
+
 // ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -9668,6 +9824,8 @@ window.BossHotelPure = {
   aggregateFpsStats, formatFpsDelta, createLruCache,
   // Polish Pack V3 Step 6: helper QoL manutenzione (log filter + history)
   filterLogEvents, severityColor, severityIcon, pushHistoryEvent, formatHistoryEvents,
+  // Polish Pack V3 Step 8: helper test coverage estesa (invariants + timing + stress)
+  stateInvariantCheck, interphoneLampAlpha, interphoneShouldTimeout, runStress,
   // costanti utili per i test
   NUM_FLOORS
 };

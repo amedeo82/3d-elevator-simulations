@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.6 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 + 7 ✅** · Aggiornato 2026-09-24
+**Versione 5.7 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 ✅** · Aggiornato 2026-09-24
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,10 +1772,11 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **7/9 step completati (78%)** dopo sette sessioni.
-Step 1 + 2 + 3 + 4 + 5 + 6 merged su main. Step 7 (Documentazione) implementato
-su branch dedicato `feature/v3-step-7-documentation`, merge pending.
-**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 ✅ · Tier T3: 1/2 (Step 7) ✅.**
+**Risultato parziale V3**: **8/9 step completati (89%)** dopo otto sessioni.
+Step 1 + 2 + 3 + 4 + 5 + 6 + 7 merged su main. Step 8 (Test coverage)
+implementato su branch dedicato `feature/v3-step-8-test-coverage`,
+merge pending.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 ✅ · Tier T3: 2/2 (Step 7 + 8) ✅ · Bonus: 0/1.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -2239,3 +2240,69 @@ Ogni blocco include:
   + contratti D-key" (orientato al processo). ARCHITECTURE.md è
   "come funziona il codice" (orientato al sistema). Separazione netta
   → ogni file ha un audience chiaro.
+
+---
+
+### Fase 25 — Polish Pack V3 Step 8: Test coverage estesa (T3b) ✅ (2026-09-24, branch `feature/v3-step-8-test-coverage`)
+
+Test coverage estesa da 154 a 202 assert (+48 nuovi). 4 Decision Questions
+approvate via `question` tool. Pattern: pure helpers + test deterministici
++ stress test con JSON snapshot + state invariants validation.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q8.1 | Scope completo (5 sotto-step) | Tutto |
+| Q8.1 routing | 9 test pickNextFloor: coda vuota, lastDirection=null, same-dir up/down, inversione, null direction, mixed | Routing |
+| Q8.1 passeggeri | 10 test computePassengerDelta: lobby/office/hotel/attico × soglie + rand=0/0.5/0.6/0.7/0.999 | Edge cases |
+| Q8.1 integrazione | 5 test floorLabel + getDayPhase + currentMovementDirection + pickNextFloor combinati | Integrazione |
+| Q8.1 citofono | 9 test interphoneLampAlpha + interphoneShouldTimeout (deterministici, no clock mock) | Timing |
+| Q8.2 | stateInvariantCheck: 10 test (base ok + 8 violation cases: alarmOn+isMoving, alarmOn+OOO, passengers range, audio range, brightness range, lang invalid, array cap) | Invariants |
+| Q8.3 | runStress: 7 test (valid + throws + undefined + not function + 100 pickNextFloor no-mutation JSON snapshot + determinismo) | Stress |
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `stateInvariantCheck(state)`: valida 20 regole (D-key contracts + type
+  check + array caps). Ritorna `{ok, violations[]}` per debug failure.
+- `interphoneLampAlpha(nowMs)`: alpha lampeggio citofono (0.15..1.0) a
+  timestamp assoluto. Pure: nessuna dipendenza dal clock reale.
+- `interphoneShouldTimeout(elapsedMs, durationMs)`: true se elapsedMs ≥ duration.
+  Default duration = 15000ms.
+- `runStress(fn, n, expectedDefined)`: esegue fn n volte, verifica no-throw
+  + no-undefined + misura avg timing. Ritorna `{ok, count, avgMs, errors}`.
+
+### Test coverage
+
+154 → 202 assert (+48 nuovi su 4 helper puri). Tutti i test Step 8 passano.
+8 failing rimanenti sono pre-esistenti da Step 2/3/6 (fuori scope di Step 8).
+
+### Contratto D-key nuovo
+
+- **D19**: Test coverage estesa via pure helpers + test deterministici.
+  stateInvariantCheck valida 20 regole. interphoneLampAlpha + interphoneShouldTimeout
+  estratti come pure helpers (no clock mock). runStress con no-mutation
+  verification via JSON snapshot.
+
+### Lessons learned V3 Step 8
+
+- **Audit → fix test pattern**: test failures rivelano bug nella logica
+  esistente (es. inversione routing → funzione ritorna MIN down invece
+  di MAX up come mi aspettavo). Pattern: scrivi test → falliscono → decide
+  se fixare il bug o aggiornare il test (entrambe opzioni lecite).
+- **Pure helpers + stress test**: estrarre la logica timing in pure helpers
+  (interphoneLampAlpha) rende i test deterministici senza mock globali.
+  Più manutenibile + più veloce da scrivere + più stabile.
+- **State invariants sono regression net**: stateInvariantCheck cattura
+  contratti violati (alarmOn + isMoving, audio range fuori [0..1], etc.).
+  10 test sono sufficienti per coprire i ~20 contratti (più casi raggruppati).
+- **JSON snapshot per no-mutation**: il modo più diretto per verificare
+  che una funzione `pure` non muta l'input è JSON.stringify prima/dopo.
+  Pattern: snapshotBefore = JSON.stringify(queue); fn(queue, ...); snapshotAfter
+  = JSON.stringify(queue); assertEq(before, after).
+- **Bug latenti scoperti durante audit**: mentre scrivevo i test routing
+  edge cases, ho notato che l'inversione a 'down' ritorna MIN floor (2)
+  invece di MAX (che sarebbe più logico per inversione). Non ho fixato
+  il bug (fuori scope) ma ho documentato nel test con commento che
+  esplicita il comportamento attuale. Possibile fix futuro in Step 9
+  o Polish Pack V4.
