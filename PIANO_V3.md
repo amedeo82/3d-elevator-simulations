@@ -8,7 +8,7 @@
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato attuale: **6/9 step completati (67%)** — vedi §Stato V3 in fondo
+> Stato attuale: **7/9 step completati (78%)** — vedi §Stato V3 in fondo
 > al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
 > prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
 > informano V3.
@@ -29,7 +29,7 @@
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ✅ |
 | 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ✅ |
 | 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ✅ |
-| 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ⏳ |
+| 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ✅ |
 | 8 | Test coverage estesa (134 → 200+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
 | 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
 
@@ -733,6 +733,73 @@ File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI
 
 ---
 
+# STEP 7 · Documentazione completa (T3a)
+
+Documentazione architetturale completa del codice core. Pattern:
+commenti narrativi sopra funzioni lunghe + diagrammi ASCII in file separato
++ reference table auto-generata per i18n.
+
+## Decision Questions
+
+### Q7.1 — Scope dello step
+- **A. Tutti e 3 i sotto-step** *(approvato)*: commenti core + diagrammi
+  ASCII + STRINGS reference.
+
+### Q7.2 — Comment style
+- **A. Blocchi narrativi** *(approvato)*: stile AGENTS.md esistente, italiano,
+  razionale del perché + citazione contratti D-key + edge case. ~10-15 righe
+  per funzione.
+
+### Q7.3 — Diagrams location
+- **A. Nuovo ARCHITECTURE.md** *(approvato)*: file separato con 8 sezioni
+  (ciclo RAF, init flow, state machine, audio pipeline, render pipeline,
+  maintenance overlay, module deps, localStorage schema).
+
+### Q7.4 — STRINGS ref
+- **A. Tutte le chiavi con IT+EN** *(approvato)*: 225 chiavi totali in
+  STRINGS_TABLE.md (auto-generato da script) + STRINGS_REFERENCE.md con
+  sezioni per dominio e contesto d'uso.
+
+## Acceptance criteria
+
+- [x] (Q7.1) 3 sotto-step implementati + commit unico
+- [x] (Q7.2) Commenti narrativi sopra tickMove, tickDoors, tickPlayer,
+      buildCorridor, getThemeForFloor (5 funzioni core)
+- [x] (Q7.2) Citazioni contratti D-key rilevanti in ogni blocco
+- [x] (Q7.3) ARCHITECTURE.md con 8 sezioni + diagrammi ASCII
+- [x] (Q7.3) Diagrammi per ciclo RAF, init flow, state machine movimento,
+      audio pipeline, render pipeline, maintenance overlay flow
+- [x] (Q7.4) STRINGS_REFERENCE.md con sezioni per dominio + contesto
+- [x] (Q7.4) STRINGS_TABLE.md auto-generato (225 chiavi)
+- [x] (Q7.4) scripts/extract-strings.js per rigenerazione
+- [x] Smoke test: 0 errori console, file MD validi, script funzionante
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D18**: Documentazione architetturale completa per le funzioni core.
+  Commenti narrativi sopra tickMove/tickDoors/tickPlayer/buildCorridor/
+  getThemeForFloor (5 funzioni ~50+ righe totali). ARCHITECTURE.md
+  separato con 8 diagrammi ASCII (ciclo RAF, init, state, audio, render,
+  maint, deps, localStorage). STRINGS_REFERENCE.md + STRINGS_TABLE.md
+  (225 chiavi IT/EN) con sezioni per dominio. Script di rigenerazione
+  `scripts/extract-strings.js` per future aggiunte.
+
+## Effort
+
+1 sessione (~2 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-7-documentation` (creato, commit pending)
+File toccati: `elevator.html` (commenti narrativi), `ARCHITECTURE.md` (nuovo),
+`STRINGS_REFERENCE.md` (nuovo), `STRINGS_TABLE.md` (generato), `scripts/extract-strings.js` (nuovo),
+`PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`.
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -743,36 +810,39 @@ File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI
 | 4 | Micro-animazioni | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
 | 5 | Performance | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
+| 7 | Documentazione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **6/9 step completati (67%)** dopo sei sessioni V3.
-Effort residuo stimato: ~3-7 ore su 2-6 sessioni (Step 7-9 ancora da fare).
-T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 0/2 · Bonus: 0/1.
+**Risultato parziale**: **7/9 step completati (78%)** dopo sette sessioni V3.
+Effort residuo stimato: ~2-6 ore su 1-5 sessioni (Step 8-9 ancora da fare).
+T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 1/2 ✅ · Bonus: 0/1.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17, D18.
 
 # Come procedere ora
 
-**Step 6 QoL manutenzione (T2c) ✅ chiuso su branch dedicato (merge pending).**
+**Step 7 Documentazione completa (T3a) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 7 · Documentazione completa (T3a)** —
-commentare codice core (`tickMove`, `tickDoors`, `tickPlayer`,
-`buildCorridor`, `getThemeForFloor`), diagrammi ASCII delle dipendenze,
-documentare `STRINGS[lang]` mapping completo. Vedi §Scope Step 7 sopra.
+Il prossimo step è **Step 8 · Test coverage estesa (T3b)** — salire
+da 183 a 250+ assert. Aree: routing edge cases (`pickNextFloor`),
+passeggeri (`computePassengerDelta` random=0/1), integrazione helper,
+helper citofono (durata + lampeggio simulato), stress test
+(100 chiamate consecutive a pickNextFloor), coverage state invariants.
+Vedi §Scope Step 8 sopra.
 
-Workflow per Step 7:
+Workflow per Step 8:
 
-1. Apri la sezione §Scope Step 7 e leggi i sotto-step proposti.
+1. Apri la sezione §Scope Step 8 e leggi i sotto-step proposti.
 2. Rispondi alle Decision Questions quando definite.
 3. Implemento solo le opzioni approvate.
 4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
+5. `node scripts/check-balance.js elevator.html` + `tests.html` dopo ogni modifica.
 
-Pattern: branch dedicato `feature/v3-step-7-documentation`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-8-test-coverage`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 chiusi; Step 7 (Documentazione T3a) è il prossimo.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 chiusi; Step 8 (Test coverage T3b) è il prossimo.
