@@ -3374,6 +3374,20 @@ const themeConfig = {
     carpet: 0xa89060, furniture: 0x2a1a0a, label: 'ATTICO'
   }
 };
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): getThemeForFloor — mapping piano → tema.
+// Mappa un floor number (0..NUM_FLOORS-1) a uno dei 4 temi del corridoio:
+//
+//   floor 0       → 'lobby'     (piano Terra, bancone reception + piante)
+//   floor 1-3     → 'office'    (uffici aziendali, scrivanie)
+//   floor 4-6     → 'hotel'     (camere hotel 32 stanze/piano + porte)
+//   floor 7-9     → 'penthouse' (attico suite lusso + vetrata skyline)
+//
+// Il tema determina i colori (wall/carpet/accent/floor) e gli arredi specifici
+// aggiunti da buildCorridor(). Usato da themeConfig[themeName] lookup.
+//
+// Contratti: D9 (pure helper, testabile in BossHotelPure).
+//
+// Performance: ~5 righe. O(1). Chiamato ad ogni buildCorridor().
 function getThemeForFloor(floor) {
   if (floor === 0) return 'lobby';
   if (floor <= 3) return 'office';
@@ -3697,6 +3711,35 @@ function addExternalCallPanel(floor) {
   _lastExternalFloorShown = state.isMoving ? state.floorShown : state.currentFloor;
 }
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): buildCorridor — costruzione corridoio
+// per un piano specifico. Chiamato ad ogni cambio piano + teleport
+// (Shift+M in maintenance mode).
+//
+// Flusso (10 step):
+//   1. disposeCorridor() — rimuove tutte le mesh precedenti dal Group `corridor`
+//      (preserve floorSignGroup condiviso + texture/material condivisi).
+//   2. Rimuovi i bottoni ▲/▼ esterni dal buttonList (TDZ workaround).
+//   3. Determina il tema via getThemeForFloor(floor): 0→lobby, 1-3→office, 4-6→hotel, 7-9→penthouse.
+//   4. Costruisci shell del corridoio: pavimento (PlaneGeometry 2.4x11), tappeto
+//      centrale (no office), soffitto, pareti sx/dx/fondo. Le pareti merged in
+//      1 mesh tramite mergeGeometries + applyMatrix4 (V3 Step 5 Q5.2).
+//   5. Aggiungi pulsantiera esterna (addExternalCallPanel): header + display
+//      piano + ▲/▼ clickabili. Top floor: solo ▼. Bottom floor: solo ▲.
+//   6. Aggiungi 4 lampade soffitto (PointLight + plane LED + box frame, merged in
+//      2 BufferGeometry — V3 Step 5 Q5.2).
+//   7. Aggiungi arredi specifici del tema: lobby (bancone, piante, divani),
+//      office (scrivanie), hotel (porte camere + wall lamps), penthouse (divani,
+//      vetrata skyline, lampada da terra, suite).
+//   8. Disegna cartello corridoio (drawFloorSign) con il piano + freccia
+//      intenzione (se coda non vuota).
+//   9. corr.position.y segue la cabina (settato in loop()).
+//
+// Contratti D-key: D9 (BossHotelPure helpers testabili), D16 (mergeGeometries
+// + LRU cache in drawMovingSign chiamato da drawFloorSign).
+//
+// Performance: ~143 righe. Crea ~30-50 mesh per piano (shell merged + arredi
+// singoli). Chiamato ad ogni cambio piano + teleport. Profilare con
+// runBenchmark per regressioni future (corridor rebuild è pesante).
 function buildCorridor(floor) {
   disposeCorridor();
   // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
@@ -7580,6 +7623,28 @@ function actuallyStartMove() {
 }
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickMove — motore movimento cabina.
+// Gestisce il ciclo di vita di un movimento cabina:
+//   1. Audio whoosh loop (startWhoosh/stopWhoosh in base a state.isMoving + movePaused)
+//   2. Vibrazione residua post-arrivo (state._vibSnap + easeOutBounce — V3 Step 4 Q4.5)
+//   3. Aggiornamento elapsed time + easing easeInOutCubic per frenata/accelerazione
+//   4. Calcolo y cabina = moveFrom + (moveTo-moveFrom) * easing
+//   5. Audio whoosh pitch + gain modulati dalla speed envelope (V3 Step 3 audio.effects)
+//   6. Vibrazione multi-band (X/Z/Roll/Pitch) con envelope speed
+//   7. Display passo-passo (floorShown arrotondato) + cartello "passo passo"
+//   8. Detection lampeggio gentile pre-arrivo (state._arrivalPhase — V3 Step 4 Q4.3)
+//   9. All'arrivo (moveT >= 1): snap currentFloor + reset arrivalPhase +
+//      snapshot vibrazione + logEvent + announceArrival + ricostruisci corridoio
+//      + setDoors(true) + logica passeggeri/NPC + emit 'floor:arrived' +
+//      processa coda con queueNextSmart (V2 Step 7d) per il prossimo movimento
+//
+// Contratti D-key rilevanti: D12 (reduced-motion: arrival flash skippato),
+// D15 (micro-animazioni cosmetiche rispettate), D16 (whoosh moltiplicato
+// per state.audio.effects), V2 D7 (coda FIFO con direction).
+//
+// Performance: chiamato ogni frame dal loop RAF. ~194 righe di logica
+// per il movimento + audio + vibrazione + display. Profilare con
+// runBenchmark (V3 Step 5 Q5.4) per regressioni future.
 function tickMove(dt) {
   // whoosh loop (Fase 10 #3) — start/stop in base allo stato di movimento
   if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
@@ -7751,6 +7816,22 @@ function animateDoorsTo(target, dur = 1.0) {
     }
   });
 }
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickDoors — motore animazione porte.
+// Gestisce UNA animazione alla volta + coda pending (V3 Step 2 Q2.3=B promise-chaining).
+//   1. Se `doorAnim` attivo: avanza t con dt, calcola easing ease-out cubic
+//      (1 - (1-t)^3), interpola state.doorsActual da 'from' a 'to'.
+//   2. A fine animazione (t >= 1): risolve la Promise del chiamante (no leak),
+//      emette 'door:opened' / 'door:closed' sul bus (Q2.3 promise rispettata),
+//      processa la coda `doorAnimQueue` (V3 Step 2 fix bounce visivo):
+//        - skip se target === posizione attuale (no-op 0-duration)
+//        - altrimenti avvia la prossima animazione dalla posizione attuale
+//   3. Applica posizione porte ai mesh (doorLeft.x / doorRight.x con offset).
+//
+// Contratti D-key: D9 (promise rispettata via resolve callback, no leak),
+// V3 Step 2 Q2.3 (queue + skip no-op).
+//
+// Performance: ~30 righe. Chiamato ogni frame dal loop RAF quando c'è
+// un'animazione porte attiva. Profilare con runBenchmark.
 function tickDoors(dt) {
   if (doorAnim) {
     doorAnim.t += dt;
@@ -8609,6 +8690,26 @@ status.textContent = STRINGS[state.lang].calledFloor(floor === 0 ? 'T' : floor);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickPlayer — movimento FPS nel corridoio.
+// Chiamato ogni frame SOLO quando state.playerInCabin === false
+// (l'utente è uscito dalla cabina e cammina nel corridoio con WASD).
+//
+// Flusso:
+//   1. Early-return se in cabina (movimento è gestito da altre funzioni).
+//   2. Leggi flag keys[] (popolati dai keydown/keyup listeners): W/S forward/back,
+//      A/D side (strafe).
+//   3. Calcola vettore 'forward' dalla yawObj.quaternion (rotazione mouse-look).
+//      Applicato a Vector3(0,0,-1) (forward di default in Three.js), azzerata
+//      la y per movimento orizzontale.
+//   4. Calcola posizione target = yawObj.position + forward*fwd + right*side.
+//   5. Collision detection vs pareti corridoio (CABIN.w boundaries).
+//   6. Aggiorna yawObj.position (player position).
+//
+// Contratti: nessun D-key diretto, ma utilizza state.playerInCabin
+// (settato da enterCabin/exitCabin, V1.6 #14).
+//
+// Performance: ~30 righe. Chiamato ogni frame. Nessun side-effect visibile
+// quando in cabina (early return) → costo trascurabile.
 function tickPlayer(dt) {
   if (state.playerInCabin) return;
   let fwd = 0, side = 0;

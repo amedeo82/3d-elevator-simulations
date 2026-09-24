@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.5 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 ✅** · Aggiornato 2026-09-24
+**Versione 5.6 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 + 7 ✅** · Aggiornato 2026-09-24
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,10 +1772,10 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **6/9 step completati (67%)** dopo sei sessioni.
-Step 1 + 2 + 3 + 4 + 5 merged su main. Step 6 (QoL manutenzione) implementato
-su branch dedicato `feature/v3-step-6-qol-maintenance`, merge pending.
-**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 (Step 4 + 5 + 6) ✅.**
+**Risultato parziale V3**: **7/9 step completati (78%)** dopo sette sessioni.
+Step 1 + 2 + 3 + 4 + 5 + 6 merged su main. Step 7 (Documentazione) implementato
+su branch dedicato `feature/v3-step-7-documentation`, merge pending.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 ✅ · Tier T3: 1/2 (Step 7) ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -2173,3 +2173,69 @@ maintAlarmCount, maintInterphoneCount, maintSevInfo, maintSevWarn, maintSevError
   anche la sezione export corrispondente (history, logFilter, lastBenchmark).
   Pattern scalabile: nuovi campi futuri si aggiungono incrementalmente
   senza rompere export consumers esistenti.
+
+---
+
+### Fase 24 — Polish Pack V3 Step 7: Documentazione completa (T3a) ✅ (2026-09-24, branch `feature/v3-step-7-documentation`)
+
+Documentazione architetturale completa del codice core. 4 Decision
+Questions approvate via `question` tool. Pattern: commenti narrativi
++ diagrammi ASCII + reference table auto-generata.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q7.1 | Scope completo (3 sotto-step) | Tutto |
+| Q7.2 | Blocchi narrativi italiani sopra 5 funzioni core: tickMove (~194 righe), tickDoors (~30), tickPlayer (~30), buildCorridor (~143), getThemeForFloor (~5) | Commenti |
+| Q7.3 | ARCHITECTURE.md nuovo: 8 sezioni con diagrammi ASCII (ciclo RAF, init flow, state machine movimento, audio pipeline, render pipeline, maintenance overlay flow, module deps, localStorage schema) | Docs |
+| Q7.4 | STRINGS_REFERENCE.md + STRINGS_TABLE.md (225 chiavi IT/EN) + scripts/extract-strings.js (auto-genera tabella) | i18n |
+
+### Commenti narrativi
+
+Ogni blocco include:
+- Descrizione del ruolo della funzione nel pipeline
+- Lista step numerata del flusso (1-9 tipicamente)
+- Citazioni dei contratti D-key rilevanti (es. D12 reduced-motion, D16 LRU cache, D17 log strutturato)
+- Note di performance (profilare con runBenchmark per regressioni future)
+
+### File generati
+
+- `ARCHITECTURE.md` (~10 KB, 8 sezioni, 5+ diagrammi ASCII)
+- `STRINGS_REFERENCE.md` (~12 KB, 10+ sezioni per dominio, contesto d'uso)
+- `STRINGS_TABLE.md` (225 righe, auto-generato)
+- `scripts/extract-strings.js` (~50 righe, parser custom per escape single-quote)
+
+### Contratto D-key nuovo
+
+- **D18**: Documentazione architetturale completa per le funzioni core.
+  Commenti narrativi in italiano sopra tickMove/tickDoors/tickPlayer/
+  buildCorridor/getThemeForFloor (5 funzioni ~50+ righe totali).
+  ARCHITECTURE.md separato con 8 diagrammi ASCII. STRINGS_REFERENCE.md +
+  STRINGS_TABLE.md (225 chiavi) con sezioni per dominio. Script di
+  rigenerazione scripts/extract-strings.js per future aggiunte.
+
+### Lessons learned V3 Step 7
+
+- **Commenti narrativi sopra funzioni lunghe**: molto più leggibili di
+  inline. Pattern "1-9 step numerati" + "D-key contracts" + "performance
+  notes" permette ai futuri contributor di capire il codice senza leggere
+  il resto del file. ~50 righe di commenti per 400+ righe di codice
+  (~12% overhead) è un buon trade-off.
+- **Diagrammi ASCII > ERD per single-file**: ARCHITECTURE.md usa diagrammi
+  ASCII (compatibili con qualsiasi markdown viewer) invece di Mermaid
+  (non standard). Cattura i flussi critici in modo visuale senza
+  richiedere plugin.
+- **Auto-generazione tabelle i18n**: scripts/extract-strings.js parsa il
+  source JS con una regex robusta (gestione escape single-quote,
+  brace matching con skip string contents) → 225 chiavi in <1s.
+  Output markdown pulito, ordinato alfabeticamente. Aggiungere una
+  nuova stringa richiede solo: aggiungere in .it + .en + rieseguire script.
+- **Reference vs Table separation**: STRINGS_TABLE.md (raw tabella) +
+  STRINGS_REFERENCE.md (sezioni contesto d'uso + convenzioni). La
+  table è auto-generata, la reference è manuale. Riduce il rischio
+  di dimenticanze (manuale + auto copertura).
+- **ARCHITECTURE.md > AGENTS.md per diagrammi**: AGENTS.md è "regole
+  + contratti D-key" (orientato al processo). ARCHITECTURE.md è
+  "come funziona il codice" (orientato al sistema). Separazione netta
+  → ogni file ha un audience chiaro.
