@@ -412,6 +412,41 @@
     color: #ffd66b;
     font-size: 11px;
   }
+  /* Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria log */
+  #maint-overlay .m-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(0,255,136,0.2);
+  }
+  #maint-overlay .m-filter .lbl {
+    flex: 0 0 100%;
+    color: #7fc99a;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .m-filter-btn {
+    background: rgba(0, 255, 136, 0.18);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    padding: 3px 7px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    transition: background 0.15s;
+  }
+  .m-filter-btn:hover { background: rgba(0, 255, 136, 0.28); }
+  .m-filter-btn.off {
+    background: rgba(120, 120, 120, 0.15);
+    border-color: #888;
+    color: #888;
+    text-decoration: line-through;
+  }
   /* Polish Pack V3 Step 3: bottone export JSON nel maintenance overlay */
   .m-export-btn {
     margin-top: 8px;
@@ -682,6 +717,21 @@
     <div class="row"><span class="lbl" id="m-mode-lbl"></span><span class="val" id="m-mode">--</span></div>
     <div class="row"><span class="lbl" id="m-ooo-lbl"></span><span class="val" id="m-ooo">--</span></div>
     <div class="row"><span class="lbl" id="m-interphone-lbl"></span><span class="val" id="m-interphone">--</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.4): counters allarmi/interphonate -->
+    <div class="row"><span class="lbl" id="m-alarm-count-lbl"></span><span class="val" id="m-alarm-count">0</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-count-lbl"></span><span class="val" id="m-interphone-count">0</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.4): ultimo evento history -->
+    <div class="row"><span class="lbl" id="m-alarm-history-lbl"></span><span class="val" id="m-alarm-history">--</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-history-lbl"></span><span class="val" id="m-interphone-history">--</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria -->
+    <div class="m-filter" id="m-filter">
+      <span class="lbl" id="m-filter-lbl"></span>
+      <button class="m-filter-btn" data-cat="cabin" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="door" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="audio" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="state" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="maint" style="pointer-events:auto;"></button>
+    </div>
     <div class="events" id="m-events"></div>
     <div class="hint" id="m-hint"></div>
     <!-- Polish Pack V3 Step 3: bottone export stato JSON.
@@ -916,6 +966,19 @@ const STRINGS = {
     maintEvents: 'Eventi',
     maintInterphone: 'Citofono',
     maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
+    // Polish Pack V3 Step 6: QoL manutenzione (log severity + category + history)
+    maintFilter: 'Filtro',
+    maintCatCabin: 'Cabina',
+    maintCatDoor: 'Porte',
+    maintCatAudio: 'Audio',
+    maintCatState: 'Stato',
+    maintCatMaint: 'Manut.',
+    maintAlarmCount: 'Allarmi (totale)',
+    maintInterphoneCount: 'Citofono (totale)',
+    maintSevInfo: 'info',
+    maintSevWarn: 'warn',
+    maintSevError: 'err',
+    maintHistoryEmpty: 'Nessun evento',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
     maintEventLoop: '[loop]',
@@ -1158,6 +1221,19 @@ const STRINGS = {
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
     maintEventLoop: '[loop]',
+    // Polish Pack V3 Step 6: QoL manutenzione
+    maintFilter: 'Filter',
+    maintCatCabin: 'Cabin',
+    maintCatDoor: 'Door',
+    maintCatAudio: 'Audio',
+    maintCatState: 'State',
+    maintCatMaint: 'Maint.',
+    maintAlarmCount: 'Alarms (total)',
+    maintInterphoneCount: 'Interphone (total)',
+    maintSevInfo: 'info',
+    maintSevWarn: 'warn',
+    maintSevError: 'err',
+    maintHistoryEmpty: 'No events',
     // language toggle feedback
     langToggleIT: 'Language: Italian',
     langToggleEN: 'Language: English',
@@ -1664,6 +1740,19 @@ const state = {
   audio: { effects: 1.0, music: 0.5, tts: 0.85 },
   display: { brightness: 1.0 },
   _exportLog: [],             // log esteso (50 entry) usato per export JSON
+  // Polish Pack V3 Step 6 (Q6.2): filtro log eventi per categoria (toggle
+  // buttons in maintenance overlay). Default: tutte le categorie visibili.
+  _logFilter: { cabin: true, door: true, audio: true, state: true, maint: true },
+  // Polish Pack V3 Step 6 (Q6.4): history allarmi/interphonate + counter.
+  // alarmHistory/interphoneHistory = array ultimi 20 eventi con timestamp.
+  // alarmCount/interphoneCount = counter totale vita (persistito in
+  // localStorage). Mostrati in maintenance overlay.
+  alarmHistory: [],           // [{ts: ISO, floor, reason}]
+  alarmCount: 0,
+  interphoneHistory: [],      // [{ts: ISO, reason, durationMs}]
+  interphoneCount: 0,
+  // ultimo benchmark results (Q6.5 export enhancement)
+  _lastBenchmark: null,       // {idleStats, movingStats, idleDc, movingDc, ts}
   // Polish Pack V3 Step 4 (Q4.3): fase del cartello corridoio.
   // 'normal' = idle/movimento normale, 'blinking' = ultimi 1s pre-arrivo
   // (cartello lampeggia 3 volte). Settato in tickMove, consumato in
@@ -5536,6 +5625,68 @@ function createLruCache(capacity) {
   };
 }
 
+// pure: filtra eventi log per categoria. events = array di {label, severity, category, ts}
+// filter = {cabin: bool, door: bool, audio: bool, state: bool, maint: bool}
+// Ritorna solo gli eventi la cui category e' abilitata.
+// Polish Pack V3 Step 6 (Q6.3): filter log per category.
+function filterLogEvents(events, filter) {
+  if (!Array.isArray(events)) return [];
+  if (!filter) return events.slice();
+  return events.filter(ev => {
+    if (!ev || !ev.category) return true; // backward-compat: events senza category → sempre visibili
+    return filter[ev.category] !== false;
+  });
+}
+
+// pure: severity color map per visualizzazione in HTML. Ritorna stringa CSS color.
+// Polish Pack V3 Step 6 (Q6.2): colori severity nel maintenance overlay.
+function severityColor(sev) {
+  if (sev === 'error') return '#ff5050';
+  if (sev === 'warn') return '#ffaa33';
+  return '#7fc99a'; // info (default)
+}
+
+// pure: severity icon per compattezza visiva (1 char). info='i', warn='!', error='X'.
+// Polish Pack V3 Step 6 (Q6.2): icona severity nel maintenance log.
+function severityIcon(sev) {
+  if (sev === 'error') return 'X';
+  if (sev === 'warn') return '!';
+  return 'i';
+}
+
+// pure: aggiunge un evento a una history array (FIFO con cap). Non side-effect su input.
+// events: array esistente, evt: nuovo evento, cap: max entries (default 20).
+// Ritorna nuovo array. Polish Pack V3 Step 6 (Q6.4): history helper.
+function pushHistoryEvent(events, evt, cap = 20) {
+  if (!Array.isArray(events)) return [evt];
+  const arr = events.slice();
+  arr.unshift(evt);
+  if (arr.length > cap) arr.length = cap;
+  return arr;
+}
+
+// pure: format history events come lista compatta per maintenance overlay.
+// events: array di {ts, floor, reason}. lang: 'it' | 'en'.
+// Ritorna stringa multi-linea "floor:reason (hh:mm:ss)".
+// Polish Pack V3 Step 6 (Q6.4): history display formatter.
+function formatHistoryEvents(events, lang) {
+  if (!Array.isArray(events) || events.length === 0) {
+    return lang === 'en' ? 'No events' : 'Nessun evento';
+  }
+  const lines = [];
+  for (const ev of events) {
+    const d = ev.ts ? new Date(ev.ts) : null;
+    const time = d ? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}` : '--:--:--';
+    const reason = ev.reason || (lang === 'en' ? 'manual' : 'manuale');
+    if (ev.floor !== undefined) {
+      lines.push(`${time} ${lang === 'en' ? 'floor' : 'piano'} ${ev.floor === 0 ? 'T' : ev.floor}: ${reason}`);
+    } else {
+      lines.push(`${time} ${reason}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 // ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
@@ -6648,15 +6799,20 @@ addEventListener('beforeunload', () => {
 // ---- Modalità manutentore (Polish Pack v1.4 #19) ----
 // Overlay debug con FPS, draw calls, stato interno, ultimi eventi.
 // Wireframe sui materiali della cabina + teletrasporto diretto con tasti 1-9.
-function logEvent(label) {
-  if (!state._eventLog) state._eventLog = [];
+// Polish Pack V3 Step 6 (Q6.2): logEvent con severity + category.
+// opts = {severity: 'info'|'warn'|'error', category: 'cabin'|'door'|'audio'|'state'|'maint'}
+// Backwards-compat: logEvent('label') = severity='info', category='state'.
+function logEvent(label, opts = {}) {
+  const severity = opts.severity || 'info';
+  const category = opts.category || 'state';
   const t = new Date();
-  const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
-  state._eventLog.unshift(`${ts} ${label}`);
+  const tsHms = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  if (!state._eventLog) state._eventLog = [];
+  state._eventLog.unshift({ ts: tsHms, label, severity, category });
   if (state._eventLog.length > 10) state._eventLog.length = 10;
   // Polish Pack V3 Step 3: mirror in exportLog (cap 50, separato dal log UI)
   if (!state._exportLog) state._exportLog = [];
-  state._exportLog.unshift({ ts: new Date().toISOString(), label });
+  state._exportLog.unshift({ ts: new Date().toISOString(), label, severity, category });
   if (state._exportLog.length > 50) state._exportLog.length = 50;
 }
 
@@ -6682,16 +6838,29 @@ function exportStateJSON() {
         stateClone[k] = v;
       }
     }
+    // Polish Pack V3 Step 6 (Q6.5): export enhancement.
+    // Log filtrato per category+severity correnti (stessa logica del UI).
+    const filteredLog = typeof filterLogEvents === 'function'
+      ? filterLogEvents(state._exportLog || [], state._logFilter)
+      : (state._exportLog || []);
     const payload = {
       meta: {
         exportedAt: new Date().toISOString(),
         buildVersion: 'BOSS HOTEL Premium Edition',
-        polishPack: 'V3 Step 3',
+        polishPack: 'V3 Step 6',
         numFloors: NUM_FLOORS,
         lang: state.lang
       },
       state: stateClone,
-      exportLog: state._exportLog || []
+      exportLog: filteredLog,
+      history: {
+        alarmCount: state.alarmCount || 0,
+        interphoneCount: state.interphoneCount || 0,
+        alarmHistory: (state.alarmHistory || []).slice(),
+        interphoneHistory: (state.interphoneHistory || []).slice()
+      },
+      logFilter: state._logFilter,
+      lastBenchmark: state._lastBenchmark
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -6708,9 +6877,9 @@ function exportStateJSON() {
         || 'Stato esportato';
       showSubtitle(msg, 2000);
     }
-    if (typeof logEvent === 'function') logEvent('Export JSON OK');
+    if (typeof logEvent === 'function') logEvent('Export JSON OK', { severity: 'info', category: 'state' });
   } catch (e) {
-    if (typeof logEvent === 'function') logEvent('Export JSON FAIL: ' + e.message);
+    if (typeof logEvent === 'function') logEvent('Export JSON FAIL: ' + e.message, { severity: 'error', category: 'state' });
   }
 }
 
@@ -6779,12 +6948,21 @@ function tickBenchmark(now) {
     const done = s.maintBenchmarkDone || 'Done';
     const msg = `${done}: ${idleLbl} ${idleStats.avg.toFixed(1)} FPS / ${Math.round(idleDc)} dc | ${movLbl} ${movingStats.avg.toFixed(1)} FPS / ${Math.round(movingDc)} dc`;
     if (typeof showSubtitle === 'function') showSubtitle(msg, 6000);
+    // Polish Pack V3 Step 6 (Q6.5): salva benchmark results in state
+    // per inclusione nell'export JSON.
+    state._lastBenchmark = {
+      idleStats: { min: idleStats.min, max: idleStats.max, avg: idleStats.avg, count: idleStats.count },
+      movingStats: { min: movingStats.min, max: movingStats.max, avg: movingStats.avg, count: movingStats.count },
+      idleDc: Math.round(idleDc),
+      movingDc: Math.round(movingDc),
+      ts: new Date().toISOString()
+    };
     if (typeof logEvent === 'function') {
-      logEvent(`Benchmark: idle ${idleStats.avg.toFixed(1)} avg / moving ${movingStats.avg.toFixed(1)} avg`);
+      logEvent(`Benchmark: idle ${idleStats.avg.toFixed(1)} avg / moving ${movingStats.avg.toFixed(1)} avg`, { category: 'maint' });
     }
     // Salva nel maintenance log
     if (state._eventLog) {
-      state._eventLog.unshift(`${idleStats.avg.toFixed(1)}/${movingStats.avg.toFixed(1)} FPS idle/moving`);
+      state._eventLog.unshift({ ts: '', label: `${idleStats.avg.toFixed(1)}/${movingStats.avg.toFixed(1)} FPS idle/moving`, severity: 'info', category: 'maint' });
       if (state._eventLog.length > 10) state._eventLog.length = 10;
     }
     state._benchPhase = null;
@@ -6811,6 +6989,7 @@ const MAINT_LOG_TEMPLATES = [
 const MAINT_LOG_CABLES = ['primario', 'secondario', 'contromassa', 'freno'];
 const MAINT_LOG_SIDES = ['L (left)', 'R (right)'];
 function tickMaintenanceLog() {
+  const opts = { severity: 'info', category: 'maint' };
   if (!state.maintenanceMode) {
     if (Math.random() < 0.12) {
       // ~12% probabilita' ad ogni tick (30s) = ~1 log ogni 4 min
@@ -6824,7 +7003,7 @@ function tickMaintenanceLog() {
         .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
         .replace('${cable}', cable)
         .replace('${ms}', String(ms));
-      logEvent(txt);
+      logEvent(txt, opts);
     }
   } else {
     // in maintenance mode: genera log piu' frequentemente (33%)
@@ -6839,7 +7018,7 @@ function tickMaintenanceLog() {
         .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
         .replace('${cable}', cable)
         .replace('${ms}', String(ms));
-      logEvent(txt);
+      logEvent(txt, opts);
     }
   }
 }
@@ -6879,14 +7058,14 @@ function toggleMaintenance() {
   if (state.maintenanceMode) {
     overlay.classList.add('show');
     applyWireframe(true);
-    logEvent(state.lang === 'en' ? 'Maint ON' : 'Manut ON');
+    logEvent(state.lang === 'en' ? 'Maint ON' : 'Manut ON', { category: 'maint' });
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode ON (Shift+M to exit)' : 'Modalità manutentore ON (Shift+M per uscire)';
     setTimeout(() => updateFloorDisplay(), 2000);
   } else {
     overlay.classList.remove('show');
     applyWireframe(false);
-    logEvent(state.lang === 'en' ? 'Maint OFF' : 'Manut OFF');
+    logEvent(state.lang === 'en' ? 'Maint OFF' : 'Manut OFF', { category: 'maint' });
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode OFF' : 'Modalità manutentore OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
@@ -6933,8 +7112,30 @@ function tickMaintenance(now) {
     'm-pax-lbl': s.maintPax + ':',
     'm-mode-lbl': s.maintMode + ':',
     'm-ooo-lbl': s.maintOOO + ':',
-    'm-interphone-lbl': s.maintInterphone + ':'
+    'm-interphone-lbl': s.maintInterphone + ':',
+    // Polish Pack V3 Step 6 (Q6.4): counters + history
+    'm-alarm-count-lbl': s.maintAlarmCount + ':',
+    'm-interphone-count-lbl': s.maintInterphoneCount + ':',
+    'm-alarm-history-lbl': (state.lang === 'en' ? 'Last alarm: ' : 'Ultimo allarme: '),
+    'm-interphone-history-lbl': (state.lang === 'en' ? 'Last interphone: ' : 'Ultimo citofono: '),
+    // Polish Pack V3 Step 6 (Q6.3): filter label
+    'm-filter-lbl': s.maintFilter + ':'
   };
+  // Polish Pack V3 Step 6 (Q6.3): filter buttons text + state
+  const filterBtnLbl = {
+    cabin: s.maintCatCabin,
+    door: s.maintCatDoor,
+    audio: s.maintCatAudio,
+    state: s.maintCatState,
+    maint: s.maintCatMaint
+  };
+  for (const btn of document.querySelectorAll('#maint-overlay .m-filter-btn')) {
+    const cat = btn.dataset.cat;
+    if (filterBtnLbl[cat]) btn.textContent = filterBtnLbl[cat];
+    // initial class state
+    const enabled = state._logFilter[cat] !== false;
+    btn.classList.toggle('off', !enabled);
+  }
   for (const [id, txt] of Object.entries(lblMap)) {
     const el = document.getElementById(id);
     if (el && el.textContent.trim() === '') el.textContent = txt;
@@ -6966,8 +7167,44 @@ function tickMaintenance(now) {
   // con i test. Il helper accetta state+lang e ritorna l'etichetta i18n.
   const ipEl = document.getElementById('m-interphone');
   if (ipEl) ipEl.textContent = interphoneStatusLabel(state, state.lang);
-  document.getElementById('m-events').innerHTML = (state._eventLog || [])
-    .map(e => `<div>${e}</div>`).join('');
+  // Polish Pack V3 Step 6 (Q6.2+Q6.3): events rendering con severity icon
+  // + color + filter per category. state._eventLog ora contiene oggetti
+  // {ts, label, severity, category}. Backwards-compat: events stringa legacy.
+  const eventsEl = document.getElementById('m-events');
+  if (eventsEl) {
+    const evs = (state._eventLog || []);
+    // filter per category
+    const filtered = typeof filterLogEvents === 'function'
+      ? filterLogEvents(evs, state._logFilter)
+      : evs;
+    eventsEl.innerHTML = filtered.map(e => {
+      // backwards-compat: se e' una stringa (vecchio formato), wrap in obj
+      const ev = (typeof e === 'string') ? { ts: '', label: e, severity: 'info', category: 'state' } : e;
+      const sev = ev.severity || 'info';
+      const icon = typeof severityIcon === 'function' ? severityIcon(sev) : 'i';
+      const color = typeof severityColor === 'function' ? severityColor(sev) : '#aaffcc';
+      // escape del label per HTML
+      const safe = String(ev.label || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>');
+      const ts = ev.ts ? `${ev.ts} ` : '';
+      return `<div style="color:${color}">[${icon}] ${ts}${safe}</div>`;
+    }).join('');
+  }
+  // Polish Pack V3 Step 6 (Q6.4): counters allarmi/interphonate.
+  const acEl = document.getElementById('m-alarm-count');
+  if (acEl) acEl.textContent = String(state.alarmCount || 0);
+  const icEl = document.getElementById('m-interphone-count');
+  if (icEl) icEl.textContent = String(state.interphoneCount || 0);
+  // History detail (ultimo evento) per debug
+  const ahEl = document.getElementById('m-alarm-history');
+  if (ahEl) ahEl.textContent = state.alarmHistory && state.alarmHistory.length > 0
+    ? (state.alarmHistory[0].floor !== undefined
+      ? `${state.alarmHistory[0].ts ? state.alarmHistory[0].ts.slice(11,19) : '--'} p${state.alarmHistory[0].floor === 0 ? 'T' : state.alarmHistory[0].floor}`
+      : 'N/A')
+    : '--';
+  const ihEl = document.getElementById('m-interphone-history');
+  if (ihEl) ihEl.textContent = state.interphoneHistory && state.interphoneHistory.length > 0
+    ? (state.interphoneHistory[0].ts ? state.interphoneHistory[0].ts.slice(11,19) : '--')
+    : '--';
 }
 
 // ============================================================
@@ -7632,8 +7869,24 @@ function toggleAlarm() {
       target: 4,
       startMs: performance.now()
     };
+    // Polish Pack V3 Step 6 (Q6.4): history allarmi + counter (severity error).
+    state.alarmCount = (state.alarmCount || 0) + 1;
+    const evt = {
+      ts: new Date().toISOString(),
+      floor: state.currentFloor,
+      reason: 'manual'
+    };
+    state.alarmHistory = typeof pushHistoryEvent === 'function'
+      ? pushHistoryEvent(state.alarmHistory || [], evt, 20)
+      : [evt].concat(state.alarmHistory || []).slice(0, 20);
+    saveHistory();
     playAlarm();
     if (typeof announceAlarm === 'function') announceAlarm();
+    if (typeof logEvent === 'function') {
+      logEvent((state.lang === 'en' ? 'Alarm ON (floor ' : 'Allarme ON (piano ') +
+        (state.currentFloor === 0 ? 'T' : String(state.currentFloor)) + ')',
+        { severity: 'error', category: 'state' });
+    }
   } else {
     movePaused = false;
     // Polish Pack V3 Step 4 (Q4.4): fade-out 200ms invece di snap.
@@ -7721,8 +7974,18 @@ function handleInterphoneCall() {
     : 'Chiamata in corso. Attendere prego.';
   if (typeof speak === 'function') speak(txt);
   if (typeof showSubtitle === 'function') showSubtitle(txt, 3000);
+  // Polish Pack V3 Step 6 (Q6.4): history interphone + counter (severity info).
+  state.interphoneCount = (state.interphoneCount || 0) + 1;
+  const evt = {
+    ts: new Date().toISOString(),
+    reason: 'start'
+  };
+  state.interphoneHistory = typeof pushHistoryEvent === 'function'
+    ? pushHistoryEvent(state.interphoneHistory || [], evt, 20)
+    : [evt].concat(state.interphoneHistory || []).slice(0, 20);
+  if (typeof saveHistory === 'function') saveHistory();
   // log per maintenance overlay
-  if (typeof logEvent === 'function') logEvent('interphone:start');
+  if (typeof logEvent === 'function') logEvent('interphone:start', { severity: 'info', category: 'state' });
   // evento bus per audit/eventuali consumatori futuri
   if (typeof bus !== 'undefined' && bus) bus.emit('interphone:on');
   // salvataggio prefs (la chiamata e' uno stato transitorio ma
@@ -7805,7 +8068,18 @@ function stopInterphoneCall(reason) {
       startMs: performance.now()
     };
   }
-  if (typeof logEvent === 'function') logEvent('interphone:stop:' + (reason || 'manual'));
+  // Polish Pack V3 Step 6 (Q6.4): aggiungi evento 'stop' in history
+  // (manteniamo il counter solo per gli start, lo stop e' solo per audit).
+  const stopEvt = {
+    ts: new Date().toISOString(),
+    reason: 'stop:' + (reason || 'manual'),
+    durationMs: state._interphoneStart ? Math.round(performance.now() - state._interphoneStart) : 0
+  };
+  state.interphoneHistory = typeof pushHistoryEvent === 'function'
+    ? pushHistoryEvent(state.interphoneHistory || [], stopEvt, 20)
+    : [stopEvt].concat(state.interphoneHistory || []).slice(0, 20);
+  if (typeof saveHistory === 'function') saveHistory();
+  if (typeof logEvent === 'function') logEvent('interphone:stop:' + (reason || 'manual'), { severity: 'info', category: 'state' });
   if (typeof bus !== 'undefined' && bus) bus.emit('interphone:off');
   if (typeof savePrefs === 'function') savePrefs();
 }
@@ -8674,6 +8948,20 @@ function initSettingsQoL() {
       runBenchmark();
     });
   }
+  // Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria log.
+  // Event delegation: un listener sul parent .m-filter gestisce tutti i click.
+  const filterEl = document.getElementById('m-filter');
+  if (filterEl) {
+    filterEl.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.m-filter-btn');
+      if (!btn) return;
+      ev.stopPropagation();
+      const cat = btn.dataset.cat;
+      if (!cat || !state._logFilter) return;
+      state._logFilter[cat] = !state._logFilter[cat];
+      btn.classList.toggle('off', !state._logFilter[cat]);
+    });
+  }
   // Mostra/nascondi bottone export + benchmark in base a maintenanceMode.
   syncExportBtnVisibility();
   refreshSettingsQoLLabels();
@@ -8859,6 +9147,33 @@ function saveDisplaySettings() {
   } catch(e) { /* ignore */ }
 }
 
+// Polish Pack V3 Step 6 (Q6.4): persistenza history allarmi/interphonate
+// + counters. localStorage 'bossHotelHistory@v1'. Capacity 20 entries.
+const HISTORY_KEY = 'bossHotelHistory@v1';
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    if (Array.isArray(p.alarmHistory)) state.alarmHistory = p.alarmHistory.slice(0, 20);
+    if (typeof p.alarmCount === 'number') state.alarmCount = p.alarmCount;
+    if (Array.isArray(p.interphoneHistory)) state.interphoneHistory = p.interphoneHistory.slice(0, 20);
+    if (typeof p.interphoneCount === 'number') state.interphoneCount = p.interphoneCount;
+  } catch(e) { /* ignore */ }
+}
+function saveHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify({
+      v: 1,
+      alarmHistory: state.alarmHistory || [],
+      alarmCount: state.alarmCount || 0,
+      interphoneHistory: state.interphoneHistory || [],
+      interphoneCount: state.interphoneCount || 0
+    }));
+  } catch(e) { /* ignore */ }
+}
+
 // Polish Pack V2 Step 14c: flag per mostrare subtitle "Chiamata interrotta
 // dal refresh" al primo paint dopo loadPrefs(). Verrà consumato in init().
 let pendingInterphoneInterruptNotice = false;
@@ -8867,6 +9182,8 @@ loadPrefs();
 // Polish Pack V3 Step 3: carica settings QoL (volumi audio + luminosità display).
 loadAudioSettings();
 loadDisplaySettings();
+// Polish Pack V3 Step 6 (Q6.4): carica history allarmi/interphonate da localStorage.
+loadHistory();
 // Polish Pack V3 Step 3: init sliders QoL DOPO il caricamento da localStorage
 // (cosi' gli slider riflettono le preferenze salvate dell'utente).
 initSettingsQoL();
@@ -9248,6 +9565,8 @@ window.BossHotelPure = {
   breathScale, arrivalFlashAlpha, easeOutBounce, stateFadeDurationMs, easeOutLinear,
   // Polish Pack V3 Step 5: helper Performance (benchmark + LRU cache)
   aggregateFpsStats, formatFpsDelta, createLruCache,
+  // Polish Pack V3 Step 6: helper QoL manutenzione (log filter + history)
+  filterLogEvents, severityColor, severityIcon, pushHistoryEvent, formatHistoryEvents,
   // costanti utili per i test
   NUM_FLOORS
 };

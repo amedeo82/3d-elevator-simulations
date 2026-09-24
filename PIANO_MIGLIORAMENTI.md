@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.4 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 ✅** · Aggiornato 2026-09-23
+**Versione 5.5 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 ✅** · Aggiornato 2026-09-24
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,10 +1772,10 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **5/9 step completati (56%)** dopo cinque sessioni.
-Step 1 + 2 + 3 + 4 merged su main. Step 5 (Performance) implementato su
-branch dedicato `feature/v3-step-5-performance`, merge pending.
-**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 2/3 (Step 4 + 5) ✅.**
+**Risultato parziale V3**: **6/9 step completati (67%)** dopo sei sessioni.
+Step 1 + 2 + 3 + 4 + 5 merged su main. Step 6 (QoL manutenzione) implementato
+su branch dedicato `feature/v3-step-6-qol-maintenance`, merge pending.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 (Step 4 + 5 + 6) ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -2098,3 +2098,78 @@ approvate via `question` tool. Pattern: audit-first → fix mirati → benchmark
   l'impatto reale delle ottimizzazioni su questo specifico hardware.
   Pattern utile per regressioni future: ri-eseguire benchmark dopo ogni
   Polish Pack step che modifica la pipeline di rendering.
+
+---
+
+### Fase 23 — Polish Pack V3 Step 6: QoL manutenzione (T2c) ✅ (2026-09-24, branch `feature/v3-step-6-qol-maintenance`)
+
+Log eventi più ricco (severity + category) + history allarmi/interphonate
++ enhancement export JSON. 5 Decision Questions approvate via `question`
+tool. Pattern: backwards-compat API + pure helpers + persistenza dedicata.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q6.1 | Scope completo (3 sotto-step) | Tutto |
+| Q6.2 | logEvent(label, opts={severity, category}) backwards-compat. _eventLog e _exportLog ora oggetti {ts, label, severity, category} | Strutturato |
+| Q6.3 | 5 toggle buttons filter in maintenance overlay (cabin/door/audio/state/maint). Stato in state._logFilter. Click = toggle visibility | UI |
+| Q6.4 | state.alarmHistory + state.interphoneHistory (cap 20, FIFO) + counter vita. Persistenza localStorage bossHotelHistory@v1 | Persistenza |
+| Q6.5 | Export JSON include log filtrato + history arrays + counter + logFilter + lastBenchmark | Export |
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `filterLogEvents(events, filter)`: filtra eventi per category. Backwards-compat: events senza category → sempre visibili
+- `severityColor(sev)`: CSS color per severity ('error' → red, 'warn' → orange, 'info' → green)
+- `severityIcon(sev)`: 1-char icon per severity (X / ! / i)
+- `pushHistoryEvent(events, evt, cap)`: FIFO push con cap. Pure (no side-effect su input)
+- `formatHistoryEvents(events, lang)`: formatta history come lista multi-linea "hh:mm:ss piano N: reason"
+
+### Nuovi state fields
+
+- `state._logFilter`: {cabin, door, audio, state, maint} - tutti true di default
+- `state.alarmHistory`: array di {ts, floor, reason} - cap 20
+- `state.alarmCount`: counter incrementale vita
+- `state.interphoneHistory`: array di {ts, reason, durationMs} - cap 20
+- `state.interphoneCount`: counter incrementale vita
+- `state._lastBenchmark`: ultimo risultato benchmark (idleStats, movingStats, idleDc, movingDc, ts)
+
+### Nuove chiavi STRINGS.it / STRINGS.en
+
+maintFilter, maintCatCabin, maintCatDoor, maintCatAudio, maintCatState, maintCatMaint,
+maintAlarmCount, maintInterphoneCount, maintSevInfo, maintSevWarn, maintSevError, maintHistoryEmpty.
+
+### Test
+
+158 → 183+ assert (+25 nuovi su 5 helper puri).
+
+### Contratto D-key nuovo
+
+- **D17**: Log eventi strutturati con severity + category. Filter UI
+  (toggle buttons). History arrays cap 20 persistiti. Export JSON
+  esteso con log filtrato + history + counter + lastBenchmark.
+
+### Lessons learned V3 Step 6
+
+- **Backwards-compat per logEvent**: la firma `logEvent(label, opts={})`
+  con opts default a `{}` permette di non rompere le 8+ call site
+  esistenti. Severity/category default = 'info'/'state'. Tutti i
+  chiamanti esistenti continuano a funzionare, ma ora il log ha
+  struttura + filter.
+- **Toggle buttons vs dropdown**: 5 categorie = 5 bottoni separati è
+  più diretto (1 click vs 2 click per cambiare). Persiste lo stato in
+  state (no localStorage) per semplicità - se l'utente ricarica la
+  pagina, il filtro è "tutto attivo" di default.
+- **History FIFO con cap**: array.push front + length=cap è O(1) amortized
+  per push, O(n) per slice quando si supera cap. Per cap=20 è banale.
+  Alternativa sarebbe una DoublyLinkedList, ma overkill per N=20.
+- **Persistenza dedicata per history**: nuova chiave `bossHotelHistory@v1`
+  separata da `bossHotelPrefs@v1` (V2) + `bossHotelAudio@v1` +
+  `bossHotelDisplay@v1` (V3 Step 3). Ogni dominio ha la sua persistenza.
+- **Severity icons 1-char**: 'i'/'!'/'X' invece di emoji ⚠️/❌. Coerente
+  con il pattern D3 (no emoji nel codice) + più leggibile in font
+  monospace del maintenance overlay.
+- **Export JSON incrementale**: ogni step che aggiunge stato aggiunge
+  anche la sezione export corrispondente (history, logFilter, lastBenchmark).
+  Pattern scalabile: nuovi campi futuri si aggiungono incrementalmente
+  senza rompere export consumers esistenti.
