@@ -8,7 +8,7 @@
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato attuale: **5/9 step completati (56%)** — vedi §Stato V3 in fondo
+> Stato attuale: **6/9 step completati (67%)** — vedi §Stato V3 in fondo
 > al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
 > prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
 > informano V3.
@@ -28,7 +28,7 @@
 | 3 | Settings QoL (volumi + luminosità) | T1c | 1 sessione | 🟡 | ✅ |
 | 4 | Micro-animazioni (tasti "respiro") | T2a | 1 sessione | 🟡 | ✅ |
 | 5 | Performance (profiling + lazy) | T2b | 1-2 sessioni | 🟡 | ✅ |
-| 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ⏳ |
+| 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ✅ |
 | 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ⏳ |
 | 8 | Test coverage estesa (134 → 200+) | T3b | 1-2 sessioni | 🟡 | ⏳ |
 | 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
@@ -667,6 +667,72 @@ File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI
 
 ---
 
+# STEP 6 · QoL manutenzione (T2c)
+
+Log eventi più ricco + history allarmi/interphonate + enhancement export JSON.
+Focus su manutenzione realistica e issue reporting efficace.
+
+## Decision Questions
+
+### Q6.1 — Scope dello step
+- **A. Tutti e 3 i sotto-step** *(approvato)*: log severity+category + history
+  counters + export enhancement.
+
+### Q6.2 — logEvent signature
+- **A. info/warn/error** *(approvato)*: severity ∈ {info, warn, error},
+  category ∈ {cabin, door, audio, state, maint}. Backwards-compat.
+
+### Q6.3 — Filter UI
+- **B. Toggle buttons** *(approvato)*: 5 toggle buttons (cabin/door/audio/state/maint)
+  nel maintenance overlay. Stato in `state._logFilter`. Click = toggle visibility.
+
+### Q6.4 — History depth + persistenza
+- **B. 20 + persistenza** *(approvato)*: ultimi 20 eventi con timestamp
+  persistiti in `localStorage.bossHotelHistory@v1`. Counter incrementale
+  (`alarmCount`, `interphoneCount`) per "totale vita".
+
+### Q6.5 — Export enhancement
+- **A. Log filtrato + history** *(approvato)*: export JSON include
+  log eventi filtrato per categoria+severity correnti + history arrays
+  + counter + logFilter + lastBenchmark (se disponibile).
+
+## Acceptance criteria
+
+- [x] (Q6.1) 3 sotto-step implementati + commit unico
+- [x] (Q6.2) logEvent(label, opts={severity, category}) backwards-compat
+- [x] (Q6.2) _eventLog e _exportLog ora oggetti {ts, label, severity, category}
+- [x] (Q6.3) 5 toggle buttons filter (cabin/door/audio/state/maint)
+- [x] (Q6.3) Click toggle = cambia state._logFilter[cat] + classe .off
+- [x] (Q6.4) state.alarmHistory + state.interphoneHistory (cap 20, FIFO)
+- [x] (Q6.4) state.alarmCount + state.interphoneCount (counter vita)
+- [x] (Q6.4) Persistenza localStorage `bossHotelHistory@v1`
+- [x] (Q6.5) Export JSON include log filtrato + history + counter + logFilter + lastBenchmark
+- [x] Test: 5 nuovi helper puri in `BossHotelPure`, ~25 nuovi assert in `tests.html`
+- [x] Smoke test: 0 errori console, helpers accessibili, maintenance overlay mostra counters + 5 filter buttons
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D17**: Log eventi strutturati con severity (info/warn/error) + category
+  (cabin/door/audio/state/maint). Filter per category in maintenance overlay
+  via toggle buttons + state._logFilter. History allarmi/interphonate
+  persistita in `localStorage.bossHotelHistory@v1` (cap 20 + counter vita).
+  Export JSON include log filtrato + history + counter + lastBenchmark.
+
+## Effort
+
+1 sessione (~2-3 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-6-qol-maintenance` (creato, commit pending)
+Test: 158 → 183+ assert (+25 nuovi su 5 helper puri)
+File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -676,37 +742,37 @@ File toccati: `elevator.html`, `tests.html`, `PIANO_V3.md`, `PIANO_MIGLIORAMENTI
 | 3 | Settings QoL | ✅ done 2026-09-22 | (vedi sotto) | merged + cancellata |
 | 4 | Micro-animazioni | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
 | 5 | Performance | ✅ done 2026-09-23 | (vedi sotto) | merged + cancellata |
+| 6 | QoL manutenzione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **5/9 step completati (56%)** dopo cinque sessioni V3.
-Effort residuo stimato: ~4-8 ore su 3-7 sessioni (Step 6-9 ancora da fare).
-T1 (high impact): 3/3 ✅ · T2: 2/3 ✅ · T3: 0/2 · Bonus: 0/1.
+**Risultato parziale**: **6/9 step completati (67%)** dopo sei sessioni V3.
+Effort residuo stimato: ~3-7 ore su 2-6 sessioni (Step 7-9 ancora da fare).
+T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 0/2 · Bonus: 0/1.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17.
 
 # Come procedere ora
 
-**Step 5 Performance (T2b) ✅ chiuso su branch dedicato (merge ✅ su `main`, commit `00cde81`).**
+**Step 6 QoL manutenzione (T2c) ✅ chiuso su branch dedicato (merge pending).**
 
-Il prossimo step è **Step 6 · QoL manutenzione (T2c)** — log eventi più
-ricco (severity + category), export stato JSON (gia' presente da Step 3),
-history allarmi/interphonate con contatori `state.alarmCount` /
-`state.interphoneCount` + timestamp. Vedi §Scope Step 6 sopra.
+Il prossimo step è **Step 7 · Documentazione completa (T3a)** —
+commentare codice core (`tickMove`, `tickDoors`, `tickPlayer`,
+`buildCorridor`, `getThemeForFloor`), diagrammi ASCII delle dipendenze,
+documentare `STRINGS[lang]` mapping completo. Vedi §Scope Step 7 sopra.
 
-Workflow per Step 6:
+Workflow per Step 7:
 
-1. Apri la sezione §Scope Step 6 e leggi i sotto-step proposti.
+1. Apri la sezione §Scope Step 7 e leggi i sotto-step proposti.
 2. Rispondi alle Decision Questions quando definite.
 3. Implemento solo le opzioni approvate.
 4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
 5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-6. Smoke test screenshot pre-merge.
 
-Pattern: branch dedicato `feature/v3-step-6-qol-maintenance`, merge `--no-ff`.
+Pattern: branch dedicato `feature/v3-step-7-documentation`, merge `--no-ff`.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 chiusi; Step 6 (QoL manutenzione T2c) è il prossimo.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 chiusi; Step 7 (Documentazione T3a) è il prossimo.

@@ -882,6 +882,127 @@
           assert(JSON.stringify(c.keys()) === JSON.stringify(['a', 'b', 'c']));
         });
       });
+
+      // ---- filterLogEvents (Polish Pack V3 Step 6: Q6.3) --------
+      describe('filterLogEvents', () => {
+        const evs = [
+          { ts: '10:00:00', label: 'Cabin', severity: 'info', category: 'cabin' },
+          { ts: '10:00:01', label: 'Door', severity: 'info', category: 'door' },
+          { ts: '10:00:02', label: 'Audio', severity: 'warn', category: 'audio' },
+          { ts: '10:00:03', label: 'State', severity: 'info', category: 'state' },
+          { ts: '10:00:04', label: 'Maint', severity: 'info', category: 'maint' }
+        ];
+        test('filtra per category enabled=true', () => {
+          const f = { cabin: true, door: false, audio: false, state: false, maint: false };
+          const res = P.filterLogEvents(evs, f);
+          assertEq(res.length, 1);
+          assertEq(res[0].label, 'Cabin');
+        });
+        test('tutti enabled → tutti visibili', () => {
+          const f = { cabin: true, door: true, audio: true, state: true, maint: true };
+          assertEq(P.filterLogEvents(evs, f).length, 5);
+        });
+        test('tutti disabled → array vuoto', () => {
+          const f = { cabin: false, door: false, audio: false, state: false, maint: false };
+          assertEq(P.filterLogEvents(evs, f).length, 0);
+        });
+        test('event senza category sempre visibile (backwards-compat)', () => {
+          const evs2 = [{ ts: '10:00', label: 'legacy', severity: 'info' }];
+          const f = { cabin: false, door: false, audio: false, state: false, maint: false };
+          const res = P.filterLogEvents(evs2, f);
+          assertEq(res.length, 1);
+        });
+        test('input invalido → []', () => {
+          assertEq(P.filterLogEvents(null, {}).length, 0);
+          assertEq(P.filterLogEvents(undefined, {}).length, 0);
+        });
+        test('filter undefined → tutti visibili', () => {
+          assertEq(P.filterLogEvents(evs, undefined).length, 5);
+        });
+      });
+
+      // ---- severityColor + severityIcon (Polish Pack V3 Step 6) -
+      describe('severityColor + severityIcon', () => {
+        test('error → red + X', () => {
+          assertEq(P.severityColor('error'), '#ff5050');
+          assertEq(P.severityIcon('error'), 'X');
+        });
+        test('warn → orange + !', () => {
+          assertEq(P.severityColor('warn'), '#ffaa33');
+          assertEq(P.severityIcon('warn'), '!');
+        });
+        test('info → green + i (default)', () => {
+          assertEq(P.severityColor('info'), '#7fc99a');
+          assertEq(P.severityIcon('info'), 'i');
+        });
+        test('unknown severity → defaults a info', () => {
+          assertEq(P.severityColor(undefined), '#7fc99a');
+          assertEq(P.severityColor('xyz'), '#7fc99a');
+          assertEq(P.severityIcon(undefined), 'i');
+        });
+      });
+
+      // ---- pushHistoryEvent (Polish Pack V3 Step 6: Q6.4) -------
+      describe('pushHistoryEvent (history FIFO con cap)', () => {
+        test('aggiunge evento ad array vuoto', () => {
+          const res = P.pushHistoryEvent([], { ts: 't1', reason: 'a' });
+          assertEq(res.length, 1);
+          assertEq(res[0].reason, 'a');
+        });
+        test('non side-effect su input (nuovo array)', () => {
+          const arr = [{ ts: 't1' }];
+          const res = P.pushHistoryEvent(arr, { ts: 't2' });
+          assertEq(arr.length, 1);
+          assertEq(res.length, 2);
+        });
+        test('FIFO: nuovi in testa, vecchi in coda', () => {
+          const res = P.pushHistoryEvent([{ ts: 't1' }, { ts: 't2' }], { ts: 't3' });
+          assertEq(res[0].ts, 't3');
+          assertEq(res[1].ts, 't2');
+          assertEq(res[2].ts, 't1');
+        });
+        test('cap tronca gli elementi più vecchi', () => {
+          const arr = Array.from({ length: 25 }, (_, i) => ({ ts: 't' + i }));
+          const res = P.pushHistoryEvent(arr, { ts: 'new' }, 20);
+          assertEq(res.length, 20);
+          assertEq(res[0].ts, 'new');
+          assertEq(res[19].ts, 't6');
+        });
+        test('input invalido → ritorna array con solo nuovo evento', () => {
+          const res = P.pushHistoryEvent(null, { ts: 't1' });
+          assertEq(res.length, 1);
+        });
+      });
+
+      // ---- formatHistoryEvents (Polish Pack V3 Step 6: Q6.4) ---
+      describe('formatHistoryEvents (history display formatter)', () => {
+        test('array vuoto → "Nessun evento" / "No events"', () => {
+          assertEq(P.formatHistoryEvents([], 'it'), 'Nessun evento');
+          assertEq(P.formatHistoryEvents([], 'en'), 'No events');
+        });
+        test('input invalido → fallback message', () => {
+          assertEq(P.formatHistoryEvents(null, 'it'), 'Nessun evento');
+        });
+        test('formatta con timestamp hh:mm:ss + floor + reason', () => {
+          const evs = [
+            { ts: '2026-09-23T10:30:45.000Z', floor: 5, reason: 'manual' },
+            { ts: '2026-09-23T11:15:00.000Z', floor: 0, reason: 'timeout' }
+          ];
+          const res = P.formatHistoryEvents(evs, 'it');
+          // 10:30:45 piano 5: manuale
+          // 11:15:00 piano T: timeout
+          assert(res.includes('10:30:45'));
+          assert(res.includes('11:15:00'));
+          assert(res.includes('piano 5'));
+          assert(res.includes('piano T'));
+        });
+        test('senza floor mostra solo reason', () => {
+          const evs = [{ ts: '2026-09-23T10:30:00.000Z', reason: 'stop:manual' }];
+          const res = P.formatHistoryEvents(evs, 'en');
+          assert(res.includes('10:30:00'));
+          assert(res.includes('stop:manual'));
+        });
+      });
     }
 
     // ============================================================
