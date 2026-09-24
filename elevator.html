@@ -5547,7 +5547,10 @@ function shouldAnnounceDoorClose(doorsActual) {
 // attivo, forza OOO=false + emette 'ooo:off' + TTS notifica.
 function sosCancelsOOO(s) {
   if (!s) return false;
-  return !!s.outOfOrder;
+  // Vero solo quando il SOS (alarmOn) si attivazione mentre OOO era gia' ON.
+  // Casi diversi: alarmOn=false (no-op) o outOfOrder=false (OOO non attivo)
+  // non sono "cancellazione" -> false. Polish Pack V3 Step 2 (Q2.4).
+  return !!(s.outOfOrder && s.alarmOn);
 }
 
 // pure: verifica se la cabina sta muovendosi verso l'alto, basso o ferma.
@@ -5570,12 +5573,13 @@ function breathScale(animT, enabled) {
 }
 
 // pure: alpha per il cartello "lampeggio gentile" pre-arrivo.
-// 3 flash in 1s = freq 6Hz (Math.sin con freq=6*PI), alpha oscillante 0..1.
-// enabled=false => alpha=0 (nessun overlay). Usato in drawMovingSign.
-// Polish Pack V3 Step 4 (Q4.3).
+// 3 flash in 1s = freq 3Hz (Math.sin con freq=3*PI, poi Math.abs raddoppia
+// a 6 attraversamenti/sintattici ma i PICCHI sono 3 in 1s).
+// alpha oscillante 0..1. enabled=false => alpha=0 (nessun overlay).
+// Usato in drawMovingSign. Polish Pack V3 Step 4 (Q4.3).
 function arrivalFlashAlpha(animT, enabled) {
   if (!enabled) return 0;
-  return 0.5 + 0.5 * Math.abs(Math.sin(animT * 6 * Math.PI));
+  return 0.5 + 0.5 * Math.abs(Math.sin(animT * 3 * Math.PI));
 }
 
 // pure: easing bounce-out classico. t in [0..1], ritorna posizione [0..1].
@@ -5609,15 +5613,16 @@ function aggregateFpsStats(samples) {
   if (!Array.isArray(samples) || samples.length === 0) {
     return { min: 0, max: 0, avg: 0, count: 0 };
   }
-  let mn = Infinity, mx = -Infinity, sum = 0;
+  let mn = Infinity, mx = -Infinity, sum = 0, count = 0;
   for (const v of samples) {
     if (typeof v !== 'number' || isNaN(v)) continue;
     if (v < mn) mn = v;
     if (v > mx) mx = v;
     sum += v;
+    count++;
   }
-  if (mn === Infinity) return { min: 0, max: 0, avg: 0, count: 0 };
-  return { min: mn, max: mx, avg: sum / samples.length, count: samples.length };
+  if (count === 0) return { min: 0, max: 0, avg: 0, count: 0 };
+  return { min: mn, max: mx, avg: sum / count, count };
 }
 
 // pure: confronta due snapshot FPS (before/after). Ritorna stringa tipo
@@ -5637,7 +5642,10 @@ function formatFpsDelta(before, after) {
 // Usato da textureCache (Q5.3) per evitare re-bake di canvas texture.
 // Polish Pack V3 Step 5 (Q5.3): texture LRU cache.
 function createLruCache(capacity) {
-  const cap = Math.max(1, capacity || 10);
+  // Default 10 applicato solo quando capacity e' null/undefined o NaN.
+  // 0 (esplicito) deve fare il clamp a 1, non triggerare il fallback a 10.
+  const raw = (typeof capacity === 'number' && !isNaN(capacity)) ? capacity : 10;
+  const cap = Math.max(1, raw);
   const map = new Map(); // insertion-ordered (LRU oldest first)
   return {
     get(key) {
@@ -5698,11 +5706,14 @@ function severityIcon(sev) {
 }
 
 // pure: aggiunge un evento a una history array (FIFO con cap). Non side-effect su input.
-// events: array esistente, evt: nuovo evento, cap: max entries (default 20).
-// Ritorna nuovo array. Polish Pack V3 Step 6 (Q6.4): history helper.
+// events: array esistente (ordine cronologico ascendente: [0]=oldest).
+// evt: nuovo evento. cap: max entries (default 20). Ritorna nuovo array
+// ordinato NEWEST-FIRST ([0]=newest, [N-1]=oldest) cosi' formatHistoryEvents
+// e la UI mostrano l'evento piu' recente in cima. Polish Pack V3 Step 6 (Q6.4).
 function pushHistoryEvent(events, evt, cap = 20) {
   if (!Array.isArray(events)) return [evt];
-  const arr = events.slice();
+  // Reverse per portare l'ordine a newest-first, poi prepend del nuovo evento.
+  const arr = events.slice().reverse();
   arr.unshift(evt);
   if (arr.length > cap) arr.length = cap;
   return arr;
@@ -5719,7 +5730,11 @@ function formatHistoryEvents(events, lang) {
   const lines = [];
   for (const ev of events) {
     const d = ev.ts ? new Date(ev.ts) : null;
-    const time = d ? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}` : '--:--:--';
+    // getUTCHours/Minutes/Seconds per coerenza cross-TZ: event.ts viene
+    // salvato come ISO string (UTC) e letto coerentemente in UTC.
+    const time = d && !isNaN(d.getTime())
+      ? `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}:${String(d.getUTCSeconds()).padStart(2,'0')}`
+      : '--:--:--';
     const reason = ev.reason || (lang === 'en' ? 'manual' : 'manuale');
     if (ev.floor !== undefined) {
       lines.push(`${time} ${lang === 'en' ? 'floor' : 'piano'} ${ev.floor === 0 ? 'T' : ev.floor}: ${reason}`);
