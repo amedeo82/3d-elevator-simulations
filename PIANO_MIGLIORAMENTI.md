@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 parziale (Step 1-2)** · Aggiornato 2026-09-25
+**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1 chiuso (Step 1-3)** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -2414,11 +2414,12 @@ testato, e ora anche mobile-responsive.
 Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
 (6 step totali: T1 3 + T2 2 + T3 1).
 
-**Risultato parziale V4**: **2/6 step completati (33%)** ✅
+**Risultato parziale V4**: **3/6 step completati (50%)** ✅
 - Step 1 (Test exposure gap): ✅ chiuso senza modifiche al codice (audit
   obsoleto, gap reale assente; tutte le 32 funzioni `pure:` erano già
   esportate da V2/V3).
 - Step 2 (Routing bug fix D22): ✅ chiuso con fix codice.
+- Step 3 (A11y aria attributes D23): ✅ chiuso con attributi ARIA + i18n.
 
 ### Fase 23 — Polish Pack V4 Step 2: Routing bug fix D22 ✅ (2026-09-25, branch `feature/v4-step-2-routing-bug`)
 
@@ -2465,3 +2466,54 @@ look algorithm asimmetrico.
 
 **Prossimo step proposto**: Step 3 (A11y aria attributes, T1c) —
 unico step T1 rimasto aperto.
+
+### Fase 24 — Polish Pack V4 Step 3: A11y aria attributes D23 ✅ (2026-09-25, branch `feature/v4-step-3-a11y-aria`)
+
+Step T1c (a11y, alto impatto). Aggiunti attributi ARIA standard (WAI-ARIA 1.2)
+per consentire l'uso della cabina da parte di utenti con screen reader (NVDA,
+JAWS, VoiceOver) o tecnologie assistive.
+
+**Decisioni** (Q23.1=A, Q23.2=A via `question` tool):
+- Test: assert manuali (`iframe.contentDocument.querySelector`) invece di
+  axe-core via CDN. Conforme D1 (single-file sempre, asset via blob URL).
+- i18n: nuove chiavi `aria*` in `STRINGS.it`/`STRINGS.en`. Coerente con D8.
+
+**Modifiche al codice** (elevator.html):
+- 19 nuovi attributi `aria-label` localizzati sui bottoni HUD
+  interattivi (`hud-exit-btn`, `hud-reenter-btn`, `startBtn`, 5
+  `m-filter-btn`, `m-export-json`, `m-benchmark-btn`, 2
+  `virtual-call-btn`, `virtual-joystick`, `tt-skip`/`tt-next`,
+  `hc-apply`/`hc-reset`/`hc-close`).
+- 4 `aria-hidden="true"` su elementi decorativi (`#pointerhint`,
+  `.rotate-icon`, `.joystick-knob`, renderer canvas).
+- 2 live region con `role="status" aria-live="polite" aria-atomic="true"`:
+  `#subtitle` (annunci TTS) + `#mode-badge` (status corrente).
+- 2 role specializzati: `role="alertdialog" aria-labelledby` su
+  `#rotate-device-overlay` (orientamento device), `role="application"
+  tabindex="0"` su `#virtual-joystick` (controllo interattivo custom).
+- Nuova funzione `applyAriaLabels()` (~50 righe): chiamata da
+  `applyLangToDOM()` su init + da `setLang()` ad ogni cambio lingua
+  (refresh coerente con D8).
+- Esposte `applyLangToDOM`, `setLang`, `applyAriaLabels` in
+  `BossHotelPure` per testing cross-iframe.
+
+**Test** (tests.html, +15 test / +35 assert):
+- 3 nuovi `describe` block "a11y (V4 Step 3 D23)":
+  1. aria-label su 9 set di bottoni HUD (9 test)
+  2. role+aria-live su 2 live region (2 test)
+  3. aria-hidden su 3 elementi decorativi (3 test)
+  4. cambio lingua aggiorna aria-label end-to-end (1 test)
+- Totale suite: 212 → **227 test / 349 → 384 assert**, tutti pass.
+
+**Contratto D23** introdotto in AGENTS.md con descrizione completa.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- Screenshot `tests-step3-rerun.png` mostra **226/226 PASS** (era
+  211/211 prima di questo step, +15 test).
+- Smoke test `elevator-step3-smoke.png` mostra start screen pulito.
+
+**Branch**: `feature/v4-step-3-a11y-aria`.
+
+**Prossimo step proposto**: Step 4 (Funzioni lunghe + commenti, T2a)
+— primo step T2 (manutenibilità).
