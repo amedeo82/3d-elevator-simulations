@@ -11,16 +11,27 @@ con 205 test passing, 20 contratti D-key (D1-D20), 7 file documentazione,
 e 9 step di polish incrementale. V4 parte dall'audit finale di V3 (vedi
 sezione §Audit V3) per affrontare le aree di miglioramento identificate.
 
-### Audit V3 (sintesi)
+### Audit V3 (sintesi) — aggiornato 2026-09-25 dopo audit pre-V4
 
-| Area | Status | Impatto |
+| Area | Status reale | Impatto |
 |---|---|---|
-| 32 funzioni `pure:` non esportate in `BossHotelPure` | 🔴 regression risk | Alto |
+| 32 funzioni `pure:` non esportate in `BossHotelPure` | ✅ **falso allarme** (vedi nota) | — |
 | Routing `pickNextFloor` inversione ritorna MIN invece di MAX | 🟠 logic bug | Alto |
 | Zero `aria-*` attributes nel codice | 🟠 a11y gap | Alto |
 | 26 funzioni lunghe non documentate (`updateAdScreen` 483 righe!) | 🟡 manutenibilità | Media |
 | 3x `mergeGeometries` con pattern ripetuto | 🟢 DRY violation | Bassa |
 | Manca LICENSE / CHANGELOG / CONTRIBUTING | 🟢 open-source | Bassa |
+| `relativeLuminance` esposto ma non testato in `tests.html` | 🟡 gap residuo | Bassa |
+
+**Nota audit V3 → V4 (2026-09-25)**: l'audit iniziale di V4 riportava
+"32 funzioni `pure:` non esportate in `BossHotelPure`" basandosi su una
+snapshot stale. Verifica puntuale: tutte le 32 funzioni marcate `// pure:`
+risultano effettivamente esportate in `window.BossHotelPure` (righe
+10167-10197 di `elevator.html`) e coperte da 206 test / 343 assert in
+`tests.html` (target V4 era 300+ assert, già superato). Pertanto **Step 1
+è di fatto già chiuso** dal lavoro di V2/V3; rimane solo un piccolo gap
+(`relativeLuminance` esportato ma senza test) da coprire in coda al primo
+step futuro che toccherà helpers accessibilità.
 
 ## Roadmap V4
 
@@ -193,7 +204,7 @@ per step via `question` tool).
 
 | # | Step | Stato | Commit | Branch |
 |---|---|---|---|---|
-| 1 | Test exposure gap | ⏳ pending | — | — |
+| 1 | Test exposure gap | ✅ done (V2/V3 avevano già coperto) | — | — |
 | 2 | Routing bug fix | ⏳ pending | — | — |
 | 3 | A11y aria attributes | ⏳ pending | — | — |
 | 4 | Funzioni lunghe + commenti | ⏳ pending | — | — |
@@ -249,3 +260,32 @@ Vedi anche:
 - `AGENTS.md` — regole progetto + contratti D-key D1-D20
 - `ARCHITECTURE.md` — diagrammi architetturali
 - `STRINGS_REFERENCE.md` — mappatura completa i18n
+
+---
+
+## Log decisioni
+
+### 2026-09-25 — Step 1 (Test exposure gap)
+
+**Audit pre-V4**: il piano apriva con "32 funzioni `pure:` non esportate in
+`BossHotelPure`, target 205 → 300+ assert". Verifica puntuale (grep su
+`elevator.html:5640-5890`, lettura di `tests.html:127-1467`):
+
+- tutte le 32 funzioni marcate `// pure:` risultano **già** in
+  `window.BossHotelPure` (righe 10167-10197 di `elevator.html`);
+- `tests.html` contiene **206 test / 343 assert** (target 300+ già superato);
+- unico gap residuo: `relativeLuminance` (Step 1d V3) è esportato ma
+  non ha test in `tests.html` (5-6 test banali da aggiungere in coda).
+
+**Decisione** (risposta utente via `question` tool): **chiudere Step 1
+come già fatto**. L'audit iniziale di V4 era basato su snapshot stale e
+non rifletteva lo stato post-V3.
+
+**Azioni eseguite**:
+- aggiornata la tabella §Audit V3 con status reale (✅ falso allarme);
+- aggiunta nota che spiega la genesi della chiusura anticipata;
+- aggiornata tabella stato (Step 1 → ✅);
+- non aperto branch dedicato né commit: nessuna modifica al codice.
+
+**Prossimo step proposto**: Step 2 (routing bug fix `pickNextFloor`
+inversione), unico step T1b ancora aperto con bug logico confermato.
