@@ -208,8 +208,8 @@ per step via `question` tool).
 | 2 | Routing bug fix | ✅ done | c98ba78 + merge 32fc61e | feature/v4-step-2-routing-bug |
 | 3 | A11y aria attributes | ✅ done | 8bd36c5 + merge 7c68cea | feature/v4-step-3-a11y-aria |
 | 4 | Funzioni lunghe + commenti | ✅ done | 0df5815 + merge | feature/v4-step-4-fn-comments |
-| 5 | Helper `mergePlanes` DRY | ✅ done | (in arrivo) | feature/v4-step-5-merge-planes |
-| 6 | Open source boilerplate | ⏳ pending | — | — |
+| 5 | Helper `mergePlanes` DRY | ✅ done | 4f42e18 + merge dd8ce1f | feature/v4-step-5-merge-planes |
+| 6 | Open source boilerplate | ✅ done | (in arrivo) | feature/v4-step-6-os-boilerplate |
 
 **Risultato atteso**: **6/6 step completati (100%)** se si decide di fare
 tutto V4.
@@ -457,3 +457,39 @@ Refactor: 3 callsites sostituiti con 1 chiamata + fallback opzionale.
 
 **Prossimo step proposto**: Step 6 (Open source boilerplate, T3a) —
 ultimo step V4.
+
+### 2026-09-25 — Step 6 (Open source boilerplate D26) — V4 CHIUSO 100% ✅
+
+**Decisioni** (Q26.1=A, Q26.2=B, Q26.3=A via `question` tool):
+- LICENSE: aggiornato a "Copyright (c) 2026 Amedeo Vecchi".
+- CHANGELOG.md: auto-generato via `scripts/generate-changelog.js` (~85
+  righe che parsa `git log` e bucketa per Polish Pack V1..V4).
+- CONTRIBUTING.md: comprehensive (~110 righe) con prereq + quick start +
+  sommario 19 contratti D-key + workflow Polish Pack + code style.
+
+**Modifiche**:
+- `LICENSE` (21 righe, MIT standard) — copyright aggiornato.
+- `CHANGELOG.md` (182 righe, auto-generato) — 191 commit totali: V1: 12,
+  V2: 68, V3: 24, V4: 11, altro: 76.
+- `CONTRIBUTING.md` (114 righe) — guida contributor con sezione completa
+  dei D-key contracts D1-D26 e workflow Polish Pack (come aggiungere uno
+  step).
+- `scripts/generate-changelog.js` (95 righe) — parser `git log` con
+  regex euristiche. Placeholder `XXHASHXX` come separatore (git non
+  supporta %x00), regex `^([0-9a-f]{40})XXHASHXX(.+?)XXHASHXX(.*?)XXHASHXX(.*)$`
+  per gestire date con spazi.
+
+**Contratto D26** introdotto in AGENTS.md: open source boilerplate
+(LICENSE + CHANGELOG + CONTRIBUTING auto-generato).
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa (nessun cambio
+  al codice).
+- `node scripts/generate-changelog.js` → genera CHANGELOG.md con 191
+  commit buckettati correttamente.
+- Screenshot `tests-step6.png` → **232/232 PASS** (nessuna regressione).
+
+**Branch**: `feature/v4-step-6-os-boilerplate`.
+
+🎉 **Polish Pack V4 COMPLETO (6/6 step, 100%)**. Roadmap post-V4:
+vedi sezione "Roadmap possibile post-V4" sotto.
