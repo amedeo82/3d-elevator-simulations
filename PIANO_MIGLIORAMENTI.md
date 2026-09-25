@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1 chiuso (Step 1-3)** · Aggiornato 2026-09-25
+**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1 chiuso (Step 1-3) + Step 4 D24 (manutenibilità)** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -2414,12 +2414,13 @@ testato, e ora anche mobile-responsive.
 Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
 (6 step totali: T1 3 + T2 2 + T3 1).
 
-**Risultato parziale V4**: **3/6 step completati (50%)** ✅
+**Risultato parziale V4**: **4/6 step completati (67%)** ✅
 - Step 1 (Test exposure gap): ✅ chiuso senza modifiche al codice (audit
   obsoleto, gap reale assente; tutte le 32 funzioni `pure:` erano già
   esportate da V2/V3).
 - Step 2 (Routing bug fix D22): ✅ chiuso con fix codice.
 - Step 3 (A11y aria attributes D23): ✅ chiuso con attributi ARIA + i18n.
+- Step 4 (Funzioni lunghe + commenti D24): ✅ 2 split minimi + 16 commenti narrativi.
 
 ### Fase 23 — Polish Pack V4 Step 2: Routing bug fix D22 ✅ (2026-09-25, branch `feature/v4-step-2-routing-bug`)
 
@@ -2517,3 +2518,59 @@ JAWS, VoiceOver) o tecnologie assistive.
 
 **Prossimo step proposto**: Step 4 (Funzioni lunghe + commenti, T2a)
 — primo step T2 (manutenibilità).
+
+### Fase 25 — Polish Pack V4 Step 4: Funzioni lunghe + commenti D24 ✅ (2026-09-25, branch `feature/v4-step-4-fn-comments`)
+
+Step T2a (manutenibilità, medio impatto). Target: tutte le funzioni top-level
+in `elevator.html` <150 righe + commenti narrativi stile V3 Step 7 sulle
+funzioni >=80 righe.
+
+**Audit pre-step**: il piano segnalava `updateAdScreen` a 483 righe — falso
+allarme (in realta' 14 righe; bug nel pattern di detection basato su
+"next-function boundary" che si confonde con nested functions). Il vero
+audit (script `scripts/find-long-fns.js` con brace-counting corretto):
+16 funzioni >=80 righe, di cui solo 2 sopra 150: `buildCorridor` (178)
+e `startCorridorAudio` (156).
+
+**Decisione** (Q24.1=A via `question` tool): **commenti narrativi + split
+minimi**. Aggiungere commenti stile V3 Step 7 alle 16 funzioni >=80 ed
+estrarre helper minimali dalle 2 funzioni >=150 per portarle sotto target.
+
+**Modifiche al codice** (elevator.html):
+- **Split 1**: `buildCorridor` 178 → 76 righe.
+  - `buildCorridorShell(theme, sZ, eZ)` (60 righe): pavimento + tappeto +
+    soffitto + 3 pareti merged in 1 mesh (V3 Step 5 Q5.2).
+  - `buildCorridorLights(sZ)` (37 righe): 4 PointLight + LED planes merged
+    + frame boxes merged.
+- **Split 2**: `startCorridorAudio` 156 → ~50 righe. Estratti 4 helper
+  per-tema (Lobby/Office/Hotel/Penthouse) ciascuno ~30 righe. Stesso
+  module scope + side-effect su `corridorAudioNodes` (D24: pattern split
+  consentito).
+- **16 commenti narrativi** stile V3 Step 7 aggiunti:
+  `renderDisplayDynamicLayer`, `addRoomDoor`, `drawWeatherIconBig`,
+  `drawMovingSign`, `tickMaintenance`, `initTouchControls`,
+  `renderDisplaySemistaticLayer`, `loop`, `makeNpc`, `playCorridorAmbient`,
+  `applyLangToDOM`, `tickPlayer`, `tickNpcs`, `drawClockFace`,
+  `drawFloorSign`, `startMusic`. Ogni blocco ha: scopo + sezioni numerate
+  + contratti D-key + performance/complexity note.
+
+**Helper tool nuovo**: `scripts/find-long-fns.js` (37 righe) con
+brace-counting corretto — identifica top N funzioni per righe effettive.
+Da rieseguire dopo ogni refactor importante per intercettare regressioni
+di dimensione.
+
+**Contratto D24** introdotto in AGENTS.md: tutte le funzioni <150 + 16
+commenti narrativi >=80 + helper `find-long-fns.js` mantenuto.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- `node scripts/find-long-fns.js` → 0 funzioni >=150 (target raggiunto);
+  piu' lunga ora `renderDisplayDynamicLayer` a 148 righe.
+- Test screenshot `tests-step4.png` → **226/226 PASS** (nessuna regressione).
+- Smoke test `elev-step4.png` → start screen pulito (i 2 split non hanno
+  rotto buildCorridor né l'audio contestuale).
+
+**Branch**: `feature/v4-step-4-fn-comments`.
+
+**Prossimo step proposto**: Step 5 (Helper `mergePlanes` DRY, T2b) —
+unico step T2 rimasto aperto.

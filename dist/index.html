@@ -2380,6 +2380,13 @@ let adScreenLastChange = 0;
 const AD_SCREEN_DURATION = 12;  // secondi per schermata
 const AD_SCREENS = ['clock', 'weather', 'welcome', 'restaurant', 'spa', 'worldclock'];
 
+// Polish Pack V4 Step 4 (D24): drawClockFace — schermata orologio analogico
+// del pannello pubblicitario laterale. Disegna 12 tick marks + 3 lancette
+// (ore/minuti/secondi) che ruotano in tempo reale. Cache texture LRU
+// invalidata ogni secondo (V3 Step 5 Q5.1).
+//
+// Contratti: nessuno (rendering canvas 2D puro).
+// Performance: ~79 righe. ~1Hz refresh per lancetta secondi.
 function drawClockFace(ctx, w, h) {
   // sfondo sfumato
   const grad = ctx.createLinearGradient(0, 0, 0, h);
@@ -3355,6 +3362,14 @@ const signCtx = signCanvas.getContext('2d');
 const signTex = new THREE.CanvasTexture(signCanvas);
 signTex.colorSpace = THREE.SRGBColorSpace;
 
+// Polish Pack V4 Step 4 (D24): drawFloorSign — renderizza il cartello piano
+// del corridoio (sopra la pulsantiera esterna). Testo + freccia direzione
+// (V2 Step 7c "↻ IN ARRIVO"). Texture cache LRU (V3 Step 5 Q5.3) keyed su
+// floorShown + direction + arrivalPhase per evitare re-bake ad ogni frame.
+//
+// Contratti: D16 (textureCache LRU), V3 D22 (segnali arrival flash).
+// Performance: ~76 righe. Hash cache lookup O(1); rebuild solo su cambi
+// stato (raro durante movimento).
 function drawFloorSign(floor) {
   const g = signCtx;
   // Polish Pack v1.3 #6: modalità "fuori servizio" — cartello warning rosso
@@ -3436,6 +3451,20 @@ drawFloorSign(0);
 
 // Polish Pack v1.3 #4 — cartello "passo passo" durante il viaggio
 // Mostra i piani che la cabina sta attraversando, con quello corrente evidenziato
+// Polish Pack V4 Step 4 (D24): drawMovingSign — cartello "passo passo" del
+// corridoio (sopra la pulsantiera esterna ▲/▼). Mostra:
+//   - Stato speciali (OOO/SOS): "FUORI SERVIZIO" / "ALLARME" con priorita.
+//   - In movimento: "Piano X → Piano Y" con freccia direzione + icona tipo.
+//   - Fermo: piano corrente grande + label "PIANO" (i18n).
+//
+// Aggiornato ad ogni step di tickMove. Se la cabina e' in arrivo al piano
+// del corridoio, mostra anche "IN ARRIVO" con flash (V3 Step 4 Q4.3).
+//
+// Contratti D-key: D9 (helper puri), D16 (texture cache LRU via
+// drawFloorSign chiamato come fallback).
+//
+// Performance: ~112 righe. ~5 ridraw/secondo durante movimento, ~10/secondo
+// in fase pre-arrivo. Cache texture LRU capacity 10 (V3 Step 5 Q5.3).
 function drawMovingSign(fromFloor, toFloor, currentShown) {
   const g = signCtx;
   // Polish Pack v1.3 #6: priorità assoluta al warning se fuori servizio
@@ -3955,36 +3984,26 @@ function addExternalCallPanel(floor) {
 // Performance: ~143 righe. Crea ~30-50 mesh per piano (shell merged + arredi
 // singoli). Chiamato ad ogni cambio piano + teleport. Profilare con
 // runBenchmark per regressioni future (corridor rebuild è pesante).
-function buildCorridor(floor) {
-  disposeCorridor();
-  // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
-  // (disposeCorridor non puo accedere a buttonList perche e' dichiarato piu avanti.)
-  for (let i = buttonList.length - 1; i >= 0; i--) {
-    const b = buttonList[i];
-    if (b.userData && (b.userData.action === 'callUp' || b.userData.action === 'callDown')) {
-      buttonList.splice(i, 1);
-    }
-  }
-  const themeName = getThemeForFloor(floor);
-  currentThemeName = themeName;
-  const theme = themeConfig[themeName];
-
-  const sZ = CORRIDOR_START_Z;
-  const eZ = sZ + CORRIDOR_D;
-
+// Polish Pack V4 Step 4 (D24): estratto da buildCorridor() — pavimento +
+// tappeto + soffitto + 3 pareti (merged in 1 BufferGeometry). Le pareti sono
+// fuse in un'unica mesh via mergeGeometries (V3 Step 5 Q5.2): stesso materiale
+// e stessa flag shadow → 1 draw call invece di 3. PlaneGeometry richiede
+// applyMatrix4 per posizionamento (mergeGeometries non supporta transform).
+function buildCorridorShell(theme, sZ, eZ) {
+  const floor = theme.floor;
   // Pavimento
   {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_D),
-      new THREE.MeshStandardMaterial({ color: theme.floor, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide })
+      new THREE.MeshStandardMaterial({ color: floor, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide })
     );
     m.rotation.x = -Math.PI / 2;
     m.position.set(0, 0.002, sZ + CORRIDOR_D/2);
     m.receiveShadow = true;
     corridor.add(m);
   }
-  // Tappeto centrale (in quasi tutti i piani)
-  if (themeName !== 'office') {
+  // Tappeto centrale (in quasi tutti i piani, escluso office)
+  if (theme.carpet !== theme.floor) {
     const carpet = new THREE.Mesh(
       new THREE.PlaneGeometry(1.3, CORRIDOR_D - 0.6),
       new THREE.MeshStandardMaterial({ color: theme.carpet, roughness: 0.95, side: THREE.DoubleSide })
@@ -4004,59 +4023,48 @@ function buildCorridor(floor) {
     m.position.set(0, CORRIDOR_H, sZ + CORRIDOR_D/2);
     corridor.add(m);
   }
-  // Polish Pack V3 Step 5 (Q5.2): merge 3 pareti (sx, dx, fondo) in un'unica
-  // BufferGeometry. Stesso materiale (theme.wall) e stessa shadow flag → 1
-  // draw call invece di 3. Risparmio ~2 draw call per piano rebuild.
-  // PlaneGeometry ha bisogno di essere posizionata (rotation/translate), e
-  // mergeGeometries non supporta transform per geometry. Applichiamo le
-  // transform via matrix (geometry.applyMatrix4) PRIMA del merge.
-  {
-    const wallGeo1 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
-    const m1 = new THREE.Matrix4().makeRotationY(Math.PI / 2);
-    m1.setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    wallGeo1.applyMatrix4(m1);
-    const wallGeo2 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
-    const m2 = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
-    m2.setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    wallGeo2.applyMatrix4(m2);
-    const wallGeo3 = new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H);
-    const m3 = new THREE.Matrix4();
-    m3.setPosition(0, CORRIDOR_H/2, eZ);
-    wallGeo3.applyMatrix4(m3);
-    const mergedWalls = mergeGeometries([wallGeo1, wallGeo2, wallGeo3], false);
-    if (mergedWalls) {
-      const wallMesh = new THREE.Mesh(mergedWalls,
-        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-      );
-      wallMesh.receiveShadow = true;
-      corridor.add(wallMesh);
-    } else {
-      // Fallback: 3 mesh separate (impossibile con Three.js 0.160, ma per sicurezza)
-      corridor.add(new THREE.Mesh(wallGeo1,
-        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
-      corridor.add(new THREE.Mesh(wallGeo2,
-        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
-      corridor.add(new THREE.Mesh(wallGeo3,
-        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
-    }
+  // 3 pareti merged in 1 mesh (V3 Step 5 Q5.2)
+  const wallGeo1 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+  const m1 = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+  m1.setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+  wallGeo1.applyMatrix4(m1);
+  const wallGeo2 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+  const m2 = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
+  m2.setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+  wallGeo2.applyMatrix4(m2);
+  const wallGeo3 = new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H);
+  const m3 = new THREE.Matrix4();
+  m3.setPosition(0, CORRIDOR_H/2, eZ);
+  wallGeo3.applyMatrix4(m3);
+  const mergedWalls = mergeGeometries([wallGeo1, wallGeo2, wallGeo3], false);
+  if (mergedWalls) {
+    const wallMesh = new THREE.Mesh(mergedWalls,
+      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
+    );
+    wallMesh.receiveShadow = true;
+    corridor.add(wallMesh);
+  } else {
+    // Fallback (impossibile con Three.js 0.160, ma per sicurezza)
+    const wallMat = new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide });
+    corridor.add(new THREE.Mesh(wallGeo1, wallMat));
+    corridor.add(new THREE.Mesh(wallGeo2, wallMat));
+    corridor.add(new THREE.Mesh(wallGeo3, wallMat));
   }
+}
 
-  // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
-  addExternalCallPanel(floor);
-
-  // Luci soffitto corridoio
-  // Polish Pack V3 Step 5 (Q5.2): merge 4 lampade LED (4 PlaneGeometry stesso
-  // materiale MeshBasicMaterial) + 4 frame (4 BoxGeometry stesso materiale)
-  // in 2 BufferGeometry uniche. Risparmio ~6 draw call per piano rebuild.
+// Polish Pack V4 Step 4 (D24): estratto da buildCorridor() — 4 PointLight
+// soffitto + 4 LED plane merged + 4 frame box merged (V3 Step 5 Q5.2). Stesso
+// materiale per le LED planes → mergeGeometries riduce da 4 a 1 draw call.
+// Stesso per i frame box. Risparmio totale ~6 draw call per piano rebuild.
+function buildCorridorLights(sZ) {
   const lampPositions = [sZ + 2.0, sZ + 4.5, sZ + 7.0, sZ + 9.5];
+  // PointLight (no draw call, ma illumina il corridoio)
   for (const z of lampPositions) {
-    const x = 0, y = CORRIDOR_H - 0.04;
-    // PointLight (no draw, ma presente per illuminare il corridoio)
     const light = new THREE.PointLight(0xfff1c8, 0.5, 5, 1.5);
-    light.position.set(x, y, z);
+    light.position.set(0, CORRIDOR_H - 0.04, z);
     corridor.add(light);
   }
-  // Merge LED planes (4 PlaneGeometry stesse caratteristiche)
+  // LED planes merged (V3 Step 5 Q5.2): 4 PlaneGeometry stesso materiale
   const ledGeos = lampPositions.map(z => {
     const g = new THREE.PlaneGeometry(0.5, 0.5);
     const m = new THREE.Matrix4().makeRotationX(Math.PI / 2);
@@ -4069,7 +4077,7 @@ function buildCorridor(floor) {
     corridor.add(new THREE.Mesh(mergedLeds,
       new THREE.MeshBasicMaterial({ color: 0xfff1c8 })));
   }
-  // Merge frame boxes (4 BoxGeometry stesso materiale)
+  // Frame boxes merged (V3 Step 5 Q5.2): 4 BoxGeometry stesso materiale
   const frameGeos = lampPositions.map(z => {
     const g = new THREE.BoxGeometry(0.55, 0.03, 0.55);
     const m = new THREE.Matrix4();
@@ -4082,6 +4090,33 @@ function buildCorridor(floor) {
     corridor.add(new THREE.Mesh(mergedFrames,
       new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 })));
   }
+}
+
+function buildCorridor(floor) {
+  disposeCorridor();
+  // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
+  // (disposeCorridor non puo accedere a buttonList perche e' dichiarato piu avanti.)
+  for (let i = buttonList.length - 1; i >= 0; i--) {
+    const b = buttonList[i];
+    if (b.userData && (b.userData.action === 'callUp' || b.userData.action === 'callDown')) {
+      buttonList.splice(i, 1);
+    }
+  }
+  const themeName = getThemeForFloor(floor);
+  currentThemeName = themeName;
+  const theme = themeConfig[themeName];
+
+  const sZ = CORRIDOR_START_Z;
+  const eZ = sZ + CORRIDOR_D;
+
+  // Pavimento + tappeto + soffitto + pareti (merged in 1 mesh V3 Step 5 Q5.2).
+  buildCorridorShell(theme, sZ, eZ);
+
+  // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
+  addExternalCallPanel(floor);
+
+  // Luci soffitto corridoio: 4 PointLight + LED planes + frame boxes (merged).
+  buildCorridorLights(sZ);
 
   // Arredi specifici per tema
   if (themeName === 'lobby') {
@@ -4336,6 +4371,24 @@ function addDesk(parent, x, y, z, rotY) {
   g.rotation.y = rotY;
   parent.add(g);
 }
+// Polish Pack V4 Step 4 (D24): addRoomDoor — costruisce una porta camera
+// (hotel 4-6 o penthouse 7-9) con targhetta numero camera. Stile `hotel`
+// (default): varco 1.0m x 2.1m, legno scuro, maniglia ottone; Stile
+// `penthouse`: varco 1.2m x 2.3m, legno pregiato piu' scuro, targhetta
+// "Suite NNN". Usato in buildCorridor() ramo hotel + penthouse.
+//
+// Parametri:
+//   parent: Group a cui aggiungere la mesh porta (corridor).
+//   x, y, z: posizione nel mondo (y di solito 0 = pavimento).
+//   rotY: rotazione asse Y (π/2 = sulla parete sx; -π/2 = sulla parete dx).
+//   floor: numero piano (per label "Suite 7XX" calcolata in buildCorridor).
+//   roomNum: numero camera (100+i*2 hotel, floor*10+1/+2 penthouse).
+//   style: 'hotel' | 'penthouse' (varco + altezza + tinta legno).
+//
+// Contratti D-key: D9 (helper puro parametrico).
+//
+// Performance: ~137 righe. Crea ~6 mesh per porta (varco + cornice +
+// anta + maniglia + targhetta + manico). ~18 porte/piano hotel + ~4 attico.
 function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const g = new THREE.Group();
   // Sistema di coordinate LOCALI del gruppo, prima della rotazione rotY=±π/2:
@@ -5039,6 +5092,13 @@ const NPC_TTS_BY_FLOOR = {
   8: state => state.lang === 'en' ? 'Restaurant guests' : 'Ospiti del ristorante',
   9: state => state.lang === 'en' ? 'Penthouse residents' : 'Residenti dell\'attico'
 };
+// Polish Pack V4 Step 4 (D24): makeNpc — costruisce un NPC stilizzato low-poly
+// (corpo + testa + 4 arti + sciarpa randomizzata). Usato da spawnNpcsAtFloor
+// al cambio piano. Restituisce un THREE.Group con userData.npcMeta contenente
+// stats (professione, dialogo, scopo visita) per i tooltip contestuali.
+//
+// Contratti: D9 (helper parametrico senza side-effect su state).
+// Performance: ~88 righe. ~1 chiamata per ogni spawn; max 6 NPC per piano.
 function makeNpc() {
   const npc = new THREE.Group();
   const skinColor = 0xf5deb3; // wheat / pelle umana stylizzata
@@ -5179,6 +5239,15 @@ function spawnNpcsAtFloor(floor) {
 // White noise filtrato + impulsive tick + clock. 3-5s di suono ambientale
 // alla fermata al piano, coerente con la zona (lobby/uffici/hotel/attico).
 const CORRIDOR_AMBIENT = []; // oggetti {osc/gain/freq} attivi da fermare
+
+// Polish Pack V4 Step 4 (D24): playCorridorAmbient — suoni contestuali del
+// corridoio per zona piano (lobby/uffici/hotel/attico). Piu' "ambient" del
+// startCorridorAudio (loop continuo): qui si tratta di beep brevi al
+// raggiungimento del piano (es. "ding lobby", "keyboard office", ecc.).
+// Chiamato da buildCorridor / enterCabin al cambio piano.
+//
+// Contratti: nessuno specifico (audio side-effect).
+// Performance: ~87 righe. ~1 chiamata per cambio piano (rara).
 function playCorridorAmbient(floor) {
   if (!audioCtx || state.muted || !audioReady) return;
   // Stop eventuali suoni precedenti
@@ -5267,6 +5336,15 @@ function playCorridorAmbient(floor) {
   // Salva per cleanup
   CORRIDOR_AMBIENT.push(...soundNodes);
 }
+// Polish Pack V4 Step 4 (D24): tickNpcs — animazione NPC presenti nel
+// corridoio corrente. Ogni NPC ha walkTime + bobPhase + dialogo attivo.
+// Il movimento usa walkTime integrato (no Math.sin diretto) per evitare
+// scattosita' quando now e' discontinuo. Gestisce anche dialogo quando
+// il player e' vicino (< 2m) e fade-in/fade-out visibility quando la cabina
+// si muove (gli NPC entrano/escono dal corridoio).
+//
+// Contratti: D9 (helper puri parametrizzati).
+// Performance: ~85 righe. ~O(N_NPC) per frame; max 6 NPC => costo trascurabile.
 function tickNpcs(dt, now) {
   // Polish Pack V2 Step 10a · Fix scattosita' movimento NPC:
   // - walkTime accumulato (no Math.sin(now) diretto che salta se now discontinuo)
@@ -5358,7 +5436,15 @@ function tickNpcs(dt, now) {
 const GIORNI = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
 const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
 
-// funzione per disegnare l'icona meteo grande
+// Polish Pack V4 Step 4 (D24): drawWeatherIconBig — icona meteo grande per
+// il display pubblicitario (drawWeatherScreen). Disegna cerchio + raggi
+// animati in base a `type` ('sunny'|'partly'|'cloudy'|'rain'|'storm'|'snow'
+// |'fog'|'hail'|'mist'|'wind') e `animT` (tempo animazione in secondi per
+// rotazione raggi, caduta gocce/neve/grandine, oscillazione nebbia).
+//
+// Contratti D-key: nessuno specifico (rendering puro canvas 2D).
+// Performance: ~134 righe. ~1 chiamata per rebuild schermata meteo
+// (ogni AD_SCREEN_DURATION secondi in updateAdScreen).
 function drawWeatherIconBig(ctx, cx, cy, r, type, animT) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -6179,6 +6265,14 @@ function renderDisplayStaticLayer(ctx) {
   ctx.fillText(HOTEL_CONFIG.systemName + ' · ' + HOTEL_CONFIG.systemYear, W/2, 1080);
 }
 
+// Polish Pack V4 Step 4 (D24): renderDisplaySemistaticLayer — overlay
+// semi-statico del display touch: header con logo hotel + data corrente + box
+// passeggeri + footer brand. Cambia solo 1 volta al minuto (data) o su cambio
+// stato, quindi usiamo cache LRU keyed su minute+lang (V3 Step 5 Q5.1).
+//
+// Contratti D-key: D9 (helper puri), D16 (textureCache LRU).
+// Performance: ~107 righe. ~1 redraw/minuto (vs 60Hz del dynamic layer).
+// Cache invalidata da markDisplaySemistaticDirty in loop() ogni 60s.
 function renderDisplaySemistaticLayer(ctx, animT) {
   const W = displayCanvas.width;
   // ---- HEADER: solo titolo + data (orologio e passeggeri sono nel layer dinamico) ----
@@ -6288,6 +6382,30 @@ function renderDisplaySemistaticLayer(ctx, animT) {
   }
 }
 
+// Polish Pack V4 Step 4 (D24): renderDisplayDynamicLayer — overlay dinamico
+// del display touch della cabina (orologio + passeggeri + freccia intenzione +
+// annuncio arrival + num piano). Disegnato ogni frame sopra lo strato
+// semi-statico (renderDisplaySemistaticLayer) e lo strato statico
+// (renderDisplayStaticLayer), cache LRU abilitata (Polish Pack V3 Step 5
+// Q5.1: l'invalidazione della cache viene fatta da markDisplayDynamicDirty
+// quando animT o lo state cambiano).
+//
+// Sezioni disegnate (5):
+//   1. HEADER overlay: orologio HH:MM + contatore passeggeri (max 8).
+//   2. Freccia intenzione (▲/▼) oppure freccia arrivo (↓/↑) sopra il floor
+//      corrente; posizione dipende da moveFrom/moveTo (animazione crossfade
+//      gestita da tickArrowFade con easing).
+//   3. numero piano corrente grande al centro (font size dipendente da
+//      `floorShown` aggiornato da updateFloorDisplay).
+//   4. label "PIANO" sotto il numero (i18n STRINGS[lang].floorStripLabel).
+//   5. badge arrival "IN ARRIVO" con fade-in 200ms quando la cabina sta
+//      per fermarsi al piano target.
+//
+// Contratti D-key: D9 (helper puri in BossHotelPure), D15 (animazione
+// rispetta state.reducedMotion).
+//
+// Performance: ~148 righe. Ridipinto ogni frame (~60Hz). Disabilitato
+// se browser perde visibilita' (loop() tickrate throttling V3 Step 1b).
 function renderDisplayDynamicLayer(ctx, animT) {
   const W = displayCanvas.width, H = displayCanvas.height;
   // ---- HEADER overlay: orologio + passeggeri ----
@@ -6690,6 +6808,15 @@ function stopWhoosh() {
 // Volume molto basso (~0.03), rispetta state.muted, si interrompe su allarme/OOO/movimento.
 let musicNodes = null;   // {osc1, osc2, osc3, lfo, gain, lfoGain, filter, timer}
 let musicTrack = null;   // 'jazz' | 'classica' | null
+// Polish Pack V4 Step 4 (D24): startMusic — musica di sottofondo "elevator
+// lounge" (jazz soft o classica) via 3 oscillatori + LFO modulazione freq.
+// Auto-stop quando muto/allarme/OOO. Volume modulato da state.audio.music
+// (V3 Step 3 QoL). Track scelto random al primo avvio via pickTemperature
+// helper-style (in realta' inline Math.random).
+//
+// Contratti: V3 D-key D3 (settings audio QoL).
+// Performance: ~74 righe. Crea 4 oscillator + 2 gain + 1 filter; no-op
+// se musicNodes gia' attivo o audio disabilitato.
 function startMusic() {
   if (musicNodes || state.muted || state.alarmOn || state.outOfOrder || !audioReady) return;
   ensureAudio();
@@ -6817,142 +6944,15 @@ function startCorridorAudio(theme) {
   const layers = [];
   const now = audioCtx.currentTime;
 
+  // Polish Pack V4 Step 4 (D24): setup audio per tema estratto in 4 helper
   if (theme === 'lobby') {
-    // Lobby: brusio di fondo + tintinnio tazzine
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
-    noise.loop = true;
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = 600;
-    noiseFilter.Q.value = 0.8;
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.06;   // BUG FIX v2: alzato da 0.025 (troppo basso)
-    noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
-    noise.start();
-    layers.push({ node: noise, gain: noiseGain, type: 'noise' });
-
-    // Tintinnio: square 1200Hz modulato a 4Hz (tremolo).
-    // BUG FIX v2: oscGain base > 0 perche' WebAudio clampa i gain a 0 minimo;
-    // con base=0 e LFO ampiezza 0.012 il gain oscillava -0.012..+0.012 (sotto 0)
-    // e il suono era SILENZIOSO.
-    const osc = audioCtx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.value = 1200;
-    const oscGain = audioCtx.createGain();
-    oscGain.gain.value = 0.012;   // base udibile
-    const lfo = audioCtx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 4;
-    const lfoGain = audioCtx.createGain();
-    lfoGain.gain.value = 0.006;   // tremolo ±0.006 attorno al base 0.012
-    lfo.connect(lfoGain).connect(oscGain.gain);
-    osc.connect(oscGain).connect(masterGain);
-    osc.start();
-    lfo.start();
-    layers.push({ node: osc, gain: oscGain, type: 'osc' });
+    setupLobbyAudio(masterGain, layers);
   } else if (theme === 'office') {
-    // Uffici: ticchettio tastiere lontano (impulsi brevi) + brusio sommesso
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
-    noise.loop = true;
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.value = 400;
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.015
-    noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
-    noise.start();
-    layers.push({ node: noise, gain: noiseGain, type: 'noise' });
-
-    // Ticchettio: oscillatore che fa click brevi ogni 200-400ms
-    const tickGain = audioCtx.createGain();
-    tickGain.gain.value = 0;
-    tickGain.connect(masterGain);
-    let tickInterval = null;
-    function scheduleTick() {
-      const t = audioCtx.currentTime;
-      const click = audioCtx.createOscillator();
-      click.type = 'square';
-      click.frequency.value = 800 + Math.random() * 400;
-      const cg = audioCtx.createGain();
-      cg.gain.value = 0;
-      click.connect(cg).connect(tickGain);
-      cg.gain.setValueAtTime(0.05, t);   // BUG FIX v2: alzato da 0.02
-      cg.gain.linearRampToValueAtTime(0, t + 0.04);
-      click.start(t);
-      click.stop(t + 0.05);
-    }
-    tickInterval = setInterval(() => {
-      if (!corridorAudioNodes || corridorAudioTheme !== 'office') return;
-      scheduleTick();
-      if (Math.random() < 0.3) scheduleTick(); // occasionale doppio click
-    }, 250);
-    layers.push({ node: null, gain: tickGain, type: 'tick', interval: tickInterval });
+    setupOfficeAudio(masterGain, layers);
   } else if (theme === 'hotel') {
-    // Hotel: silenzio ovattato + ticchettio orologio
-    const drone = audioCtx.createOscillator();
-    drone.type = 'sine';
-    drone.frequency.value = 60;
-    const droneGain = audioCtx.createGain();
-    droneGain.gain.value = 0.025;   // BUG FIX v2: alzato da 0.01
-    drone.connect(droneGain).connect(masterGain);
-    drone.start();
-    layers.push({ node: drone, gain: droneGain, type: 'osc' });
-
-    // Orologio: click secco ogni secondo
-    const clockGain = audioCtx.createGain();
-    clockGain.gain.value = 0;
-    clockGain.connect(masterGain);
-    let clockCount = 0;
-    const clockInterval = setInterval(() => {
-      if (!corridorAudioNodes || corridorAudioTheme !== 'hotel') return;
-      const t = audioCtx.currentTime;
-      const click = audioCtx.createOscillator();
-      click.type = 'triangle';
-      click.frequency.value = 1000;
-      const cg = audioCtx.createGain();
-      cg.gain.value = 0;
-      click.connect(cg).connect(clockGain);
-      cg.gain.setValueAtTime(0.06, t);   // BUG FIX v2: alzato da 0.025
-      cg.gain.linearRampToValueAtTime(0, t + 0.08);
-      click.start(t);
-      click.stop(t + 0.1);
-      clockCount++;
-    }, 1000);
-    layers.push({ node: null, gain: clockGain, type: 'clock', interval: clockInterval });
+    setupHotelAudio(masterGain, layers);
   } else if (theme === 'penthouse') {
-    // Attico: pianoforte lontano (sweep sinusoidale lento) + vento
-    // Sweep sinusoidale lento: oscillatore la cui frequenza varia
-    const piano = audioCtx.createOscillator();
-    piano.type = 'sine';
-    piano.frequency.value = 220;
-    const pianoGain = audioCtx.createGain();
-    pianoGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.018
-    // LFO che modula la frequenza tra 220 e 440 Hz lentamente (5s periodo)
-    const pianoLFO = audioCtx.createOscillator();
-    pianoLFO.type = 'sine';
-    pianoLFO.frequency.value = 0.2;
-    const pianoLFOGain = audioCtx.createGain();
-    pianoLFOGain.gain.value = 110;
-    pianoLFO.connect(pianoLFOGain).connect(piano.frequency);
-    piano.connect(pianoGain).connect(masterGain);
-    piano.start();
-    pianoLFO.start();
-    layers.push({ node: piano, gain: pianoGain, type: 'osc' });
-
-    // Vento: white noise filtrato highpass
-    const wind = audioCtx.createBufferSource();
-    wind.buffer = makeNoiseBuffer(audioCtx, 3.0);
-    wind.loop = true;
-    const windFilter = audioCtx.createBiquadFilter();
-    windFilter.type = 'highpass';
-    windFilter.frequency.value = 800;
-    const windGain = audioCtx.createGain();
-    windGain.gain.value = 0.03;   // BUG FIX v2: alzato da 0.012
-    wind.connect(windFilter).connect(windGain).connect(masterGain);
-    wind.start();
-    layers.push({ node: wind, gain: windGain, type: 'noise' });
+    setupPenthouseAudio(masterGain, layers);
   }
 
   corridorAudioNodes = { theme, layers, masterGain };
@@ -6961,6 +6961,146 @@ function startCorridorAudio(theme) {
   const corrMul = (state.audio && typeof state.audio.music === 'number')
     ? state.audio.music : 1.0;
   try { masterGain.gain.linearRampToValueAtTime(0.8 * corrMul, now + 1.0); } catch(e) {}
+}
+
+// Polish Pack V4 Step 4 (D24): lobby = brusio di fondo + tintinnio tazzine.
+// Tintinnio: square 1200Hz modulato a 4Hz (tremolo). BUG FIX v2: oscGain base > 0
+// perche' WebAudio clampa i gain a 0 minimo; con base=0 e LFO ampiezza 0.012
+// il gain oscillava -0.012..+0.012 (sotto 0) e il suono era SILENZIOSO.
+function setupLobbyAudio(masterGain, layers) {
+  // Brusio bandpass 600Hz
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
+  noise.loop = true;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 600;
+  noiseFilter.Q.value = 0.8;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0.06;   // BUG FIX v2: alzato da 0.025 (troppo basso)
+  noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+  noise.start();
+  layers.push({ node: noise, gain: noiseGain, type: 'noise' });
+  // Tintinnio tremolo
+  const osc = audioCtx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.value = 1200;
+  const oscGain = audioCtx.createGain();
+  oscGain.gain.value = 0.012;   // base udibile
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 4;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0.006;   // tremolo ±0.006 attorno al base 0.012
+  lfo.connect(lfoGain).connect(oscGain.gain);
+  osc.connect(oscGain).connect(masterGain);
+  osc.start();
+  lfo.start();
+  layers.push({ node: osc, gain: oscGain, type: 'osc' });
+}
+
+// Polish Pack V4 Step 4 (D24): office = ticchettio tastiere lontano + brusio.
+// Click oscillator 800-1200Hz ogni ~250ms, occasionali doppi click.
+function setupOfficeAudio(masterGain, layers) {
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = makeNoiseBuffer(audioCtx, 2.0);
+  noise.loop = true;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'lowpass';
+  noiseFilter.frequency.value = 400;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.015
+  noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+  noise.start();
+  layers.push({ node: noise, gain: noiseGain, type: 'noise' });
+  // Tick generator: setInterval si autospegne se tema cambia (vedi cleanup in stopCorridorAudio)
+  const tickGain = audioCtx.createGain();
+  tickGain.gain.value = 0;
+  tickGain.connect(masterGain);
+  function scheduleTick() {
+    const t = audioCtx.currentTime;
+    const click = audioCtx.createOscillator();
+    click.type = 'square';
+    click.frequency.value = 800 + Math.random() * 400;
+    const cg = audioCtx.createGain();
+    cg.gain.value = 0;
+    click.connect(cg).connect(tickGain);
+    cg.gain.setValueAtTime(0.05, t);   // BUG FIX v2: alzato da 0.02
+    cg.gain.linearRampToValueAtTime(0, t + 0.04);
+    click.start(t);
+    click.stop(t + 0.05);
+  }
+  const tickInterval = setInterval(() => {
+    if (!corridorAudioNodes || corridorAudioTheme !== 'office') return;
+    scheduleTick();
+    if (Math.random() < 0.3) scheduleTick(); // occasionale doppio click
+  }, 250);
+  layers.push({ node: null, gain: tickGain, type: 'tick', interval: tickInterval });
+}
+
+// Polish Pack V4 Step 4 (D24): hotel = silenzio ovattato + ticchettio orologio.
+// Drone 60Hz molto basso + click triangle 1000Hz ogni secondo (orologio classico).
+function setupHotelAudio(masterGain, layers) {
+  const drone = audioCtx.createOscillator();
+  drone.type = 'sine';
+  drone.frequency.value = 60;
+  const droneGain = audioCtx.createGain();
+  droneGain.gain.value = 0.025;   // BUG FIX v2: alzato da 0.01
+  drone.connect(droneGain).connect(masterGain);
+  drone.start();
+  layers.push({ node: drone, gain: droneGain, type: 'osc' });
+  const clockGain = audioCtx.createGain();
+  clockGain.gain.value = 0;
+  clockGain.connect(masterGain);
+  let clockCount = 0;
+  const clockInterval = setInterval(() => {
+    if (!corridorAudioNodes || corridorAudioTheme !== 'hotel') return;
+    const t = audioCtx.currentTime;
+    const click = audioCtx.createOscillator();
+    click.type = 'triangle';
+    click.frequency.value = 1000;
+    const cg = audioCtx.createGain();
+    cg.gain.value = 0;
+    click.connect(cg).connect(clockGain);
+    cg.gain.setValueAtTime(0.06, t);   // BUG FIX v2: alzato da 0.025
+    cg.gain.linearRampToValueAtTime(0, t + 0.08);
+    click.start(t);
+    click.stop(t + 0.1);
+    clockCount++;
+  }, 1000);
+  layers.push({ node: null, gain: clockGain, type: 'clock', interval: clockInterval });
+}
+
+// Polish Pack V4 Step 4 (D24): penthouse = pianoforte lontano + vento.
+// Piano: sine 220Hz con LFO 0.2Hz che modula freq ±110 (sweep lento 220-440Hz).
+// Vento: white noise highpass 800Hz (brezza lontana).
+function setupPenthouseAudio(masterGain, layers) {
+  const piano = audioCtx.createOscillator();
+  piano.type = 'sine';
+  piano.frequency.value = 220;
+  const pianoGain = audioCtx.createGain();
+  pianoGain.gain.value = 0.04;   // BUG FIX v2: alzato da 0.018
+  const pianoLFO = audioCtx.createOscillator();
+  pianoLFO.type = 'sine';
+  pianoLFO.frequency.value = 0.2;
+  const pianoLFOGain = audioCtx.createGain();
+  pianoLFOGain.gain.value = 110;
+  pianoLFO.connect(pianoLFOGain).connect(piano.frequency);
+  piano.connect(pianoGain).connect(masterGain);
+  piano.start();
+  pianoLFO.start();
+  layers.push({ node: piano, gain: pianoGain, type: 'osc' });
+  const wind = audioCtx.createBufferSource();
+  wind.buffer = makeNoiseBuffer(audioCtx, 3.0);
+  wind.loop = true;
+  const windFilter = audioCtx.createBiquadFilter();
+  windFilter.type = 'highpass';
+  windFilter.frequency.value = 800;
+  const windGain = audioCtx.createGain();
+  windGain.gain.value = 0.03;   // BUG FIX v2: alzato da 0.012
+  wind.connect(windFilter).connect(windGain).connect(masterGain);
+  wind.start();
+  layers.push({ node: wind, gain: windGain, type: 'noise' });
 }
 
 function stopCorridorAudio() {
@@ -7532,6 +7672,16 @@ setDoors(true);
   setTimeout(() => updateFloorDisplay(), 1500);
   return true;
 }
+// Polish Pack V4 Step 4 (D24): tickMaintenance — refresh ~10Hz dei valori
+// nel maintenance overlay (#m-fps, #m-dc, #m-floor, ecc.) e degli eventi
+// recenti nel log. Attivo solo se state.maintenanceMode=true (Shift+M).
+// Aggiorna anche il colore severity degli eventi (severityColor V3 Step 6
+// Q6.2) e applica i filtri categoria correnti (filterLogEvents Q6.3).
+//
+// Contratti D-key: D9 (helper puri chiamabili), V3 Q6.2/Q6.3 (severity + filter).
+//
+// Performance: ~110 righe. ~10Hz refresh quando overlay visibile; no-op
+// (early return) quando state.maintenanceMode=false. Costo trascurabile.
 function tickMaintenance(now) {
   if (!state.maintenanceMode) return;
   // Polish Pack V2 Step 8: aggiorna label dinamici del maintenance overlay
@@ -7796,6 +7946,16 @@ function initMobileDetection() {
 //   - Joystick virtuale sx = movimento analogico WASD.
 //   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
 // Aggiunge `body.mobile-mode` per attivare HUD responsive via CSS.
+// Polish Pack V4 Step 4 (D24): initTouchControls — bind eventi touch per
+// mobile (state.isMobile=true). Include:
+//   - Joystick virtuale sx = movimento analogico WASD.
+//   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
+//   - Rotate overlay se device portrait (forced landscape via CSS).
+// Aggiunge `body.mobile-mode` per attivare HUD responsive via CSS (touch
+// controls visibili, panel-help collassato, mode badge compatto).
+//
+// Contratti D-key: D23 (aria-label + role=application sul joystick).
+// Performance: ~110 righe. Bind una volta all'avvio; no-op se non mobile.
 function initTouchControls() {
   if (!state.isMobile) return;
   // Aggiungi classe al body per attivare CSS mobile
@@ -9277,8 +9437,15 @@ addEventListener('keyup', e => { keys[e.code] = false; });
 // Contratti: nessun D-key diretto, ma utilizza state.playerInCabin
 // (settato da enterCabin/exitCabin, V1.6 #14).
 //
-// Performance: ~30 righe. Chiamato ogni frame. Nessun side-effect visibile
-// quando in cabina (early return) → costo trascurabile.
+// Polish Pack V4 Step 4 (D24): tickPlayer — movimento FPS del giocatore
+// quando nel corridoio (state.playerInCabin=false). WASD analogico (non
+// discreto), offset normalizzato [-1..1] moltiplica baseSpeed. Aggiorna
+// posizione camera + bob altezza (Math.sin(walkTime)). Early return se
+// player e' in cabina (costo trascurabile).
+//
+// Contratti: D9 (helper puri parametrizzati), D15 (micro-bob skippato
+// se reduced-motion attivo).
+// Performance: ~86 righe. ~60Hz quando in corridoio; no-op in cabina.
 function tickPlayer(dt) {
   if (state.playerInCabin) return;
   let fwd = 0, side = 0;
@@ -9434,6 +9601,27 @@ function assertStateInvariants() {
 // LOOP
 // ============================================================
 let last = performance.now();
+
+// Polish Pack V4 Step 4 (D24): loop — game loop principale RAF-driven.
+// Ticka nell'ordine:
+//   1. dt = clamp((now-last)/1000, max 50ms) — anti-stutter quando tab torna visibile.
+//   2. tickMove(dt) — movimento cabina + vibrazione + display.
+//   3. tickDoors(dt) — animazione porte + IR sensor.
+//   4. tickPlayer(dt) — FPS nel corridoio (early return in cabina).
+//   5. tickNpcs(dt, now) — animazione NPC corridoio corrente.
+//   6. tickMaintenance(now) — refresh overlay manutentore (early return se off).
+//   7. tickMaintenanceLog(now) — log severity/category events.
+//   8. tickTimeOfDay(now) — ciclo giorno/notte cabina.
+//   9. tickFadeStates(dt) — fade-in citofono/OOO/alarm (crossfade 200ms).
+//  10. tickInterphoneCall(now) — lampeggio pulsante citofono + timeout 15s.
+//  11. tickBreathButtons + tickArrowFade — micro-animazioni cosmetiche.
+//  12. renderer.render(scene, camera) — present frame.
+//
+// Contratti D-key: D9 (helper puri in BossHotelPure), D12 (reduced-motion
+// salta micro-animazioni), D15 (micro-animazioni rispettano reducedMotion).
+//
+// Performance: ~99 righe. ~60Hz quando visibile. dt clamp previene "salti"
+// dopo tab-background.
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -10005,6 +10193,18 @@ const PRESET_DATASET = ['boss', 'sky', 'paris', 'burj'];
 // Polish Pack V2 Step 8: applica testi dinamici a TUTTI gli elementi HTML
 // della UI (rigenera innerHTML per tabelle/overlay, setta textContent per
 // elementi singoli). Chiamata all'init e ad ogni setLang().
+// Polish Pack V4 Step 4 (D24): applyLangToDOM — rigenera TUTTI gli elementi
+// dinamici della UI (start screen, panel-help, topbar, customizer, tutorial,
+// manutentore overlay, customizer preset/form, aria-label D23) usando le
+// stringhe localizzate in STRINGS[state.lang]. Chiamata all'init e ad ogni
+// setLang() — copertura completa IT/EN.
+//
+// Contratti D-key: D8 (i18n IT/EN via STRINGS), D23 (aria-label via
+// applyAriaLabels, chiamata in coda a questa funzione).
+//
+// Performance: ~87 righe. ~10-15 regen al boot (cost ~1ms); on change lang
+// (~50ms per via di innerHTML rebuild del customizer). Nessun throttling
+// necessario perche' il cambio lingua e' azione utente esplicita.
 function applyLangToDOM() {
   const s = STRINGS[state.lang];
 

@@ -206,8 +206,8 @@ per step via `question` tool).
 |---|---|---|---|---|
 | 1 | Test exposure gap | ✅ done (V2/V3 avevano già coperto) | — | — |
 | 2 | Routing bug fix | ✅ done | c98ba78 + merge 32fc61e | feature/v4-step-2-routing-bug |
-| 3 | A11y aria attributes | ✅ done | (in arrivo) | feature/v4-step-3-a11y-aria |
-| 4 | Funzioni lunghe + commenti | ⏳ pending | — | — |
+| 3 | A11y aria attributes | ✅ done | 8bd36c5 + merge 7c68cea | feature/v4-step-3-a11y-aria |
+| 4 | Funzioni lunghe + commenti | ✅ done | (in arrivo) | feature/v4-step-4-fn-comments |
 | 5 | Helper `mergePlanes` DRY | ⏳ pending | — | — |
 | 6 | Open source boilerplate | ⏳ pending | — | — |
 
@@ -373,4 +373,49 @@ screenshot `tests-step3-rerun.png` mostra 226/226 PASS; smoke test
 
 **Branch**: `feature/v4-step-3-a11y-aria`.
 
-**Prossimo step proposto**: Step 4 (Funzioni lunghe + commenti, T2a).
+### 2026-09-25 — Step 4 (Funzioni lunghe + commenti D24)
+
+**Decisione** (Q24.1 via `question` tool): **Commenti narrativi + split
+minimi** (A). Aggiunti commenti narrativi stile V3 Step 7 alle top 16
+funzioni >=80 righe + estratti helper minimi da `buildCorridor` e
+`startCorridorAudio` (gli unici 2 >=150). Risultato: 0 funzioni >=150.
+
+**Modifiche al codice** (elevator.html):
+- **Split 1**: `buildCorridor` 178 → 76 righe. Estratti due helper:
+  - `buildCorridorShell(theme, sZ, eZ)` (60 righe): pavimento + tappeto +
+    soffitto + 3 pareti merged.
+  - `buildCorridorLights(sZ)` (37 righe): 4 PointLight + LED planes + frame
+    boxes merged.
+- **Split 2**: `startCorridorAudio` 156 → ~50 righe. Estratti 4 helper
+  per-tema (~30 righe ciascuno):
+  - `setupLobbyAudio(masterGain, layers)` — brusio + tintinnio tremolo.
+  - `setupOfficeAudio(masterGain, layers)` — ticchettio tastiere + brusio.
+  - `setupHotelAudio(masterGain, layers)` — drone 60Hz + clock tick.
+  - `setupPenthouseAudio(masterGain, layers)` — piano LFO sweep + vento.
+- **Commenti narrativi** aggiunti a 16 funzioni >=80: `renderDisplayDynamicLayer`,
+  `addRoomDoor`, `drawWeatherIconBig`, `drawMovingSign`, `tickMaintenance`,
+  `initTouchControls`, `renderDisplaySemistaticLayer`, `loop`, `makeNpc`,
+  `playCorridorAmbient`, `applyLangToDOM`, `tickPlayer`, `tickNpcs`,
+  `drawClockFace`, `drawFloorSign`, `startMusic`. Stile V3 Step 7:
+  `Polish Pack V4 Step 4 (D24):` + scopo + sezioni + contratti D-key +
+  performance.
+
+**Helper tool**: `scripts/find-long-fns.js` (brace-counting corretto,
+37 righe) rieseguibile dopo ogni refactor importante. Identifica le top
+N funzioni con conteggio rigoroso (la prima versione naive basata su
+"next-function boundary" sovrastimava `updateAdScreen` a 484 — in
+realta' 14 — per via di nested functions tra top-level `function` declarations).
+
+**Contratto D24** aggiunto ad AGENTS.md: tutte le funzioni <150 + 16
+commenti narrativi sulle funzioni >=80.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- `node scripts/find-long-fns.js` → 0 funzioni >=150 (target raggiunto).
+- Test screenshot `tests-step4.png` → 226/226 PASS.
+- Smoke test `elev-step4.png` → start screen pulito.
+
+**Branch**: `feature/v4-step-4-fn-comments`.
+
+**Prossimo step proposto**: Step 5 (Helper `mergePlanes` DRY, T2b)
+— unico step T2 rimasto aperto.
