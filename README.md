@@ -703,20 +703,21 @@ Il sito sarà live in pochi minuti su `https://<user>.github.io/<repo>/`.
 
 Il progetto è un singolo file statico, quindi può essere deployato ovunque:
 
-### Opzione 1: Spazio statico (consigliato)
-Il deploy corrente usa `website_deploy` che pubblica su un URL pubblico. Il file `dist/index.html` è la copia deployata.
+### Opzione 1: GitHub Pages (consigliata per repo pubblici)
+1. Metti il progetto in un repo GitHub pubblico
+2. Settings → Pages → Source: `main` branch, `/ (root)` → Save
+3. Apri `https://<user>.github.io/<repo>/` (oppure `https://<user>.github.io/<repo>/elevator.html`
+   se preferisci non rinominare). Il file `dist/index.html` è una copia identica
+   di `elevator.html` e può essere servito direttamente come `<root>/index.html`.
 
-### Opzione 2: GitHub Pages
-1. Metti `elevator.html` in un repo, rinominato in `index.html`
-2. Settings → Pages → Source: `main` branch → Save
-3. Apri `https://<user>.github.io/<repo>/`
+### Opzione 2: Netlify / Vercel / Cloudflare Pages
+1. Connetti il repo o trascina la cartella del progetto sulla dashboard
+2. Il sito sarà live in pochi secondi (nessuna build, nessuna env var)
 
-### Opzione 3: Netlify / Vercel
-1. Trascina la cartella del progetto sulla dashboard
-2. Il sito sarà live in pochi secondi
-
-### Opzione 4: Server proprio
-Copia `elevator.html` (rinominato in `index.html`) sul web server.
+### Opzione 3: Server proprio (S3, nginx, Apache, …)
+Copia `elevator.html` (rinominato in `index.html`) sul web server. Non servono
+header particolari: è un singolo file statico con dipendenza CDN (three.js via
+importmap).
 
 ---
 
