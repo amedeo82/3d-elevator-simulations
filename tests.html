@@ -395,25 +395,27 @@
           const r = P.pickNextFloor(q, 'up');
           assertEq(r.floor, 8);
         });
-        test('inversione: cabina sale, coda tutta down → va al piano piu basso', () => {
+        test('inversione: cabina sale, coda tutta down → va al piano piu alto (V4 D22)', () => {
           const q = [
             { floor: 9, direction: 'down' },
             { floor: 2, direction: 'down' }
           ];
           // cabina sale → cerca up; non c'è → inversione a scendere
-          // → cabina va al piano piu basso (piu lontano in giu)
+          // → cabina va al piano piu ALTO dei down (MAX = 9), poi scende
+          // servendo i restanti. V4 Step 2 D22: look algorithm asimmetrico.
           const r = P.pickNextFloor(q, 'up');
-          assertEq(r.floor, 2);
+          assertEq(r.floor, 9);
         });
-        test('inversione: cabina scende, coda tutta up → va al piano piu alto', () => {
+        test('inversione: cabina scende, coda tutta up → va al piano piu basso (V4 D22)', () => {
           const q = [
             { floor: 3, direction: 'up' },
             { floor: 8, direction: 'up' }
           ];
           // cabina scende → cerca down; non c'è → inversione a salire
-          // → cabina va al piano piu alto (piu lontano in su)
+          // → cabina va al piano piu BASSO degli up (MIN = 3), poi sale
+          // servendo i restanti. V4 Step 2 D22: look algorithm asimmetrico.
           const r = P.pickNextFloor(q, 'down');
-          assertEq(r.floor, 8);
+          assertEq(r.floor, 3);
         });
         test('lastDirection null → FIFO', () => {
           const q = [
@@ -1027,21 +1029,25 @@
           ];
           assertEq(P.pickNextFloor(q, 'up').floor, 7);
         });
-        test('lastDirection=up, queue tutta down → ritorna min floor', () => {
+        test('lastDirection=up, queue tutta down → ritorna MAX floor (V4 D22)', () => {
           const q = [
             {floor:3, direction:'down'},
             {floor:7, direction:'down'},
             {floor:5, direction:'down'}
           ];
-          assertEq(P.pickNextFloor(q, 'up').floor, 3);
+          // inversione up→down: vado al piu' ALTO dei down (MAX = 7),
+          // poi scendo servendo gli altri. V4 Step 2 D22.
+          assertEq(P.pickNextFloor(q, 'up').floor, 7);
         });
-        test('lastDirection=down, queue tutta up → ritorna max', () => {
+        test('lastDirection=down, queue tutta up → ritorna MIN floor (V4 D22)', () => {
           const q = [
             {floor:2, direction:'up'},
             {floor:8, direction:'up'},
             {floor:5, direction:'up'}
           ];
-          assertEq(P.pickNextFloor(q, 'down').floor, 8);
+          // inversione down→up: vado al piu' BASSO degli up (MIN = 2),
+          // poi risalgo servendo gli altri. V4 Step 2 D22.
+          assertEq(P.pickNextFloor(q, 'down').floor, 2);
         });
         test('mixed direction: priorita same-dir', () => {
           const q = [
@@ -1060,14 +1066,15 @@
           ];
           assertEq(P.pickNextFloor(q, 'up').floor, 7);
         });
-        test('inversione: no same-dir, fallback opp-dir (MIN down)', () => {
+        test('inversione: no same-dir, fallback opp-dir (MAX down, V4 D22)', () => {
           const q = [
             {floor:2, direction:'down'},
             {floor:6, direction:'down'}
           ];
-          // last=up, no up/null → fallback down → ritorna MIN down = 2
-          // (per implementazione attuale: quando oppDir=down, riduce a MIN)
-          assertEq(P.pickNextFloor(q, 'up').floor, 2);
+          // last=up, no up/null → fallback down → ritorna MAX down = 6.
+          // V4 Step 2 D22: la cabina prosegue nella direzione attuale fino
+          // al farthest down, poi scende servendo i restanti.
+          assertEq(P.pickNextFloor(q, 'up').floor, 6);
         });
         test('coda mista con lastDirection=null → primo elemento', () => {
           const q = [
@@ -1075,6 +1082,55 @@
             {floor:8, direction:'down'}
           ];
           assertEq(P.pickNextFloor(q, null).floor, 3);
+        });
+        // ---- V4 Step 2 D22: look algorithm asimmetrico (nuovi edge cases) ----
+        test('V4 D22 inversione up→down: MAX della coda opposta (coda singola)', () => {
+          // last=up, coda solo down → pickNextFloor ritorna il MAX (= unico elemento)
+          assertEq(P.pickNextFloor([{floor:5, direction:'down'}], 'up').floor, 5);
+        });
+        test('V4 D22 inversione down→up: MIN della coda opposta (coda singola)', () => {
+          // last=down, coda solo up → pickNextFloor ritorna il MIN (= unico elemento)
+          assertEq(P.pickNextFloor([{floor:5, direction:'up'}], 'down').floor, 5);
+        });
+        test('V4 D22 inversione up→down: MAX con coda disordinata', () => {
+          // last=up, coda down=[2,8,5,1,9] → MAX = 9
+          const q = [
+            {floor:2, direction:'down'},
+            {floor:8, direction:'down'},
+            {floor:5, direction:'down'},
+            {floor:1, direction:'down'},
+            {floor:9, direction:'down'}
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 9);
+        });
+        test('V4 D22 inversione down→up: MIN con coda disordinata', () => {
+          // last=down, coda up=[2,8,5,1,9] → MIN = 1
+          const q = [
+            {floor:2, direction:'up'},
+            {floor:8, direction:'up'},
+            {floor:5, direction:'up'},
+            {floor:1, direction:'up'},
+            {floor:9, direction:'up'}
+          ];
+          assertEq(P.pickNextFloor(q, 'down').floor, 1);
+        });
+        test('V4 D22 inversione con direzione null ignorata (no same-dir match)', () => {
+          // last=up, coda ha solo 'down' e null → null NON matcha 'up' come same-dir,
+          // quindi cade in inversione e si applica MAX alla coda down.
+          const q = [
+            {floor:3, direction:'down'},
+            {floor:7, direction:'null'}  // 'null' stringa, non il valore null
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 3);
+        });
+        test('V4 D22 inversione up→down: priorita same-dir (null incluso) su inversione', () => {
+          // se c'e' almeno un elemento same-dir (anche null), NON inverto.
+          // last=up, coda = [null@4, down@7] → null matcha up come same-dir → MAX = 4
+          const q = [
+            {floor:4, direction:null},
+            {floor:7, direction:'down'}
+          ];
+          assertEq(P.pickNextFloor(q, 'up').floor, 4);
         });
       });
 

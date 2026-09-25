@@ -5682,7 +5682,15 @@ function pickNextFloor(queue, lastDirection) {
     const oppDir = lastDirection === 'up' ? 'down' : 'up';
     const opp = queue.filter(r => r.direction === oppDir);
     if (opp.length > 0) {
-      return oppDir === 'up'
+      // Polish Pack V4 Step 2 (D22): inversione asimmetrica (look algorithm).
+      //   - inverto a 'down' (lastDir='up') → MAX della coda down: vado al piu'
+      //     alto tra i down cosi' la cabina prosegue nella direzione attuale
+      //     fino al farthest down, poi serve i restanti scendendo.
+      //   - inverto a 'up'   (lastDir='down') → MIN della coda up: vado al
+      //     piu' basso tra gli up cosi' la cabina scende al farthest up,
+      //     poi risale servendo i restanti.
+      // Vedi queueNextSmart() per la versione stateful con stessa logica.
+      return oppDir === 'down'
         ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
         : opp.reduce((m, r) => r.floor < m.floor ? r : m);
     }
@@ -8004,7 +8012,9 @@ function queueNextSmart(currentFloor, lastDirection) {
   // Polish Pack V2 Step 7d: routing intelligente.
   // Dato l'ultima direzione del movimento, sceglie la prossima richiesta:
   // 1. Cerca richieste con stessa direzione o null (no specifica): prendi la piu' lontana
-  // 2. Se non ci sono: inversione, prendi la piu' lontana nella direzione opposta
+  // 2. Se non ci sono: inversione asimmetrica (vedi D22, V4 Step 2)
+  //    - lastDir='up', invert to 'down' → MAX della coda down
+  //    - lastDir='down', invert to 'up' → MIN della coda up
   // 3. Fallback FIFO
   const cu = state.requestedFloors;
   if (cu.length === 0) return null;
@@ -8018,11 +8028,11 @@ function queueNextSmart(currentFloor, lastDirection) {
         return sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
       }
     }
-    // Inversione
+    // Inversione asimmetrica (D22): vedi commento esteso in pickNextFloor().
     const oppDir = lastDirection === 'up' ? 'down' : 'up';
     const opp = cu.filter(r => r.direction === oppDir);
     if (opp.length > 0) {
-      return oppDir === 'up'
+      return oppDir === 'down'
         ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
         : opp.reduce((m, r) => r.floor < m.floor ? r : m);
     }
