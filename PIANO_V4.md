@@ -207,8 +207,8 @@ per step via `question` tool).
 | 1 | Test exposure gap | ✅ done (V2/V3 avevano già coperto) | — | — |
 | 2 | Routing bug fix | ✅ done | c98ba78 + merge 32fc61e | feature/v4-step-2-routing-bug |
 | 3 | A11y aria attributes | ✅ done | 8bd36c5 + merge 7c68cea | feature/v4-step-3-a11y-aria |
-| 4 | Funzioni lunghe + commenti | ✅ done | (in arrivo) | feature/v4-step-4-fn-comments |
-| 5 | Helper `mergePlanes` DRY | ⏳ pending | — | — |
+| 4 | Funzioni lunghe + commenti | ✅ done | 0df5815 + merge | feature/v4-step-4-fn-comments |
+| 5 | Helper `mergePlanes` DRY | ✅ done | (in arrivo) | feature/v4-step-5-merge-planes |
 | 6 | Open source boilerplate | ⏳ pending | — | — |
 
 **Risultato atteso**: **6/6 step completati (100%)** se si decide di fare
@@ -419,3 +419,41 @@ commenti narrativi sulle funzioni >=80.
 
 **Prossimo step proposto**: Step 5 (Helper `mergePlanes` DRY, T2b)
 — unico step T2 rimasto aperto.
+
+### 2026-09-25 — Step 5 (Helper mergePlanes DRY D25)
+
+**Decisione** (Q25.1=A via `question` tool): **mergePlanes(transforms, material)**
+ritorna `THREE.Mesh` pronto per `corridor.add()` (null se merge fallisce).
+Refactor: 3 callsites sostituiti con 1 chiamata + fallback opzionale.
+
+**Modifiche al codice** (elevator.html):
+- Nuovo helper `mergePlanes(transforms, material, useGroups=false)` ~10
+  righe: clona ogni geometry per non mutare gli input, applica matrix,
+  mergeGeometries, ritorna Mesh o null.
+- `buildCorridorShell` (3 pareti): da 27 righe di setup manuale a 16
+  righe dichiarative con `[{geometry, matrix}, ...]`.
+- `buildCorridorLights` (4 LED planes + 4 frame boxes): da 30 righe a 14
+  con due array di transforms.
+- Esposizione in `BossHotelPure.mergePlanes`.
+
+**Test** (tests.html, +6 test / +12 assert):
+- helper esposto in BossHotelPure (1)
+- input vuoto → null (1)
+- input non-array → null (1)
+- merge 3 plane 1x1 → 12 vertici, 18 indici (1)
+- NON muta geometries di input (1)
+- mesh ritornato ha il materiale passato (1)
+- Totale suite: 226 → **232 test / 384 → 396 assert**, tutti pass.
+
+**Contratto D25** aggiunto ad AGENTS.md.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- Screenshot `tests-step5.png` → **232/232 PASS** (incluso i 6 nuovi).
+- Smoke test `elev-step5.png` → start screen pulito (il refactor del
+  merge non ha rotto la pipeline three.js di buildCorridor).
+
+**Branch**: `feature/v4-step-5-merge-planes`.
+
+**Prossimo step proposto**: Step 6 (Open source boilerplate, T3a) —
+ultimo step V4.
