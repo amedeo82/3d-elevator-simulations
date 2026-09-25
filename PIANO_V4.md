@@ -205,7 +205,7 @@ per step via `question` tool).
 | # | Step | Stato | Commit | Branch |
 |---|---|---|---|---|
 | 1 | Test exposure gap | ✅ done (V2/V3 avevano già coperto) | — | — |
-| 2 | Routing bug fix | ⏳ pending | — | — |
+| 2 | Routing bug fix | ✅ done | (in arrivo) | feature/v4-step-2-routing-bug |
 | 3 | A11y aria attributes | ⏳ pending | — | — |
 | 4 | Funzioni lunghe + commenti | ⏳ pending | — | — |
 | 5 | Helper `mergePlanes` DRY | ⏳ pending | — | — |
@@ -289,3 +289,42 @@ non rifletteva lo stato post-V3.
 
 **Prossimo step proposto**: Step 2 (routing bug fix `pickNextFloor`
 inversione), unico step T1b ancora aperto con bug logico confermato.
+
+### 2026-09-25 — Step 2 (Routing bug fix D22)
+
+**Bug identificato**: `pickNextFloor`/`queueNextSmart` applicava la regola
+`oppDir === 'up' ? MAX : MIN` per il caso "inversione", che è sbagliata
+fisicamente. La cabina prosegue nella direzione attuale fino al farthest
+della direzione opposta, poi serve i restanti tornando indietro (look
+algorithm). Le due inversioni sono quindi asimmetriche:
+
+- `lastDir='up'`, invert a `down` → MAX (highest) della coda down
+  (la cabina sale fino al piano più alto tra i down, poi scende)
+- `lastDir='down'`, invert a `up` → MIN (lowest) della coda up
+  (la cabina scende fino al piano più basso tra gli up, poi risale)
+
+**Decisione** (risposta utente via `question` tool): **MAX/MIN asimmetrico
+(standard look algorithm)**. La formulazione letterale del piano ("MAX
+per entrambe le direzioni") è stata corretta in favore dell'euristica
+fisicamente coerente.
+
+**Modifiche al codice** (elevator.html):
+- `pickNextFloor` (riga 5671-5698): inversione ora ritorna MAX se
+  `oppDir='down'`, MIN se `oppDir='up'`. Commento esteso esplicativo.
+- `queueNextSmart` (riga 8003-8031): stessa modifica per la versione
+  stateful (devono restare in sync per D9).
+
+**Test** (tests.html, 4 aggiornati + 6 nuovi = +6 netti):
+- 4 test esistenti che documentavano il vecchio comportamento
+  (aspettavano MIN per inversione up→down e MAX per inversione
+  down→up) aggiornati per riflettere la convenzione corretta.
+- 6 nuovi edge case aggiunti nella sezione `pickNextFloor (routing
+  edge cases)`: inversione con coda singola, coda disordinata,
+  priorita same-dir su inversione, ecc.
+- Totale suite: 206 → **212 test / 343 → 349 assert**, tutti pass.
+
+**Contratto D22** aggiunto ad AGENTS.md.
+
+**Verifica**: `node scripts/check-balance.js elevator.html` passa;
+screenshot `tests-step2-bottom.png` mostra 211/211 PASS; smoke test
+elevator.html (`elevator-step2-smoke.png`) mostra start screen pulito.
