@@ -2,7 +2,7 @@
 
 Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, in prima persona, costruita interamente con Three.js in un singolo file HTML.
 
-![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js) ![Status](https://img.shields.io/badge/Status-Stable-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen) ![Single--file](https://img.shields.io/badge/Single--file-HTML-orange) ![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)
+![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js) ![Status](https://img.shields.io/badge/Status-Stable-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen) ![Single--file](https://img.shields.io/badge/Single--file-HTML-orange) ![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green) ![Release](https://img.shields.io/badge/Release-v7.0-green) ![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)
 
 > **🎉 Polish Pack V4 COMPLETO (2026-09-25)** — 6/6 step (100%). D-key contracts
 > aggiunti: D22 (routing look algorithm asimmetrico), D23 (a11y ARIA + i18n),
@@ -431,11 +431,12 @@ Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticam
 
 ## 🎮 Demo
 
-Per provare localmente, vedi [Sviluppo locale](#-sviluppo-locale): servire
-`elevator.html` via un HTTP server locale e aprire il browser. Niente
-deploy pubblico fornito al momento (build statico = copia di
-`elevator.html` in `dist/index.html` + hosting statico, vedi sezione
-[Deploy](#-deploy)).
+**Live su GitHub Pages**: apri
+[amedeo82.github.io/3d-elevator-simulations](https://amedeo82.github.io/3d-elevator-simulations/)
+nel tuo browser. L'URL reindirizza automaticamente a
+`elevator.html`. Per provarlo in locale, vedi
+[Sviluppo locale](#-sviluppo-locale) (richiede un HTTP server locale
+per via di Pointer Lock + Web Speech API).
 
 ---
 
