@@ -842,7 +842,8 @@
     <div class="dot"></div>
     <div id="statusText"></div>
   </div>
-  <div id="subtitle"></div>
+  <!-- Polish Pack V4 Step 3 (D23): live region per annunci TTS (aria-live=polite) -->
+  <div id="subtitle" role="status" aria-live="polite" aria-atomic="true"></div>
   <div id="maint-overlay">
     <div class="title"></div>
     <div class="row"><span class="lbl" id="m-fps-lbl"></span><span class="val" id="m-fps">--</span></div>
@@ -877,16 +878,16 @@
     <!-- Polish Pack V3 Step 5 (Q5.4): bottone benchmark FPS -->
     <button id="m-benchmark-btn" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
   </div>
-  <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
+  <div id="mode-badge" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="modeText"></span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
   <button id="hud-reenter-btn" class="hud-action" style="display:none;"></button>
-  <div id="pointerhint"></div>
+  <div id="pointerhint" aria-hidden="true"></div>
 </div>
 
 <!-- Polish Pack V3 Step 9 (Q9.3): landscape enforcement overlay -->
-<div id="rotate-device-overlay">
-  <div class="rotate-icon">📱</div>
-  <div class="rotate-text">
+<div id="rotate-device-overlay" role="alertdialog" aria-labelledby="rotate-text">
+  <div class="rotate-icon" aria-hidden="true">📱</div>
+  <div class="rotate-text" id="rotate-text">
     Rotate your device to landscape to play.<br>
     Ruota il dispositivo in orizzontale per giocare.
   </div>
@@ -894,8 +895,8 @@
 
 <!-- Polish Pack V3 Step 9 (Q9.2): virtual touch controls (mobile only) -->
 <div id="touch-controls">
-  <div id="virtual-joystick">
-    <div class="joystick-knob"></div>
+  <div id="virtual-joystick" role="application" tabindex="0">
+    <div class="joystick-knob" aria-hidden="true"></div>
   </div>
   <div id="virtual-call-buttons">
     <button class="virtual-call-btn" data-dir="up">▲</button>
@@ -1289,6 +1290,33 @@ const STRINGS = {
     systemFooter: 'ELEVATOR SYSTEM \u00b7',
     // api keys
     weatherApiKeyRome: 'Roma',
+    // Polish Pack V4 Step 3 (D23): aria-label per screen reader.
+    // Le stringhe qui sono versioni "lunghe" delle label visive, ridondanti
+    // per utenti vedenti ma necessarie per screen reader. Settate dinamicamente
+    // da applyAriaLabels() (chiamata da applyLangToDOM su init + cambio lingua).
+    ariaExitCabin: 'Esci dalla cabina (tasto E)',
+    ariaReenterCabin: 'Rientra nella cabina (tasto E)',
+    ariaStartGame: 'Entra nell\'ascensore (inizia la simulazione)',
+    ariaFilterCabin: 'Filtro eventi: cabina',
+    ariaFilterDoor: 'Filtro eventi: porte',
+    ariaFilterAudio: 'Filtro eventi: audio',
+    ariaFilterState: 'Filtro eventi: stato',
+    ariaFilterMaint: 'Filtro eventi: manutenzione',
+    ariaExportJson: 'Esporta stato in JSON',
+    ariaBenchmark: 'Avvia benchmark FPS 5 secondi',
+    ariaCallUp: 'Chiama un piano superiore (tasto freccia su)',
+    ariaCallDown: 'Chiama un piano inferiore (tasto freccia giu)',
+    ariaJoystick: 'Joystick virtuale per movimento nel corridoio (touch)',
+    ariaSubtitle: 'Sottotitolo annuncio vocale',
+    ariaModeBadge: 'Modalita\' corrente (in cabina o corridoio)',
+    ariaRenderer: 'Renderizzatore 3D della cabina e del corridoio',
+    ariaPointerHint: 'Suggerimento puntatore',
+    ariaRotateIcon: 'Icona rotazione dispositivo',
+    ariaTutorialSkip: 'Salta il tutorial',
+    ariaTutorialNext: 'Vai al passo successivo del tutorial',
+    ariaCustomizeApply: 'Applica e salva la personalizzazione hotel',
+    ariaCustomizeReset: 'Ripristina i valori predefiniti',
+    ariaCustomizeClose: 'Chiudi il pannello personalizzazione',
   },
   en: {
     cabinIdle: 'Cabin idle',
@@ -1531,6 +1559,30 @@ const STRINGS = {
     operator: 'OPERATOR',
     systemFooter: 'ELEVATOR SYSTEM \u00b7',
     weatherApiKeyRome: 'Rome',
+    // Polish Pack V4 Step 3 (D23): aria-label per screen reader (EN).
+    ariaExitCabin: 'Exit cabin (key E)',
+    ariaReenterCabin: 'Re-enter cabin (key E)',
+    ariaStartGame: 'Enter the elevator (start simulation)',
+    ariaFilterCabin: 'Filter events: cabin',
+    ariaFilterDoor: 'Filter events: doors',
+    ariaFilterAudio: 'Filter events: audio',
+    ariaFilterState: 'Filter events: state',
+    ariaFilterMaint: 'Filter events: maintenance',
+    ariaExportJson: 'Export state as JSON',
+    ariaBenchmark: 'Run 5-second FPS benchmark',
+    ariaCallUp: 'Call an upper floor (up arrow)',
+    ariaCallDown: 'Call a lower floor (down arrow)',
+    ariaJoystick: 'Virtual joystick for corridor movement (touch)',
+    ariaSubtitle: 'Voice announcement subtitle',
+    ariaModeBadge: 'Current mode (in cabin or corridor)',
+    ariaRenderer: '3D renderer for cabin and corridor',
+    ariaPointerHint: 'Pointer hint',
+    ariaRotateIcon: 'Device rotation icon',
+    ariaTutorialSkip: 'Skip tutorial',
+    ariaTutorialNext: 'Go to next tutorial step',
+    ariaCustomizeApply: 'Apply and save hotel customization',
+    ariaCustomizeReset: 'Restore default values',
+    ariaCustomizeClose: 'Close customization panel',
   }
 };
 
@@ -10038,6 +10090,57 @@ function applyLangToDOM() {
   // Polish Pack V3 Step 3: refresh label sliders QoL (audio + display)
   // + bottone export JSON del maintenance overlay.
   if (typeof refreshSettingsQoLLabels === 'function') refreshSettingsQoLLabels();
+  // Polish Pack V4 Step 3 (D23): aggiorna aria-label localizzati.
+  if (typeof applyAriaLabels === 'function') applyAriaLabels();
+}
+
+// Polish Pack V4 Step 3 (D23): setta aria-label sugli elementi interattivi
+// della HUD usando le stringhe i18n correnti. Chiamata da applyLangToDOM()
+// su init + ad ogni cambio lingua, cosi' screen reader annuncia label
+// coerenti con la lingua selezionata.
+function applyAriaLabels() {
+  const s = STRINGS[state.lang];
+  if (!s) return;
+  // Helper: set aria-label solo se l'elemento esiste.
+  const setAria = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('aria-label', val);
+  };
+  const setAriaSel = (sel, val) => {
+    const el = document.querySelector(sel);
+    if (el) el.setAttribute('aria-label', val);
+  };
+  // HUD buttons
+  setAria('hud-exit-btn', s.ariaExitCabin);
+  setAria('hud-reenter-btn', s.ariaReenterCabin);
+  setAria('startBtn', s.ariaStartGame);
+  // Maint filter buttons (5 categorie, aria-label localizzato)
+  setAriaSel('.m-filter-btn[data-cat="cabin"]', s.ariaFilterCabin);
+  setAriaSel('.m-filter-btn[data-cat="door"]', s.ariaFilterDoor);
+  setAriaSel('.m-filter-btn[data-cat="audio"]', s.ariaFilterAudio);
+  setAriaSel('.m-filter-btn[data-cat="state"]', s.ariaFilterState);
+  setAriaSel('.m-filter-btn[data-cat="maint"]', s.ariaFilterMaint);
+  // Maint export + benchmark
+  setAria('m-export-json', s.ariaExportJson);
+  setAria('m-benchmark-btn', s.ariaBenchmark);
+  // Virtual call buttons (touch)
+  setAriaSel('.virtual-call-btn[data-dir="up"]', s.ariaCallUp);
+  setAriaSel('.virtual-call-btn[data-dir="down"]', s.ariaCallDown);
+  // Virtual joystick (applicazione interattiva)
+  setAria('virtual-joystick', s.ariaJoystick);
+  // Live regions (status, mode badge) — label descrittiva
+  setAria('subtitle', s.ariaSubtitle);
+  setAria('mode-badge', s.ariaModeBadge);
+  // Renderer canvas (decorativo)
+  const rendererCanvas = document.querySelector('#app canvas');
+  if (rendererCanvas) rendererCanvas.setAttribute('aria-label', s.ariaRenderer);
+  // Tutorial buttons
+  setAria('tt-skip', s.ariaTutorialSkip);
+  setAria('tt-next', s.ariaTutorialNext);
+  // Customizer buttons
+  setAria('hc-apply', s.ariaCustomizeApply);
+  setAria('hc-reset', s.ariaCustomizeReset);
+  setAria('hc-close', s.ariaCustomizeClose);
 }
 (function applyLangToStartScreen() {
   applyLangToDOM();
@@ -10202,6 +10305,9 @@ window.BossHotelPure = {
   stateInvariantCheck, interphoneLampAlpha, interphoneShouldTimeout, runStress,
   // Polish Pack V3 Step 9: helper mobile responsive
   isMobileDevice,
+  // Polish Pack V4 Step 3 (D23): helper a11y per i test del cambio lingua
+  // (applyLangToDOM e' side-effect ma serve solo ai test cross-iframe)
+  applyLangToDOM, setLang, applyAriaLabels,
   // costanti utili per i test
   NUM_FLOORS
 };

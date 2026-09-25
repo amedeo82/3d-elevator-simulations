@@ -205,8 +205,8 @@ per step via `question` tool).
 | # | Step | Stato | Commit | Branch |
 |---|---|---|---|---|
 | 1 | Test exposure gap | ✅ done (V2/V3 avevano già coperto) | — | — |
-| 2 | Routing bug fix | ✅ done | (in arrivo) | feature/v4-step-2-routing-bug |
-| 3 | A11y aria attributes | ⏳ pending | — | — |
+| 2 | Routing bug fix | ✅ done | c98ba78 + merge 32fc61e | feature/v4-step-2-routing-bug |
+| 3 | A11y aria attributes | ✅ done | (in arrivo) | feature/v4-step-3-a11y-aria |
 | 4 | Funzioni lunghe + commenti | ⏳ pending | — | — |
 | 5 | Helper `mergePlanes` DRY | ⏳ pending | — | — |
 | 6 | Open source boilerplate | ⏳ pending | — | — |
@@ -328,3 +328,49 @@ fisicamente coerente.
 **Verifica**: `node scripts/check-balance.js elevator.html` passa;
 screenshot `tests-step2-bottom.png` mostra 211/211 PASS; smoke test
 elevator.html (`elevator-step2-smoke.png`) mostra start screen pulito.
+
+### 2026-09-25 — Step 3 (A11y aria attributes D23)
+
+**Decisioni** (risposte utente via `question` tool):
+- **Q23.1 = A** (Assert manuali su chiavi, no CDN): test che verificano
+  presenza di `aria-label`/`role`/`aria-live`/`aria-hidden` via
+  `iframe.contentDocument.querySelector` in `tests.html`. Zero dipendenze
+  esterne, conforme a D1.
+- **Q23.2 = A** (i18n via STRINGS): aggiunte 19 nuove chiavi `aria*` in
+  `STRINGS.it`/`STRINGS.en`. `applyAriaLabels()` chiamato da
+  `applyLangToDOM()` ad ogni cambio lingua per coerenza con D8.
+
+**Modifiche al codice** (elevator.html):
+- Aggiunti 19 attributi `aria-label` su bottoni HUD interattivi
+  (`hud-exit-btn`, `hud-reenter-btn`, `startBtn`, 5 `m-filter-btn`,
+  `m-export-json`, `m-benchmark-btn`, 2 `virtual-call-btn`,
+  `virtual-joystick`, 2 `tt-btn`, 3 `hc-btn`).
+- Aggiunti `aria-hidden="true"` su elementi decorativi (`#pointerhint`,
+  `.rotate-icon`, `.joystick-knob`, renderer canvas).
+- Aggiunti `role="status" aria-live="polite" aria-atomic="true"` su
+  `#subtitle` (TTS annunci) e `#mode-badge` (status corrente).
+- Aggiunto `role="alertdialog" aria-labelledby` su
+  `#rotate-device-overlay` e `role="application" tabindex="0"` su
+  `#virtual-joystick`.
+- Nuova funzione `applyAriaLabels()` (~50 righe) chiamata da
+  `applyLangToDOM()` e successivamente da `setLang()` per refresh su
+  cambio lingua.
+- Esposte `applyLangToDOM`, `setLang`, `applyAriaLabels` in
+  `BossHotelPure` per testing cross-iframe.
+
+**Test** (tests.html, +15 test / +35 assert):
+- 3 nuovi `describe` block "a11y (V4 Step 3 D23)" con 15 test che
+  verificano: presenza aria-label su 9 set di bottoni, role+aria-live
+  su 2 live region, aria-hidden su 3 elementi decorativi, e cambio
+  lingua aggiorna aria-label.
+- Totale suite: 212 → **227 test / 349 → 384 assert**, tutti pass.
+
+**Contratto D23** aggiunto ad AGENTS.md con descrizione completa.
+
+**Verifica**: `node scripts/check-balance.js elevator.html` passa;
+screenshot `tests-step3-rerun.png` mostra 226/226 PASS; smoke test
+`elevator-step3-smoke.png` mostra start screen pulito.
+
+**Branch**: `feature/v4-step-3-a11y-aria`.
+
+**Prossimo step proposto**: Step 4 (Funzioni lunghe + commenti, T2a).

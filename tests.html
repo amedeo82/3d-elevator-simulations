@@ -1452,6 +1452,148 @@
           assertEq(P.isMobileDevice(), !!mq.matches);
         });
       });
+
+      // ============================================================
+      // V4 Step 3 (D23): A11y aria attributes.
+      // Query del DOM dell'iframe per verificare che gli elementi
+      // interattivi della HUD abbiano aria-label, le live region
+      // abbiano role+aria-live, e gli elementi decorativi siano
+      // marcati aria-hidden. Conforme D1: zero dipendenze esterne.
+      // ============================================================
+      describe('a11y (V4 Step 3 D23): aria-label su bottoni HUD', () => {
+        const doc = iframe.contentDocument;
+        const get = (sel) => doc.querySelector(sel);
+        const getAria = (el) => el && el.getAttribute('aria-label');
+        test('hud-exit-btn ha aria-label non vuoto', () => {
+          const el = get('#hud-exit-btn');
+          assert(el, 'elemento #hud-exit-btn non trovato nel DOM iframe');
+          const lbl = getAria(el);
+          assert(lbl && lbl.length > 0, 'aria-label mancante o vuoto');
+        });
+        test('hud-reenter-btn ha aria-label non vuoto', () => {
+          const el = get('#hud-reenter-btn');
+          assert(el, 'elemento #hud-reenter-btn non trovato');
+          const lbl = getAria(el);
+          assert(lbl && lbl.length > 0, 'aria-label mancante o vuoto');
+        });
+        test('startBtn ha aria-label non vuoto', () => {
+          const el = get('#startBtn');
+          assert(el, 'elemento #startBtn non trovato');
+          const lbl = getAria(el);
+          assert(lbl && lbl.length > 0, 'aria-label mancante o vuoto');
+        });
+        test('5 m-filter-btn hanno tutti aria-label', () => {
+          const btns = doc.querySelectorAll('.m-filter-btn');
+          assertEq(btns.length, 5, 'numero filter buttons atteso 5');
+          for (const b of btns) {
+            const lbl = getAria(b);
+            assert(lbl && lbl.length > 0,
+              `filter button data-cat="${b.dataset.cat}" senza aria-label`);
+          }
+        });
+        test('m-export-json + m-benchmark-btn hanno aria-label', () => {
+          const ex = get('#m-export-json');
+          const bm = get('#m-benchmark-btn');
+          assert(ex && getAria(ex) && getAria(ex).length > 0,
+            'm-export-json senza aria-label');
+          assert(bm && getAria(bm) && getAria(bm).length > 0,
+            'm-benchmark-btn senza aria-label');
+        });
+        test('2 virtual-call-btn hanno aria-label distinti', () => {
+          const btns = doc.querySelectorAll('.virtual-call-btn');
+          assertEq(btns.length, 2, 'attese 2 virtual-call-btn');
+          for (const b of btns) {
+            const lbl = getAria(b);
+            assert(lbl && lbl.length > 0,
+              `virtual-call-btn data-dir="${b.dataset.dir}" senza aria-label`);
+          }
+        });
+        test('virtual-joystick ha aria-label + role=application', () => {
+          const el = get('#virtual-joystick');
+          assert(el, '#virtual-joystick non trovato');
+          const lbl = getAria(el);
+          const role = el.getAttribute('role');
+          assert(lbl && lbl.length > 0, 'virtual-joystick senza aria-label');
+          assertEq(role, 'application', 'virtual-joystick role atteso "application"');
+        });
+        test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
+          const skip = get('#tt-skip');
+          const next = get('#tt-next');
+          assert(skip && getAria(skip) && getAria(skip).length > 0,
+            'tt-skip senza aria-label');
+          assert(next && getAria(next) && getAria(next).length > 0,
+            'tt-next senza aria-label');
+        });
+        test('bottoni customizer (hc-apply/reset/close) hanno aria-label', () => {
+          for (const id of ['hc-apply', 'hc-reset', 'hc-close']) {
+            const el = get('#' + id);
+            assert(el, '#' + id + ' non trovato');
+            const lbl = getAria(el);
+            assert(lbl && lbl.length > 0, id + ' senza aria-label');
+          }
+        });
+      });
+
+      describe('a11y (V4 Step 3 D23): live regions', () => {
+        const doc = iframe.contentDocument;
+        test('subtitle ha role=status + aria-live=polite', () => {
+          const el = doc.getElementById('subtitle');
+          assert(el, '#subtitle non trovato');
+          assertEq(el.getAttribute('role'), 'status', 'role subtitle');
+          assertEq(el.getAttribute('aria-live'), 'polite', 'aria-live subtitle');
+        });
+        test('mode-badge ha role=status + aria-live=polite', () => {
+          const el = doc.getElementById('mode-badge');
+          assert(el, '#mode-badge non trovato');
+          assertEq(el.getAttribute('role'), 'status', 'role mode-badge');
+          assertEq(el.getAttribute('aria-live'), 'polite', 'aria-live mode-badge');
+        });
+      });
+
+      describe('a11y (V4 Step 3 D23): elementi decorativi aria-hidden', () => {
+        const doc = iframe.contentDocument;
+        test('rotate-icon (emoji 📱) ha aria-hidden=true', () => {
+          const el = doc.querySelector('#rotate-device-overlay .rotate-icon');
+          assert(el, '.rotate-icon non trovato');
+          assertEq(el.getAttribute('aria-hidden'), 'true', 'aria-hidden rotate-icon');
+        });
+        test('pointerhint ha aria-hidden=true', () => {
+          const el = doc.getElementById('pointerhint');
+          assert(el, '#pointerhint non trovato');
+          assertEq(el.getAttribute('aria-hidden'), 'true', 'aria-hidden pointerhint');
+        });
+        test('joystick-knob ha aria-hidden=true (solo visivo)', () => {
+          const el = doc.querySelector('#virtual-joystick .joystick-knob');
+          assert(el, '.joystick-knob non trovato');
+          assertEq(el.getAttribute('aria-hidden'), 'true', 'aria-hidden joystick-knob');
+        });
+      });
+
+      describe('a11y (V4 Step 3 D23): cambio lingua aggiorna aria-label', () => {
+        const doc = iframe.contentDocument;
+        const P2 = iframe.contentWindow && iframe.contentWindow.BossHotelPure;
+        test('aria-label di hud-exit-btn cambia al cambio lingua', () => {
+          assert(P2 && typeof P2.setLang === 'function',
+            'BossHotelPure.setLang non esposto');
+          const el = doc.getElementById('hud-exit-btn');
+          // Lingua iniziale (state.lang al boot). Salviamo il valore iniziale.
+          const initialLbl = el.getAttribute('aria-label');
+          assert(initialLbl && initialLbl.length > 0,
+            'aria-label iniziale vuoto');
+          // Forza cambio a EN
+          P2.setLang('en');
+          // applyLangToDOM() aggiorna aria-label via applyAriaLabels().
+          const enLbl = el.getAttribute('aria-label');
+          assert(enLbl && enLbl.length > 0,
+            'aria-label EN vuoto dopo setLang');
+          assert(initialLbl !== enLbl,
+            'aria-label IT ed EN dovrebbero differire');
+          // Ripristina IT per non inquinare altri test.
+          P2.setLang('it');
+          const itBack = el.getAttribute('aria-label');
+          assertEq(itBack, initialLbl, 'aria-label non ripristinato a IT');
+        });
+      });
     }
 
     // ============================================================
