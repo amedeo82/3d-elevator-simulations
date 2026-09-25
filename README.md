@@ -2,9 +2,24 @@
 
 Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, in prima persona, costruita interamente con Three.js in un singolo file HTML.
 
-![BOSS HOTEL](https://img.shields.io/badge/Three.js-r160-black?logo=three.js) ![Status](https://img.shields.io/badge/Status-Stable-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue)
+![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js) ![Status](https://img.shields.io/badge/Status-Stable-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen) ![Single--file](https://img.shields.io/badge/Single--file-HTML-orange) ![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)
 
 🔗 **Demo live**: https://hve0n8mdm4ixk.space.minimax.io
+
+> **🎉 Polish Pack V4 COMPLETO (2026-09-25)** — 6/6 step (100%). D-key contracts
+> aggiunti: D22 (routing look algorithm asimmetrico), D23 (a11y ARIA + i18n),
+> D24 (funzioni <150 + commenti narrativi), D25 (helper `mergePlanes` DRY),
+> D26 (open source boilerplate: LICENSE + CHANGELOG + CONTRIBUTING).
+> Totale **232 test / 396 assert / 26 contratti D-key**.
+>
+> **🎉 Polish Pack V3 COMPLETO (2026-09-23)** — 9/9 step (100%). Accessibility,
+> bug fix UX, settings QoL, micro-animazioni, performance, QoL manutenzione,
+> documentazione completa, test coverage estesa, mobile responsive (bonus).
+>
+> **🎉 Polish Pack V2 COMPLETO (2026-09-17)** — 10/13 step (77%). Salute codice,
+> UX invisibile, audio contestuale, meteo evoluto, personalizzazione hotel,
+> pulsantiera semantica, i18n IT/EN, sensazioni realistiche, vita hotel,
+> test framework, citofono EN 81-28.
 
 > **🚪 Hotfix v1.8 (2026-09-12)** — porte camere hotel/attico ricostruite. Il telaio era un
 > singolo blocco `BoxGeometry` ruotato di 90° dalla `rotY=±π/2`, quindi il varco finiva
@@ -143,6 +158,7 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 - [Sviluppo locale](#-sviluppo-locale)
 - [Deploy](#-deploy)
 - [Roadmap](#-roadmap)
+- [Documentazione](#-documentazione)
 - [Contribuire](#-contribuire)
 - [License](#-license)
 
@@ -400,12 +416,18 @@ Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticam
   - ⚠️ **Nota**: ▲ e ▼ sono semanticamente identici nel gioco attuale (entrambi = "voglio entrare in cabina al mio piano"). Per un modello "intenzione di viaggio" distinto servirebbe refactor del routing.
 - Rispetta allarme e fuori servizio (rifiutato con beep 220Hz)
 
-### 🧪 Test framework (V2 Step 12 + V3 Step 1–5)
-- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 30+ funzioni pure (V2 Step 12 + V3 Step 1–5). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`
-- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **134 test (~228 assert vanilla)** su `iframe.contentWindow.BossHotelPure`. Organizzati in 32 sezioni (`describe` block): helper matematici (`clamp`, `lerp`, `smoothstep`, `floorLabel`, `clampFloor`, `easeInOutCubic`), routing (`pickNextFloor`, `computePassengerDelta`, `floorRoomRange`, `getThemeForFloor`), configur (`parseHexColor`, `getDayPhase`), citofono (`interphoneDurationMs`, `isInterphoneActive`, `interphoneStatusLabel`), accessibility (`computeSubtitleDuration`, `shouldDisableMotion`, `relativeLuminance`, `contrastRatio`), corner case UX (`canOpenDoors`, `shouldAnnounceDoorClose`, `sosCancelsOOO`, `currentMovementDirection`), settings QoL (`clampAudio`, `clampBrightness`, `formatVolumePercent`, `stateShapeForExport`), micro-animazioni (`breathScale`, `arrivalFlashAlpha`, `easeOutBounce`, `stateFadeDurationMs`, `easeOutLinear`), performance (`aggregateFpsStats`, `formatFpsDelta`, `createLruCache`)
-- **Reporter DOM** con raggruppamento per sezione, banner sommario colorato (verde se tutti pass, rosso con dettaglio errore se falliscono), `<details>` con JSON esportabile (`window.__testResults`), bottone "Esporta risultati JSON" che scarica file `.json` timestampato
-- **CI integration leggera** — secondo job in `.github/workflows/ci.yml` (`tests`) valida staticamente: presenza di `window.BossHotelPure` in `elevator.html`, presenza di `tests.html`, conteggio test ≥ 30 (soglia acceptance Q12.4), referenziamento `elevator.html`. Nessuna installazione Playwright/Puppeteer — esecuzione browser resta manuale (Q12.5=C, "export JSON per futura CI headless")
-- **Esecuzione locale**: `python -m http.server` → apri `tests.html` → la suite gira automaticamente al caricamento dell'iframe
+### 🧪 Test framework (V2 Step 12 + V3/V4 Steps)
+
+- `tests.html` esegue automaticamente la suite all'apertura (via iframe sandbox)
+- **232 test / 396 assert** passing (era 134/228 in V3, 206/343 in V4 Step 1)
+- ~10 sezioni organizzate: matematica pura, routing pickNextFloor, citofono,
+  accessibility, contrasto WCAG, bug corner cases, QoL settings, micro-animazioni,
+  performance, a11y ARIA, merge geometry helper
+- Esporta risultati JSON con un bottone (`Esporta risultati JSON`)
+- CI GitHub Actions con 2 job paralleli: `check` (sintassi + brace balance) +
+  `tests` (validazione statica presenza namespace + conteggio test)
+- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 30+ funzioni pure (V2 Step 12 + V3/V4 Steps). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`. Include helper `applyLangToDOM`/`setLang`/`applyAriaLabels` (V4 Step 3 test cross-iframe) e `mergePlanes` (V4 Step 5 helper geometry)
+- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **232 test (396 assert vanilla)** su `iframe.contentWindow.BossHotelPure`. Organizzati in ~50 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)
 
 ---
 
@@ -473,10 +495,14 @@ Apri il link → click su "Entra nell'ascensore" → muovi il mouse per guardare
 
 ```
 .
-├── elevator.html          # File principale (~390 KB, ~9.250 righe) — tutta la simulazione
-├── tests.html             # Test framework (134 test / ~228 assert vanilla su window.BossHotelPure)
+├── elevator.html          # File principale (~390 KB, ~10.500 righe) — tutta la simulazione
+├── tests.html             # Test framework (232 test / 396 assert vanilla su window.BossHotelPure)
 ├── scripts/
-│   └── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
+│   ├── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
+│   ├── find-long-fns.js   # Helper per audit D24 (funzioni >=150 righe)
+│   ├── generate-changelog.js  # Auto-genera CHANGELOG.md dalla history git (D26)
+│   ├── extract-strings.js # Estrae chiavi STRINGS per audit i18n
+│   └── extract-js.js      # Estrae funzioni JS per analisi esterna
 ├── dist/
 │   └── index.html         # Build per il deploy (copia di elevator.html)
 ├── .github/
@@ -610,9 +636,9 @@ php -S localhost:8000
 
 > ⚠️ Il Pointer Lock e la Web Speech API funzionano solo su `http://localhost` o `https://`. Aprire il file direttamente con `file://` può dare warning.
 
-### Test (Polish Pack V2 Step 12 + V3 Step 1–5)
+### Test (Polish Pack V2 Step 12 + V3/V4 Steps)
 
-Il progetto include un mini test framework vanilla in `tests.html`. Esegue 134 test (~228 assert interni) su funzioni pure esposte in `window.BossHotelPure`.
+Il progetto include un mini test framework vanilla in `tests.html`. Esegue **232 test (396 assert interni)** su funzioni pure esposte in `window.BossHotelPure`.
 
 ```bash
 # Avvia un server locale
@@ -742,19 +768,30 @@ D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 H
 
 **Lessons learned V2** (input per V3): 10 insegnamenti in `PIANO_V2.md` §Stato finale. Punti chiave: decisioni via `question` funzionano, test framework cross-step, commit separati, D-key emergono organicamente, scope creep elevato (accettare riscritture).
 
-### 🎨 Polish Pack V3 — **in corso** (5/9 step, 56%) — vedi `PIANO_V3.md`
+### 🎨 Polish Pack V3 — **CHIUSO 2026-09-23** (9/9 step, 100%) — vedi `PIANO_V3.md`
 - [x] **Step 1** Accessibility (T1a) — `speakWithSubtitle()` + `prefers-reduced-motion` + focus ring dorato + contrasto WCAG AA. Branch `feature/v3-step-1-accessibility`.
 - [x] **Step 2** Bug fix UX sistematico (T1b) — 5 corner case + 4 bug latenti (4 fix, 1 "leave alone"). Branch `feature/v3-step-2-bugfix-ux`.
 - [x] **Step 3** Settings QoL (T1c) — 4 slider (volume effetti/musica/TTS + luminosità display) + export JSON. 2 chiavi localStorage @v1. Branch `feature/v3-step-3-settings-qol`.
 - [x] **Step 4** Micro-animazioni (T2a) — respiro pulsantiera, cartello lampeggio gentile pre-arrivo, fade stati 200ms, bounce-out vibrazione. Branch `feature/v3-step-4-micro-animations`.
 - [x] **Step 5** Performance (T2b) — `textureCache` LRU capacity 10 + `mergeGeometries` (8 draw call saved) + skip no-op costosi + bottone benchmark in maintenance overlay. Branch `feature/v3-step-5-performance`.
-- [ ] **Step 6** QoL manutenzione (T2c) — log eventi categorizzato + contatori allarmi/interphonate.
-- [ ] **Step 7** Documentazione completa (T3a) — commentare `tickMove`/`tickDoors`/`tickPlayer`/`buildCorridor`/`getThemeForFloor` + diagrammi ASCII dipendenze + `STRINGS[lang]` reference.
-- [ ] **Step 8** Test coverage estesa (T3b) — 134 → 200+ test (casi limite routing, edge cases passeggeri, integrazione, helper citofono, stress test, state invariant check).
-- [ ] **Step 9** Mobile responsive layout (Bonus) — touch controls, HUD scalato, landscape forzato, pulsantiera touch adattata.
+- [x] **Step 6** QoL manutenzione (T2c) — log eventi categorizzato + contatori allarmi/interphonate. Branch `feature/v3-step-6-qol-maintenance`.
+- [x] **Step 7** Documentazione completa (T3a) — commenti narrativi su `tickMove`/`tickDoors`/`tickPlayer`/`buildCorridor`/`getThemeForFloor` + diagrammi ASCII dipendenze + `STRINGS[lang]` reference. Branch `feature/v3-step-7-documentation`.
+- [x] **Step 8** Test coverage estesa (T3b) — 134 → 206 test (casi limite routing, edge cases passeggeri, integrazione, helper citofono, stress test, state invariant check). Branch `feature/v3-step-8-test-coverage`.
+- [x] **Step 9** Mobile responsive layout (Bonus) — touch controls, HUD scalato, landscape forzato, pulsantiera touch adattata. Branch `feature/v3-step-9-mobile`.
 
-**Decisioni D-key** (16 contratti di progetto, vedi `AGENTS.md`):
-D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 HOTEL_CONFIG · D6 config prime texture · D7 coda `{floor,direction}` · D8 STRINGS[lang] · D9 BossHotelPure · D10 citofono/SOS distinti · D11 speakWithSubtitle · D12 prefers-reduced-motion · D13 bug latenti documentati · D14 settings QoL 2 chiavi @v1 · D15 micro-animazioni + movePaused in CONFIGURATION · D16 textureCache LRU + mergeGeometries.
+### 🎉 Polish Pack V4 — **CHIUSO 2026-09-25** (6/6 step, 100%) — vedi `PIANO_V4.md`
+- [x] **Step 1** Test exposure gap (T1a) — chiuso senza modifiche al codice (audit obsoleto): tutte le 32 funzioni `pure:` erano già esportate da V2/V3. Decisione via `question`: chiudere come ✅ fatto.
+- [x] **Step 2** Routing bug fix (T1b) — `pickNextFloor`/`queueNextSmart` con inversione asimmetrica look algorithm: `lastDir='up'`+invert → MAX della coda down; `lastDir='down'`+invert → MIN della coda up. 4 test esistenti aggiornati + 6 nuovi. D22 introdotto. Branch `feature/v4-step-2-routing-bug`.
+- [x] **Step 3** A11y aria attributes (T1c) — 19 `aria-label` localizzati IT/EN su bottoni HUD + 4 `aria-hidden` su decorativi + 2 live region con `role="status" aria-live="polite"` (`#subtitle`, `#mode-badge`) + 2 role specializzati (`alertdialog` su rotate-overlay, `application` su virtual-joystick). Nuovo helper `applyAriaLabels()` chiamato da `applyLangToDOM()` su init + cambio lingua. 15 nuovi assert. D23 introdotto. Branch `feature/v4-step-3-a11y-aria`.
+- [x] **Step 4** Funzioni lunghe + commenti (T2a) — 2 split minimi (`buildCorridor` 178→76, `startCorridorAudio` 156→50) + 16 commenti narrativi stile V3 Step 7 sulle funzioni ≥80 righe. Target "nessuna funzione ≥150" raggiunto. Nuovo helper `scripts/find-long-fns.js` con brace-counting corretto. D24 introdotto. Branch `feature/v4-step-4-fn-comments`.
+- [x] **Step 5** Helper `mergePlanes` DRY (T2b) — nuovo helper `mergePlanes(transforms, material, useGroups=false)` che clona geometries (non muta input) e applica `applyMatrix4`+`mergeGeometries`. 3 callsites refactorati (3 pareti + 4 LED + 4 frame). 6 nuovi assert (espone in `BossHotelPure`). D25 introdotto. Branch `feature/v4-step-5-merge-planes`.
+- [x] **Step 6** Open source boilerplate (T3a) — `LICENSE` MIT aggiornato (copyright Amedeo Vecchi 2026), `CHANGELOG.md` auto-generato da `scripts/generate-changelog.js` (~85 righe parser `git log` con regex euristiche V1..V4), `CONTRIBUTING.md` comprehensive (~110 righe con D-key contracts D1-D26 + workflow Polish Pack + code style). D26 introdotto. Branch `feature/v4-step-6-os-boilerplate`.
+
+**Decisioni D-key** (26 contratti totali, vedi `AGENTS.md` per dettagli):
+- V1 (D1-D6): single-file · stato in cima · no emoji · italiano+sezioni · HOTEL_CONFIG · config prime texture
+- V2 (D7-D11): coda `{floor,direction}` · STRINGS[lang] · BossHotelPure · citofono/SOS distinti · speakWithSubtitle
+- V3 (D12-D16): prefers-reduced-motion · bug latenti documentati · settings QoL 2 chiavi @v1 · micro-animazioni + movePaused · textureCache LRU + mergeGeometries
+- V4 (D22-D26): routing inversione asimmetrico · A11y ARIA · funzioni <150 + commenti · mergePlanes helper · open source boilerplate
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)
@@ -801,27 +838,60 @@ Dettaglio completo in `PIANO_MIGLIORAMENTI.md` §11 e `piani/README.md`.
 
 ## 🤝 Contribuire
 
-Il progetto è open source. Per contribuire:
+Il progetto è open source (MIT). Vedi [`CONTRIBUTING.md`](./CONTRIBUTING.md) per la guida
+contributor completa (quick start, contratti D-key 1-26, workflow Polish Pack, code style).
+
+In sintesi:
 
 1. Fai una fork
-2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
-3. Committa le modifiche (`git commit -m 'Add some AmazingFeature'`)
-4. Pusha il branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
+2. Crea un branch dedicato (`git checkout -b feature/vN-step-M-descrizione`)
+3. Committa le modifiche con messaggi strutturati (`type(scope): descrizione`)
+4. Pusha il branch e apri una Pull Request
 
 ### Linee guida
-- Mantieni il pattern "single file HTML" se possibile
-- Commenta le sezioni nuove in modo simile a quelle esistenti
+- Mantieni il pattern "single file HTML" (D1) — vincolo architetturale
+- Commenta le sezioni nuove in modo simile a quelle esistenti (D4: italiano + sezioni `// =====`)
 - Testa le performance (FPS) prima di aggiungere feature pesanti
-- Aggiorna il `PIANO_MIGLIORAMENTI.md` se cambi il design
+- Aggiungi nuovi helper puri a `window.BossHotelPure` + test in `tests.html` (D9)
+- Aggiorna `AGENTS.md` se introduci un nuovo D-key
+- Aggiorna `PIANO_MIGLIORAMENTI.md` se cambi il design
+
+---
+
+## 📚 Documentazione
+
+Documenti di progetto (in ordine di importanza):
+
+| File | Contenuto |
+|---|---|
+| `README.md` | Overview, features, demo, comandi, deploy, roadmap |
+| `LICENSE` | MIT + copyright Amedeo Vecchi 2026 |
+| `CHANGELOG.md` | Storico versioni auto-generato da `git log` (191 commit V1..V4) |
+| `CONTRIBUTING.md` | Guida contributor + D-key contracts D1-D26 + workflow Polish Pack |
+| `AGENTS.md` | Regole progetto + 26 contratti D-key + layout codice |
+| `ARCHITECTURE.md` | Diagrammi architetturali e flussi dati |
+| `STATE.md` | Audit completo dello `state` globale (26+ campi) |
+| `STRINGS_REFERENCE.md` | Mappatura completa i18n IT/EN (~120 chiavi) |
+| `STRINGS_TABLE.md` | Tabella compatta chiavi i18n |
+| `PIANO_MIGLIORAMENTI.md` | Log implementativo dettagliato fasi 1-27 (160 KB) |
+| `PIANO_V2.md` / `PIANO_V3.md` / `PIANO_V4.md` | Roadmap Polish Pack V2/V3/V4 |
+| `piani/README.md` | Indice storico piani di implementazione originali |
+
+Documenti di community:
+
+| File | Contenuto |
+|---|---|
+| `SECURITY.md` | Politica di sicurezza (responsible disclosure) |
+| `CODE_OF_CONDUCT.md` | Standard community (Contributor Covenant v2.1) |
+| `SUPPORT.md` | Dove chiedere aiuto / segnalare bug |
 
 ---
 
 ## 📝 License
 
-MIT License
+MIT License — vedi [`LICENSE`](./LICENSE).
 
-Copyright (c) 2026 BOSS HOTEL Simulator
+Copyright (c) 2026 Amedeo Vecchi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -845,10 +915,11 @@ SOFTWARE.
 
 ## 🎓 Crediti
 
-- **Three.js** — https://threejs.org (MIT)
-- **Web Speech API** — Browser native
-- **Web Audio API** — Browser native
-- **Design & implementazione** — BOSS HOTEL team
+- **Three.js r160** — [https://threejs.org](https://threejs.org) (MIT)
+- **Web Speech API** — Browser native (TTS annunci)
+- **Web Audio API** — Browser native (audio contestuale)
+- **BufferGeometryUtils** — three.js addons (merge geometries)
+- **Design & implementazione** — Amedeo Vecchi
 - **Documentazione di design** — `PIANO_MIGLIORAMENTI.md`
 
 ---
