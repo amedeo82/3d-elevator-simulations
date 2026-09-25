@@ -48,6 +48,16 @@ pnpm-debug.log*
 dist/*.zip
 dist/*.tar.gz
 
+# ---- GitHub Pages landing ----
+# index.html (alla root, NON dentro dist/) e' committato: e' un thin
+# wrapper di ~750 byte che fa solo redirect client-side a elevator.html
+# via window.location.replace + meta refresh. Serve esclusivamente a
+# fare in modo che GitHub Pages mostri il simulatore quando si apre
+# "/" (altrimenti GitHub servirebbe il README come landing page).
+# NON aggiungere qui: quell'index.html deve restare committato per
+# mantenere il redirect di Pages. Modifica il file solo se cambi la
+# logica del redirect.
+
 # ---- Backup files ----
 *.zip.bak
 *.bak
