@@ -189,6 +189,75 @@
 
     function runAllTests(P) {
 
+      // ---- mergePlanes (V4 Step 5 D25) -----------------------------
+      describe('mergePlanes (D25 DRY helper)', () => {
+        // I test accedono a THREE via l'iframe (modulo elevator.html).
+        // Tre geometrie piane identiche (1x1) in posizioni diverse:
+        // il merge dovrebbe dare 12 vertici totali (3 * 4 vertici quadrato)
+        // e 2 triangoli per quadrato * 3 = 6 triangoli.
+        const win3 = iframe.contentWindow;
+        const THREE = win3 && win3.THREE;
+        test('helper esposto in BossHotelPure', () => {
+          assertEq(typeof P.mergePlanes, 'function',
+            'mergePlanes deve essere funzione');
+        });
+        test('input vuoto → ritorna null', () => {
+          if (!THREE) return; // skip se THREE non disponibile (no browser 3D)
+          assertEq(P.mergePlanes([], new THREE.MeshBasicMaterial()), null);
+        });
+        test('input non-array → ritorna null', () => {
+          if (!THREE) return;
+          assertEq(P.mergePlanes(null, new THREE.MeshBasicMaterial()), null);
+          assertEq(P.mergePlanes(undefined, new THREE.MeshBasicMaterial()), null);
+        });
+        test('merge 3 plane 1x1 → 12 vertici, 6 triangoli', () => {
+          if (!THREE) return;
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const transforms = [
+            { geometry: new THREE.PlaneGeometry(1, 1),
+              matrix: new THREE.Matrix4().setPosition(0, 0, 0) },
+            { geometry: new THREE.PlaneGeometry(1, 1),
+              matrix: new THREE.Matrix4().setPosition(2, 0, 0) },
+            { geometry: new THREE.PlaneGeometry(1, 1),
+              matrix: new THREE.Matrix4().setPosition(-2, 0, 0) }
+          ];
+          const mesh = P.mergePlanes(transforms, mat);
+          assert(mesh, 'mergePlanes deve ritornare un mesh');
+          assertEq(mesh.geometry.attributes.position.count, 12,
+            '3 plane * 4 vertici = 12 vertici attesi');
+          // PlaneGeometry ha 2 triangoli = 6 indici. Se indexed.
+          const idxCount = mesh.geometry.index
+            ? mesh.geometry.index.count
+            : mesh.geometry.attributes.position.count;
+          assertEq(idxCount, 18, '3 plane * 6 indici (2 tri) = 18');
+        });
+        test('helper NON muta le geometries di input', () => {
+          if (!THREE) return;
+          const g1 = new THREE.PlaneGeometry(1, 1);
+          const g2 = new THREE.PlaneGeometry(1, 1);
+          const beforeVerts1 = g1.attributes.position.count;
+          const beforeVerts2 = g2.attributes.position.count;
+          P.mergePlanes([
+            { geometry: g1, matrix: new THREE.Matrix4().setPosition(5, 0, 0) },
+            { geometry: g2, matrix: new THREE.Matrix4().setPosition(0, 5, 0) }
+          ], new THREE.MeshBasicMaterial());
+          assertEq(g1.attributes.position.count, beforeVerts1,
+            'input g1 vertici non devono cambiare');
+          assertEq(g2.attributes.position.count, beforeVerts2,
+            'input g2 vertici non devono cambiare');
+        });
+        test('mesh ritornato ha il materiale passato come argomento', () => {
+          if (!THREE) return;
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+          const mesh = P.mergePlanes([
+            { geometry: new THREE.PlaneGeometry(1, 1),
+              matrix: new THREE.Matrix4().setPosition(0, 0, 0) }
+          ], mat);
+          assert(mesh, 'mesh deve esistere');
+          assertEq(mesh.material, mat, 'mesh.material deve essere il materiale passato');
+        });
+      });
+
       // ---- clamp --------------------------------------------------
       describe('clamp', () => {
         test('valori dentro range', () => {

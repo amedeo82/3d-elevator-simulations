@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1 chiuso (Step 1-3) + Step 4 D24 (manutenibilità)** · Aggiornato 2026-09-25
+**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1+T2 chiusi (Step 1-5)** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -2414,13 +2414,14 @@ testato, e ora anche mobile-responsive.
 Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
 (6 step totali: T1 3 + T2 2 + T3 1).
 
-**Risultato parziale V4**: **4/6 step completati (67%)** ✅
+**Risultato parziale V4**: **5/6 step completati (83%)** ✅
 - Step 1 (Test exposure gap): ✅ chiuso senza modifiche al codice (audit
   obsoleto, gap reale assente; tutte le 32 funzioni `pure:` erano già
   esportate da V2/V3).
 - Step 2 (Routing bug fix D22): ✅ chiuso con fix codice.
 - Step 3 (A11y aria attributes D23): ✅ chiuso con attributi ARIA + i18n.
 - Step 4 (Funzioni lunghe + commenti D24): ✅ 2 split minimi + 16 commenti narrativi.
+- Step 5 (Helper `mergePlanes` DRY D25): ✅ helper + 3 callsites refactorati.
 
 ### Fase 23 — Polish Pack V4 Step 2: Routing bug fix D22 ✅ (2026-09-25, branch `feature/v4-step-2-routing-bug`)
 
@@ -2574,3 +2575,45 @@ commenti narrativi >=80 + helper `find-long-fns.js` mantenuto.
 
 **Prossimo step proposto**: Step 5 (Helper `mergePlanes` DRY, T2b) —
 unico step T2 rimasto aperto.
+
+### Fase 26 — Polish Pack V4 Step 5: Helper mergePlanes DRY D25 ✅ (2026-09-25, branch `feature/v4-step-5-merge-planes`)
+
+Step T2b (manutenibilità, medio impatto). DRY refactor dei 3 callsites
+di `mergeGeometries` in `buildCorridor` (ora in `buildCorridorShell` +
+`buildCorridorLights` dopo Step 4 D24).
+
+**Decisione** (Q25.1=A via `question` tool): firma
+`mergePlanes(transforms, material)` ritorna `THREE.Mesh` pronto per
+`corridor.add()` (null se merge fallisce). Helper NON muta le geometries
+di input (clone esplicito prima di applyMatrix4) → testabile in isolamento.
+
+**Modifiche al codice** (elevator.html):
+- Nuovo helper `mergePlanes(transforms, material, useGroups=false)` (~10
+  righe, messo tra gli helper puri in section V2 Step 12).
+- `buildCorridorShell` (3 pareti merged): da 27 righe di setup
+  imperativo a 16 righe dichiarative con array di `{geometry, matrix}`.
+- `buildCorridorLights` (4 LED planes + 4 frame boxes merged): da 30 a
+  14 righe totali (2 array di transforms + 2 chiamate mergePlanes).
+- Esposizione in `BossHotelPure.mergePlanes` per testing cross-iframe.
+
+**Test** (tests.html, +6 test / +12 assert):
+- helper esposto in BossHotelPure
+- input vuoto → null
+- input non-array → null
+- merge 3 plane 1x1 → 12 vertici + 18 indici (verifica merge corretto)
+- NON muta geometries di input (verifica purezza)
+- mesh ritornato ha il materiale passato
+
+Totale suite: 226 → **232 test / 384 → 396 assert**, tutti pass.
+
+**Contratto D25** introdotto in AGENTS.md con descrizione completa.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- Screenshot `tests-step5.png` → **232/232 PASS**.
+- Smoke test `elev-step5.png` → start screen pulito.
+
+**Branch**: `feature/v4-step-5-merge-planes`.
+
+**Prossimo step proposto**: Step 6 (Open source boilerplate, T3a) —
+ultimo step V4.

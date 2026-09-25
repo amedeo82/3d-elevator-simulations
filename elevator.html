@@ -4023,32 +4023,28 @@ function buildCorridorShell(theme, sZ, eZ) {
     m.position.set(0, CORRIDOR_H, sZ + CORRIDOR_D/2);
     corridor.add(m);
   }
-  // 3 pareti merged in 1 mesh (V3 Step 5 Q5.2)
-  const wallGeo1 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
-  const m1 = new THREE.Matrix4().makeRotationY(Math.PI / 2);
-  m1.setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-  wallGeo1.applyMatrix4(m1);
-  const wallGeo2 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
-  const m2 = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
-  m2.setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-  wallGeo2.applyMatrix4(m2);
-  const wallGeo3 = new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H);
-  const m3 = new THREE.Matrix4();
-  m3.setPosition(0, CORRIDOR_H/2, eZ);
-  wallGeo3.applyMatrix4(m3);
-  const mergedWalls = mergeGeometries([wallGeo1, wallGeo2, wallGeo3], false);
-  if (mergedWalls) {
-    const wallMesh = new THREE.Mesh(mergedWalls,
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    wallMesh.receiveShadow = true;
-    corridor.add(wallMesh);
+  // 3 pareti merged in 1 mesh (V3 Step 5 Q5.2) tramite mergePlanes D25.
+  // pattern: clone geometry + applyMatrix4 + mergeGeometries wrapped in Mesh.
+  const wallMat = new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide });
+  const wallTransforms = [
+    { geometry: new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
+      matrix: new THREE.Matrix4().makeRotationY(Math.PI / 2).setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2) },
+    { geometry: new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
+      matrix: new THREE.Matrix4().makeRotationY(-Math.PI / 2).setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2) },
+    { geometry: new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H),
+      matrix: new THREE.Matrix4().setPosition(0, CORRIDOR_H/2, eZ) }
+  ];
+  const walls = mergePlanes(wallTransforms, wallMat);
+  if (walls) {
+    walls.receiveShadow = true;
+    corridor.add(walls);
   } else {
     // Fallback (impossibile con Three.js 0.160, ma per sicurezza)
-    const wallMat = new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide });
-    corridor.add(new THREE.Mesh(wallGeo1, wallMat));
-    corridor.add(new THREE.Mesh(wallGeo2, wallMat));
-    corridor.add(new THREE.Mesh(wallGeo3, wallMat));
+    wallTransforms.forEach(({ geometry, matrix }) => {
+      const g = geometry.clone();
+      if (matrix) g.applyMatrix4(matrix);
+      corridor.add(new THREE.Mesh(g, wallMat));
+    });
   }
 }
 
@@ -4064,32 +4060,25 @@ function buildCorridorLights(sZ) {
     light.position.set(0, CORRIDOR_H - 0.04, z);
     corridor.add(light);
   }
-  // LED planes merged (V3 Step 5 Q5.2): 4 PlaneGeometry stesso materiale
-  const ledGeos = lampPositions.map(z => {
-    const g = new THREE.PlaneGeometry(0.5, 0.5);
-    const m = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-    m.setPosition(0, CORRIDOR_H - 0.04 + 0.01, z);
-    g.applyMatrix4(m);
-    return g;
-  });
-  const mergedLeds = mergeGeometries(ledGeos, false);
-  if (mergedLeds) {
-    corridor.add(new THREE.Mesh(mergedLeds,
-      new THREE.MeshBasicMaterial({ color: 0xfff1c8 })));
-  }
-  // Frame boxes merged (V3 Step 5 Q5.2): 4 BoxGeometry stesso materiale
-  const frameGeos = lampPositions.map(z => {
-    const g = new THREE.BoxGeometry(0.55, 0.03, 0.55);
-    const m = new THREE.Matrix4();
-    m.setPosition(0, CORRIDOR_H - 0.04 - 0.02, z);
-    g.applyMatrix4(m);
-    return g;
-  });
-  const mergedFrames = mergeGeometries(frameGeos, false);
-  if (mergedFrames) {
-    corridor.add(new THREE.Mesh(mergedFrames,
-      new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 })));
-  }
+  // LED planes merged (V3 Step 5 Q5.2): 4 PlaneGeometry stesso materiale,
+  // via mergePlanes D25 (helper DRY condiviso con pareti + frame boxes).
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0xfff1c8 });
+  const ledTransforms = lampPositions.map(z => ({
+    geometry: new THREE.PlaneGeometry(0.5, 0.5),
+    matrix: new THREE.Matrix4().makeRotationX(Math.PI / 2)
+      .setPosition(0, CORRIDOR_H - 0.04 + 0.01, z)
+  }));
+  const leds = mergePlanes(ledTransforms, ledMat);
+  if (leds) corridor.add(leds);
+  // Frame boxes merged (V3 Step 5 Q5.2): 4 BoxGeometry stesso materiale,
+  // via mergePlanes D25.
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 });
+  const frameTransforms = lampPositions.map(z => ({
+    geometry: new THREE.BoxGeometry(0.55, 0.03, 0.55),
+    matrix: new THREE.Matrix4().setPosition(0, CORRIDOR_H - 0.04 - 0.02, z)
+  }));
+  const frames = mergePlanes(frameTransforms, frameMat);
+  if (frames) corridor.add(frames);
 }
 
 function buildCorridor(floor) {
@@ -5783,6 +5772,25 @@ bus.on('door:opened', scheduleAutoClose);
 
 // pure: limita un valore nell'intervallo [min, max].
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// pure: DRY helper per i 3 callsites di mergeGeometries() in buildCorridor
+// (3 pareti + 4 LED planes + 4 frame boxes). Pattern comune:
+//   1. per ogni transform: clona la geometry + applica matrix
+//   2. mergeGeometries(cloni, useGroups=false)
+//   3. se ok: ritorna new Mesh(mergedGeo, material); altrimenti ritorna null
+// Input NON viene mutato (clone esplicito) — testabile in isolamento.
+// useGroups default false (materiale condiviso tra geometries, V3 Step 5 Q5.2).
+// Polish Pack V4 Step 5 (D25): helper mergePlanes.
+function mergePlanes(transforms, material, useGroups = false) {
+  if (!Array.isArray(transforms) || transforms.length === 0) return null;
+  const merged = mergeGeometries(transforms.map(({ geometry, matrix }) => {
+    const g = geometry.clone();
+    if (matrix) g.applyMatrix4(matrix);
+    return g;
+  }), useGroups);
+  if (!merged) return null;
+  return new THREE.Mesh(merged, material);
+}
 
 // pure: interpolazione lineare tra a e b con t in [0,1].
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -10495,6 +10503,8 @@ window.BossHotelPure = {
   canOpenDoors, shouldAnnounceDoorClose, sosCancelsOOO, currentMovementDirection,
   // Polish Pack V3 Step 3: helper Settings QoL (audio + display + export)
   clampAudio, clampBrightness, formatVolumePercent, stateShapeForExport,
+  // Polish Pack V4 Step 5 (D25): helper geometry merge (non muta input)
+  mergePlanes,
   // Polish Pack V3 Step 4: helper micro-animazioni (respiro + flash + bounce)
   breathScale, arrivalFlashAlpha, easeOutBounce, stateFadeDurationMs, easeOutLinear,
   // Polish Pack V3 Step 5: helper Performance (benchmark + LRU cache)
