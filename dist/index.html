@@ -62,7 +62,7 @@
     text-align: center;
     min-width: 64px;
   }
-  #floor-strip .label { opacity: 0.6; font-size: 10px; letter-spacing: 1px; }
+  #floor-strip .label { opacity: 0.85; font-size: 10px; letter-spacing: 1px; color: #f0e8d8; }
   #floor-strip .value { font-size: 26px; font-weight: 700; color: #ffd66b; }
   #floor-strip .arrow { font-size: 16px; height: 16px; }
   /* Polish Pack V2 Step 8d: switch lingua cliccabile sul display HUD */
@@ -95,6 +95,7 @@
     font-size: 12px;
     line-height: 1.5;
     max-width: 280px;
+    color: #f0e8d8;
   }
   #panel-help .row { display:flex; justify-content:space-between; gap:18px; }
   #panel-help kbd {
@@ -411,6 +412,92 @@
     color: #ffd66b;
     font-size: 11px;
   }
+  /* Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria log */
+  #maint-overlay .m-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(0,255,136,0.2);
+  }
+  #maint-overlay .m-filter .lbl {
+    flex: 0 0 100%;
+    color: #7fc99a;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .m-filter-btn {
+    background: rgba(0, 255, 136, 0.18);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    padding: 3px 7px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    transition: background 0.15s;
+  }
+  .m-filter-btn:hover { background: rgba(0, 255, 136, 0.28); }
+  .m-filter-btn.off {
+    background: rgba(120, 120, 120, 0.15);
+    border-color: #888;
+    color: #888;
+    text-decoration: line-through;
+  }
+  /* Polish Pack V3 Step 3: bottone export JSON nel maintenance overlay */
+  .m-export-btn {
+    margin-top: 8px;
+    width: 100%;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    transition: background 0.15s;
+  }
+  .m-export-btn:hover { background: rgba(0, 255, 136, 0.22); }
+  .m-export-btn:active { background: rgba(0, 255, 136, 0.35); }
+  /* Polish Pack V3 Step 3: sliders QoL nel pannello Personalizza hotel */
+  .hc-settings {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(201, 165, 90, 0.4);
+  }
+  .hc-settings-title {
+    color: var(--hc-accent, #c9a55a);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .hc-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 11px;
+    color: #d8c8a0;
+  }
+  .hc-slider-row label { flex: 0 0 110px; opacity: 0.85; }
+  .hc-slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--hc-accent, #c9a55a);
+    cursor: pointer;
+  }
+  .hc-slider-row .hc-slider-val {
+    flex: 0 0 40px;
+    text-align: right;
+    color: var(--hc-accent, #c9a55a);
+    font-family: monospace;
+    font-size: 11px;
+  }
 
   /* Start screen */
   #startscreen {
@@ -433,7 +520,7 @@
     font-weight: 300;
   }
   #startscreen h1 b { font-weight: 700; color: #ffd66b; }
-  #startscreen p { max-width: 560px; line-height: 1.55; opacity: 0.8; }
+  #startscreen p { max-width: 560px; line-height: 1.55; opacity: 0.9; color: #f0e8d8; }
   #startscreen .keys {
     margin-top: 22px;
     display: grid;
@@ -463,6 +550,21 @@
   }
   #startscreen button:hover { transform: translateY(-2px); box-shadow: 0 10px 35px rgba(255, 214, 107, 0.45); }
   #startscreen button:active { transform: translateY(0); }
+  /* Polish Pack V3 Step 1c: focus-visible ring dorato brand su tutti i
+     bottoni HUD interattivi. Si attiva solo con navigazione keyboard
+     (Tab/Shift+Tab), non con click mouse — :focus-visible e' supportato
+     da tutti i browser moderni. Coerente con il colore brand #ffd66b
+     usato in topbar/HUD. Contrasto elevato (gold su sfondo scuro). */
+  .hud-action:focus-visible,
+  .tt-btn:focus-visible,
+  .tt-btn.tt-primary:focus-visible,
+  .hc-btn:focus-visible,
+  .hc-btn.hc-primary:focus-visible,
+  #startscreen button:focus-visible {
+    outline: 2px solid #ffd66b;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(255, 214, 107, 0.25);
+  }
 
   /* Polish Pack v1.3 #22b — carosello slide start screen */
   #startscreen .slides-wrap {
@@ -561,6 +663,143 @@
     to   { box-shadow: 0 4px 40px rgba(255, 185, 56, 0.9); transform: translateX(-50%) scale(1.05); }
   }
 
+  /* ============================================================ */
+  /* Polish Pack V3 Step 9 (Q9.2-Q9.3): Mobile responsive layout   */
+  /* Touch controls + landscape enforcement + HUD scaling.        */
+  /* ============================================================ */
+
+  /* Landscape enforcement: overlay quando portrait. Niente lock vero
+     (limitato da Web API), ma chiara UX "rotate device". */
+  #rotate-device-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 100000;
+    color: #ffd66b;
+    font-family: 'Courier New', monospace;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  #rotate-device-overlay .rotate-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    animation: rotatePulse 2s infinite;
+  }
+  #rotate-device-overlay .rotate-text {
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+  @keyframes rotatePulse {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+
+  /* Touch controls: joystick virtuale (left) + pulsanti ▲▼ (right). */
+  #touch-controls {
+    display: none;  /* visibile solo su mobile (via .mobile-mode) */
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    pointer-events: none;  /* i figli (joystick + buttons) abilitano */
+    z-index: 5000;
+  }
+  body.mobile-mode #touch-controls {
+    display: block;
+  }
+  /* Joystick virtuale a sinistra in basso (analogico WASD). */
+  #virtual-joystick {
+    position: absolute;
+    bottom: 30px; left: 30px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 215, 107, 0.5);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #virtual-joystick .joystick-knob {
+    position: absolute;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 215, 107, 0.8);
+    border: 2px solid #ffd66b;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: background 0.15s;
+  }
+  #virtual-joystick.active .joystick-knob {
+    background: rgba(255, 215, 107, 1.0);
+    box-shadow: 0 0 20px rgba(255, 215, 107, 0.6);
+  }
+  /* Pulsanti call panel virtuali (▲▼) a destra in basso. */
+  #virtual-call-buttons {
+    position: absolute;
+    bottom: 30px; right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    pointer-events: auto;
+  }
+  .virtual-call-btn {
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: rgba(109, 217, 111, 0.25);
+    border: 3px solid rgba(109, 217, 111, 0.7);
+    color: #6fd96f;
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .virtual-call-btn:active {
+    background: rgba(109, 217, 111, 0.6);
+    transform: scale(0.92);
+  }
+  .virtual-call-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* Mobile HUD scaling: bottoni + font più grandi su schermi piccoli. */
+  @media (max-width: 768px) {
+    #hud-reenter-btn, #hud-exit-btn {
+      padding: 14px 28px;
+      font-size: 16px;
+    }
+    #hud-hint {
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+    #mode-badge {
+      top: 60px;
+      font-size: 12px;
+      padding: 6px 14px;
+    }
+    #statusText {
+      font-size: 14px;
+      padding: 10px 18px;
+    }
+    /* Pointer hint: istruzione touch-friendly su mobile */
+    body.mobile-mode #pointerhint {
+      font-size: 15px;
+      padding: 14px 22px;
+      max-width: 90vw;
+    }
+    /* Landscape enforced */
+    @media (orientation: portrait) {
+      #rotate-device-overlay { display: flex; }
+    }
+  }
+
   #mode-badge {
     position: absolute;
     top: 50px;
@@ -573,6 +812,7 @@
     font-size: 12px;
     letter-spacing: 0.5px;
     pointer-events: none;
+    color: #f0e8d8;
   }
   #mode-badge .dot {
     display: inline-block;
@@ -613,13 +853,54 @@
     <div class="row"><span class="lbl" id="m-pax-lbl"></span><span class="val" id="m-pax">--</span></div>
     <div class="row"><span class="lbl" id="m-mode-lbl"></span><span class="val" id="m-mode">--</span></div>
     <div class="row"><span class="lbl" id="m-ooo-lbl"></span><span class="val" id="m-ooo">--</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-lbl"></span><span class="val" id="m-interphone">--</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.4): counters allarmi/interphonate -->
+    <div class="row"><span class="lbl" id="m-alarm-count-lbl"></span><span class="val" id="m-alarm-count">0</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-count-lbl"></span><span class="val" id="m-interphone-count">0</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.4): ultimo evento history -->
+    <div class="row"><span class="lbl" id="m-alarm-history-lbl"></span><span class="val" id="m-alarm-history">--</span></div>
+    <div class="row"><span class="lbl" id="m-interphone-history-lbl"></span><span class="val" id="m-interphone-history">--</span></div>
+    <!-- Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria -->
+    <div class="m-filter" id="m-filter">
+      <span class="lbl" id="m-filter-lbl"></span>
+      <button class="m-filter-btn" data-cat="cabin" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="door" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="audio" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="state" style="pointer-events:auto;"></button>
+      <button class="m-filter-btn" data-cat="maint" style="pointer-events:auto;"></button>
+    </div>
     <div class="events" id="m-events"></div>
     <div class="hint" id="m-hint"></div>
+    <!-- Polish Pack V3 Step 3: bottone export stato JSON.
+         pointer-events:auto perche' il parent overlay ha pointer-events:none. -->
+    <button id="m-export-json" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
+    <!-- Polish Pack V3 Step 5 (Q5.4): bottone benchmark FPS -->
+    <button id="m-benchmark-btn" class="m-export-btn" style="pointer-events:auto;display:none;"></button>
   </div>
   <div id="mode-badge"><span class="dot"></span><span id="modeText"></span></div>
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
   <button id="hud-reenter-btn" class="hud-action" style="display:none;"></button>
   <div id="pointerhint"></div>
+</div>
+
+<!-- Polish Pack V3 Step 9 (Q9.3): landscape enforcement overlay -->
+<div id="rotate-device-overlay">
+  <div class="rotate-icon">📱</div>
+  <div class="rotate-text">
+    Rotate your device to landscape to play.<br>
+    Ruota il dispositivo in orizzontale per giocare.
+  </div>
+</div>
+
+<!-- Polish Pack V3 Step 9 (Q9.2): virtual touch controls (mobile only) -->
+<div id="touch-controls">
+  <div id="virtual-joystick">
+    <div class="joystick-knob"></div>
+  </div>
+  <div id="virtual-call-buttons">
+    <button class="virtual-call-btn" data-dir="up">▲</button>
+    <button class="virtual-call-btn" data-dir="down">▼</button>
+  </div>
 </div>
 
 <!-- Polish Pack V2 Step 2b: overlay tooltip contestuale per il tutorial prima volta -->
@@ -655,6 +936,30 @@
       <button id="hc-close" class="hc-btn"></button>
       <button id="hc-apply" class="hc-btn hc-primary"></button>
     </div>
+    <!-- Polish Pack V3 Step 3: Settings QoL (audio + display) -->
+    <div class="hc-settings">
+      <div class="hc-settings-title" id="hc-settings-title"></div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-effects"></label>
+        <input type="range" id="hc-slider-effects" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-effects">100%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-music"></label>
+        <input type="range" id="hc-slider-music" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-music">50%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-tts"></label>
+        <input type="range" id="hc-slider-tts" min="0" max="1" step="0.01">
+        <span class="hc-slider-val" id="hc-val-tts">85%</span>
+      </div>
+      <div class="hc-slider-row">
+        <label id="hc-lbl-brightness"></label>
+        <input type="range" id="hc-slider-brightness" min="0.5" max="1.5" step="0.05">
+        <span class="hc-slider-val" id="hc-val-brightness">100%</span>
+      </div>
+    </div>
     <div class="hc-status" id="hc-status"></div>
     <div class="hc-hint"></div>
   </div>
@@ -685,6 +990,9 @@
 <script type="module">
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
+// Polish Pack V3 Step 5 (Q5.2): mergeGeometries per ridurre draw call corridoio
+// (merge di piu' PlaneGeometry in una singola BufferGeometry = 1 draw call).
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ============================================================
 // CONFIGURAZIONE
@@ -806,8 +1114,28 @@ const STRINGS = {
     maintPax: 'Passeggeri',
     maintMode: 'In cabina',
     maintOOO: 'Out-of-order',
+    maintInterphone: 'Citofono',
+    maintBenchmark: 'Benchmark 5s',
+    maintBenchmarkIdle: 'Idle',
+    maintBenchmarkMoving: 'In movimento',
+    maintBenchmarkRunning: 'Benchmark...',
+    maintBenchmarkDone: 'Benchmark completato',
     maintEvents: 'Eventi',
+    maintInterphone: 'Citofono',
     maintHint: 'Shift+M esce \u00b7 1-9 teletrasporto',
+    // Polish Pack V3 Step 6: QoL manutenzione (log severity + category + history)
+    maintFilter: 'Filtro',
+    maintCatCabin: 'Cabina',
+    maintCatDoor: 'Porte',
+    maintCatAudio: 'Audio',
+    maintCatState: 'Stato',
+    maintCatMaint: 'Manut.',
+    maintAlarmCount: 'Allarmi (totale)',
+    maintInterphoneCount: 'Citofono (totale)',
+    maintSevInfo: 'info',
+    maintSevWarn: 'warn',
+    maintSevError: 'err',
+    maintHistoryEmpty: 'Nessun evento',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
     maintEventLoop: '[loop]',
@@ -850,6 +1178,22 @@ const STRINGS = {
     elevatorRestored: 'Ascensore ripristinato',
     elevatorOutOfService: 'Ascensore in manutenzione',
     pressORestore: 'Premere O per ripristinare',
+    queueAck: 'Richiesta in coda',
+    doorBlockedAlarm: 'Porte bloccate per allarme',
+    doorBlockedOOO: 'Fuori servizio',
+    oooCancelledByAlarm: 'Allarme attivato. Fuori servizio annullato.',
+    // Polish Pack V3 Step 3: Settings QoL (pannello Personalizza hotel)
+    settingsTitle: 'Impostazioni',
+    audioSection: 'Audio',
+    audioEffects: 'Effetti sonori',
+    audioMusic: 'Musica cabina',
+    audioTts: 'Annunci vocali (TTS)',
+    audioMute: 'Muto globale',
+    displaySection: 'Display',
+    displayBrightness: 'Luminosita\' display',
+    settingsReset: 'Ripristina default',
+    settingsSaved: 'Impostazioni salvate',
+    settingsExportReady: 'Esporta stato',
     prenotationLabel: 'PRENOTATA \u00b7 Tieni premuto E per entrare',
     helpTitle: 'Comandi',
     // start screen
@@ -1024,10 +1368,29 @@ const STRINGS = {
     maintMode: 'In cabin',
     maintOOO: 'Out-of-order',
     maintEvents: 'Events',
+    maintInterphone: 'Interphone',
+    maintBenchmark: 'Benchmark 5s',
+    maintBenchmarkIdle: 'Idle',
+    maintBenchmarkMoving: 'Moving',
+    maintBenchmarkRunning: 'Benchmarking...',
+    maintBenchmarkDone: 'Benchmark complete',
     maintHint: 'Shift+M to exit \u00b7 1-9 to teleport',
     maintEventSeeded: '[seeded]',
     maintEventReset: '[reset]',
     maintEventLoop: '[loop]',
+    // Polish Pack V3 Step 6: QoL manutenzione
+    maintFilter: 'Filter',
+    maintCatCabin: 'Cabin',
+    maintCatDoor: 'Door',
+    maintCatAudio: 'Audio',
+    maintCatState: 'State',
+    maintCatMaint: 'Maint.',
+    maintAlarmCount: 'Alarms (total)',
+    maintInterphoneCount: 'Interphone (total)',
+    maintSevInfo: 'info',
+    maintSevWarn: 'warn',
+    maintSevError: 'err',
+    maintHistoryEmpty: 'No events',
     // language toggle feedback
     langToggleIT: 'Language: Italian',
     langToggleEN: 'Language: English',
@@ -1068,6 +1431,22 @@ const STRINGS = {
     elevatorRestored: 'Elevator restored',
     elevatorOutOfService: 'Elevator under maintenance',
     pressORestore: 'Press O to restore',
+    queueAck: 'Request queued',
+    doorBlockedAlarm: 'Doors locked due to alarm',
+    doorBlockedOOO: 'Out of service',
+    oooCancelledByAlarm: 'Alarm activated. Out of service cancelled.',
+    // Polish Pack V3 Step 3: Settings QoL
+    settingsTitle: 'Settings',
+    audioSection: 'Audio',
+    audioEffects: 'Sound effects',
+    audioMusic: 'Cabin music',
+    audioTts: 'Voice announcements (TTS)',
+    audioMute: 'Global mute',
+    displaySection: 'Display',
+    displayBrightness: 'Display brightness',
+    settingsReset: 'Reset defaults',
+    settingsSaved: 'Settings saved',
+    settingsExportReady: 'Export state',
     prenotationLabel: 'BOOKED \u00b7 Hold E to enter',
     helpTitle: 'Controls',
     startBtn: 'Enter the elevator',
@@ -1494,8 +1873,66 @@ const state = {
   onboarded: false,           // true dopo aver completato il tutorial iniziale
   tutorialActive: false,      // true quando il tutorial e' in overlay
   tutorialStep: 0,            // step corrente del tutorial (0..N-1)
-  lastInteractionTs: 0        // timestamp ultima interazione (per prompt inattivita')
+  lastInteractionTs: 0,       // timestamp ultima interazione (per prompt inattivita')
+  // Polish Pack V2 Step 14: citofono interattivo (EN 81-28). Stato
+  // separato dall'allarme (state.alarmOn): citofono = chiamata soft
+  // reception, SOS = allarme hard soccorsi. Possono coesistere.
+  interphoneCalling: false,   // true durante una chiamata citofono (5s)
+  _interphoneStart: 0,        // performance.now() di inizio chiamata
+  _interphoneReceptionAnnounced: false,  // true dopo che la voce reception e' stata pronunciata
+  // Polish Pack V3 Step 1b: prefers-reduced-motion OS-level.
+  // true se l'utente ha richiesto motion ridotto a livello sistema operativo.
+  // Disabilita solo micro-animazioni non essenziali (crossfade freccia).
+  // Animazioni essenziali (apertura/chiusura porte, vibrazione cabina,
+  // lampeggio allarme) restano attive per ragioni di sicurezza/realismo.
+  reducedMotion: false,
+  _interphoneButton: null,    // reference al mesh del pulsante verde (lazy)
+  // Polish Pack V3 Step 3: Settings QoL — volumi audio per canale +
+  // luminosità display. Range:
+  //   audio.effects: 0..1 (default 1.0, moltiplicatore su playBeep + chime + alarm + door + whoosh)
+  //   audio.music:   0..1 (default 0.5, moltiplicatore su musica cabin + ristorante)
+  //   audio.tts:     0..1 (default 0.85, volume Web Speech API)
+  //   display.brightness: 0.5..1.5 (default 1.0, applicato via ctx.filter brightness())
+  // Persistenza: localStorage 'bossHotelAudio@v1' + 'bossHotelDisplay@v1'
+  audio: { effects: 1.0, music: 0.5, tts: 0.85 },
+  display: { brightness: 1.0 },
+  _exportLog: [],             // log esteso (50 entry) usato per export JSON
+  // Polish Pack V3 Step 6 (Q6.2): filtro log eventi per categoria (toggle
+  // buttons in maintenance overlay). Default: tutte le categorie visibili.
+  _logFilter: { cabin: true, door: true, audio: true, state: true, maint: true },
+  // Polish Pack V3 Step 6 (Q6.4): history allarmi/interphonate + counter.
+  // alarmHistory/interphoneHistory = array ultimi 20 eventi con timestamp.
+  // alarmCount/interphoneCount = counter totale vita (persistito in
+  // localStorage). Mostrati in maintenance overlay.
+  alarmHistory: [],           // [{ts: ISO, floor, reason}]
+  alarmCount: 0,
+  interphoneHistory: [],      // [{ts: ISO, reason, durationMs}]
+  interphoneCount: 0,
+  // ultimo benchmark results (Q6.5 export enhancement)
+  _lastBenchmark: null,       // {idleStats, movingStats, idleDc, movingDc, ts}
+  // Polish Pack V3 Step 4 (Q4.3): fase del cartello corridoio.
+  // 'normal' = idle/movimento normale, 'blinking' = ultimi 1s pre-arrivo
+  // (cartello lampeggia 3 volte). Settato in tickMove, consumato in
+  // drawMovingSign per overlay gold.
+  _arrivalPhase: 'normal',
+  // Polish Pack V3 Step 4 (Q4.4): transizioni fade per cambi stato.
+  // Ogni campo traccia il valore target + timestamp di inizio transizione.
+  // Lerp gestito in tickFadeStates() ogni frame.
+  _fadeAlarm: { target: 0, from: 0, startMs: 0 },
+  _fadeOOO: { target: 0, from: 0, startMs: 0 },
+  _fadeInterphone: { target: 0, from: 0, startMs: 0 },
+  // Polish Pack V3 Step 9 (Q9.4): flag mobile/touch detection. Settato
+  // all'init via isMobileDevice(). Cambia il flow di input (no pointerLock,
+  // si attivano touch listeners + HUD virtuale joystick/pulsanti ▲▼).
+  isMobile: false,
+  // Joystick virtuale state (Q9.2): posizione drag attiva (touch drag).
+  _joystick: { active: false, dx: 0, dz: 0 }
 };
+
+// Polish Pack V3 Step 4 (Q4.2): movePaused dichiarato in CONFIGURATION
+// per evitare TDZ in drawModernDisplay (chiamato durante init prima della
+// dichiarazione originaria). Pattern coerente con state, hoveredBtn, buttonList.
+let movePaused = false;
 
 // hover state (dichiarato in cima per evitare TDZ in drawModernDisplay)
 const hoveredBtn = { current: null };
@@ -2547,6 +2984,14 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
   );
   phoneBtn.rotation.x = Math.PI / 2;
   phoneBtn.position.set(0, -0.04, 0.011);
+  // Polish Pack V2 Step 14a: citofono interattivo. Il pulsante verde
+  // diventa cliccabile: userData.isButton per il raycaster, action
+  // 'interphone' dispatcha a handleInterphoneCall() (definito dopo
+  // toggleAlarm). L'aggiunta a buttonList lo rende raggiungibile dal
+  // ciclo di hover/click.
+  phoneBtn.userData.isButton = true;
+  phoneBtn.userData.action = 'interphone';
+  phoneBtn.userData.buttonTop = phoneBtn;  // per animazione pressione
   phoneGroup.add(phoneBtn);
   // etichetta "INTERFONO"
   const phoneLabel = (() => {
@@ -2570,6 +3015,13 @@ const darkTrimMat = new THREE.MeshStandardMaterial({
   phoneGroup.position.set(CABIN.w/2 - 0.005, 0.7, 0.0);
   phoneGroup.rotation.y = -Math.PI / 2;
   cabin.add(phoneGroup);
+  // Polish Pack V2 Step 14a: registra il pulsante verde nella buttonList
+  // globale. Cosi' il raycaster (hover + click) lo riconosce come pulsante
+  // e pressButton() dispatcha l'action 'interphone'.
+  buttonList.push(phoneBtn);
+  // aggancia il riferimento al mesh nello state per tickInterphoneCall()
+  // (lazy: viene anche impostato in pressButton come fallback)
+  state._interphoneButton = phoneBtn;
 }
 
 // ---- Targhetta "BOSS HOTEL" e certificazioni (vicino al pannello) ----
@@ -2783,6 +3235,15 @@ function setArrow(direction) {
 // Hooked in loop per gestire il fade-out del ghost
 function tickArrowFade(now) {
   if (!arrowFadeMesh || !arrowFadeMat) return;
+  // Polish Pack V3 Step 1b: con prefers-reduced-motion salta la micro-animazione
+  // (crossfade 200ms) e rimuovi subito il ghost.
+  if (shouldDisableMotion(state)) {
+    cabin.remove(arrowFadeMesh);
+    if (arrowFadeMat.map) arrowFadeMat.map.dispose();
+    arrowFadeMesh = null;
+    arrowFadeMat = null;
+    return;
+  }
   const elapsed = now - arrowFadeStart;
   if (elapsed >= ARROW_FADE_MS) {
     // Fade completato, rimuovi il ghost
@@ -2795,6 +3256,27 @@ function tickArrowFade(now) {
   // Lerp alpha 1.0 → 0.0 durante ARROW_FADE_MS
   arrowFadeMat.opacity = 1.0 - (elapsed / ARROW_FADE_MS);
 }
+
+// Polish Pack V3 Step 4 (Q4.2): tasti "respiro" anche per i 4 tasti fisici
+// della pulsantiera (◄| |► STOP !). Stessa logica del canvas breath:
+// periodo 4s, ampiezza ±2%, skip su reduced-motion/allarme/OOO/movimento.
+// buttonTop e' la mesh 3D del tasto (vedi linee 4347, 2710, 3325).
+function tickBreathButtons(now) {
+  // breathEnabled identico a quello in drawModernDisplay per coerenza visiva.
+  const breathEnabled = !state.reducedMotion && !state.alarmOn
+    && !state.outOfOrder && !state.isMoving && !movePaused;
+  const animT = now / 1000;
+  const breathMul = typeof breathScale === 'function'
+    ? breathScale(animT, breathEnabled) : 1.0;
+  // Itera buttonList e applica scale ai tasti fisici (no celle, che sono canvas).
+  for (let i = 0; i < buttonList.length; i++) {
+    const b = buttonList[i];
+    if (b && b.userData && b.userData.buttonTop) {
+      b.userData.buttonTop.scale.setScalar(breathMul);
+    }
+  }
+}
+
 setArrow('idle');
 
 // ============================================================
@@ -2909,62 +3391,110 @@ function drawMovingSign(fromFloor, toFloor, currentShown) {
     drawFloorSign(state.currentFloor);
     return;
   }
+  // Polish Pack V3 Step 5 (Q5.3): LRU cache per la base del cartello in movimento.
+  // La base (sfondo + bordi + freccia + lista piani + sottotitolo) è costante
+  // durante un viaggio. La cache permette di evitare ~15 fillRect/fillText
+  // operations ad ogni frame di flash gentile (3/sec × ~15 ops = 45 ops/sec).
   const up = toFloor > fromFloor;
-  // stesso sfondo del cartello statico (mantiene coerenza visiva)
-  g.fillStyle = '#0e0900'; g.fillRect(0, 0, 512, 128);
-  // Polish Pack V2 Step 5: bordi derivati da HOTEL_CONFIG.accentGold
-  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 5;
-  g.strokeRect(8, 8, 496, 112);
-  g.strokeStyle = HOTEL_CONFIG.accentGoldDark; g.lineWidth = 2;
-  g.strokeRect(15, 15, 482, 98);
-  g.strokeStyle = HOTEL_CONFIG.accentGoldLight; g.lineWidth = 2;
-  for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
-    g.beginPath(); g.arc(x, y, 5, 0, Math.PI*2); g.stroke();
-  }
-  // freccia direzione (verde salita, ambra discesa) + etichetta
   const accColor = up ? '#7fff7f' : '#ff8c5a';
-  const arrow = up ? '▲' : '▼';
-  g.fillStyle = accColor;
-  g.shadowColor = accColor; g.shadowBlur = 12;
-  g.font = 'bold 48px Georgia, serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(arrow, 48, 55);
-  g.shadowBlur = 0;
-  g.font = 'bold 14px Georgia, serif';
-  g.fillStyle = '#d4a23a';
-  g.fillText(up ? STRINGS[state.lang].inSalitaShort : STRINGS[state.lang].inDiscesaShort, 48, 95);
-  // lista piani attraversati (separati da " · "), con quello corrente evidenziato
-  const lo = Math.min(fromFloor, toFloor);
-  const hi = Math.max(fromFloor, toFloor);
-  const cells = [];
-  for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
-  g.font = 'bold 28px Georgia, serif';
-  g.textAlign = 'left';
-  let cursorX = 110;
-  cells.forEach((label, idx) => {
-    const floorNum = idx + lo;
-    const isCurrent = floorNum === currentShown;
-    if (isCurrent) {
-      g.fillStyle = accColor;
-      g.shadowColor = accColor; g.shadowBlur = 14;
-    } else {
-      g.fillStyle = '#d4a23a';
+  const cacheKey = `movingSignBase:${fromFloor}:${toFloor}:${state.lang}:${HOTEL_CONFIG.panelHelpBrand}`;
+  let baseCanvas = textureCache && textureCache.get(cacheKey);
+  if (!baseCanvas) {
+    // Bake base in un canvas offscreen
+    baseCanvas = document.createElement('canvas');
+    baseCanvas.width = 512;
+    baseCanvas.height = 128;
+    const bg = baseCanvas.getContext('2d');
+    bg.fillStyle = '#0e0900'; bg.fillRect(0, 0, 512, 128);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldLight; bg.lineWidth = 5;
+    bg.strokeRect(8, 8, 496, 112);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldDark; bg.lineWidth = 2;
+    bg.strokeRect(15, 15, 482, 98);
+    bg.strokeStyle = HOTEL_CONFIG.accentGoldLight; bg.lineWidth = 2;
+    for (const [x, y] of [[22, 22], [478, 22], [22, 98], [478, 98]]) {
+      bg.beginPath(); bg.arc(x, y, 5, 0, Math.PI*2); bg.stroke();
     }
-    g.fillText(label, cursorX, 50);
-    const w = g.measureText(label).width;
-    if (idx < cells.length - 1) {
-      g.fillStyle = '#7a5a20'; g.shadowBlur = 0;
-      const sep = ' · ';
-      g.fillText(sep, cursorX + w + 2, 50);
-      cursorX += w + g.measureText(sep).width + 4;
+    bg.fillStyle = accColor;
+    bg.shadowColor = accColor; bg.shadowBlur = 12;
+    bg.font = 'bold 48px Georgia, serif';
+    bg.textAlign = 'center'; bg.textBaseline = 'middle';
+    bg.fillText(up ? '▲' : '▼', 48, 55);
+    bg.shadowBlur = 0;
+    bg.font = 'bold 14px Georgia, serif';
+    bg.fillStyle = '#d4a23a';
+    bg.fillText(up ? STRINGS[state.lang].inSalitaShort : STRINGS[state.lang].inDiscesaShort, 48, 95);
+    // lista piani SENZA highlight del current (aggiunto dopo)
+    const lo = Math.min(fromFloor, toFloor);
+    const hi = Math.max(fromFloor, toFloor);
+    const cells = [];
+    for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+    bg.font = 'bold 28px Georgia, serif';
+    bg.textAlign = 'left';
+    bg.fillStyle = '#d4a23a';
+    let cursorX = 110;
+    cells.forEach((label, idx) => {
+      bg.fillText(label, cursorX, 50);
+      const w = bg.measureText(label).width;
+      if (idx < cells.length - 1) {
+        const sep = ' · ';
+        bg.fillStyle = '#7a5a20';
+        bg.fillText(sep, cursorX + w + 2, 50);
+        cursorX += w + bg.measureText(sep).width + 4;
+      }
+    });
+    // sottotitolo (centrato)
+    bg.fillStyle = '#d4a23a';
+    bg.font = 'italic 16px Georgia, serif';
+    bg.textAlign = 'center';
+    bg.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
+    // Salva in cache
+    if (textureCache) textureCache.set(cacheKey, baseCanvas);
+  }
+  // Copia base canvas sul signCanvas (veloce: solo drawImage)
+  g.clearRect(0, 0, 512, 128);
+  g.drawImage(baseCanvas, 0, 0);
+  // Polish Pack V3 Step 5 (Q5.3): aggiungi solo l'highlight del current floor
+  // (singola fillText) — operazione leggera vs rifare tutto il cartello.
+  if (currentShown !== undefined) {
+    const lo = Math.min(fromFloor, toFloor);
+    const hi = Math.max(fromFloor, toFloor);
+    const cells = [];
+    for (let i = lo; i <= hi; i++) cells.push(i === 0 ? 'T' : String(i));
+    g.font = 'bold 28px Georgia, serif';
+    g.textAlign = 'left';
+    // calcola il cursorX per il currentShown (stesso algoritmo del bake)
+    let cursorX = 110;
+    cells.forEach((label, idx) => {
+      if (idx + lo === currentShown) {
+        g.fillStyle = accColor;
+        g.shadowColor = accColor; g.shadowBlur = 14;
+        g.fillText(label, cursorX, 50);
+        g.shadowBlur = 0;
+      }
+      const w = g.measureText(label).width;
+      if (idx < cells.length - 1) {
+        const sep = ' · ';
+        cursorX += w + g.measureText(sep).width + 4;
+      }
+    });
+  }
+  // Polish Pack V3 Step 4 (Q4.3): overlay lampeggio gentile pre-arrivo.
+  // Attivo SOLO quando state._arrivalPhase === 'blinking' (settato in tickMove
+  // quando moveElapsed > moveDuration - 1.0). 3 flash in 1s (freq 6Hz).
+  // Skip se reduced-motion. Gold tint semi-trasparente sovrapposto al cartello.
+  if (state._arrivalPhase === 'blinking') {
+    const flashAlpha = typeof arrivalFlashAlpha === 'function'
+      ? arrivalFlashAlpha(performance.now() / 1000, !state.reducedMotion)
+      : 0;
+    if (flashAlpha > 0) {
+      g.fillStyle = `rgba(255, 215, 107, ${flashAlpha * 0.35})`;
+      g.fillRect(0, 0, 512, 128);
+      // bordo lampeggia più intenso
+      g.strokeStyle = `rgba(255, 235, 170, ${flashAlpha * 0.9})`;
+      g.lineWidth = 3;
+      g.strokeRect(12, 12, 488, 104);
     }
-    g.shadowBlur = 0;
-  });
-  // sottotitolo (centrato)
-  g.fillStyle = '#d4a23a';
-  g.font = 'italic 16px Georgia, serif';
-  g.textAlign = 'center';
-  g.fillText(`${STRINGS[state.lang].inViaggio} ${HOTEL_CONFIG.panelHelpBrand} ${STRINGS[state.lang].elevatorSuffix} —`, 300, 95);
+  }
   signTex.needsUpdate = true;
 }
 
@@ -3007,6 +3537,20 @@ const themeConfig = {
     carpet: 0xa89060, furniture: 0x2a1a0a, label: 'ATTICO'
   }
 };
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): getThemeForFloor — mapping piano → tema.
+// Mappa un floor number (0..NUM_FLOORS-1) a uno dei 4 temi del corridoio:
+//
+//   floor 0       → 'lobby'     (piano Terra, bancone reception + piante)
+//   floor 1-3     → 'office'    (uffici aziendali, scrivanie)
+//   floor 4-6     → 'hotel'     (camere hotel 32 stanze/piano + porte)
+//   floor 7-9     → 'penthouse' (attico suite lusso + vetrata skyline)
+//
+// Il tema determina i colori (wall/carpet/accent/floor) e gli arredi specifici
+// aggiunti da buildCorridor(). Usato da themeConfig[themeName] lookup.
+//
+// Contratti: D9 (pure helper, testabile in BossHotelPure).
+//
+// Performance: ~5 righe. O(1). Chiamato ad ogni buildCorridor().
 function getThemeForFloor(floor) {
   if (floor === 0) return 'lobby';
   if (floor <= 3) return 'office';
@@ -3330,6 +3874,35 @@ function addExternalCallPanel(floor) {
   _lastExternalFloorShown = state.isMoving ? state.floorShown : state.currentFloor;
 }
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): buildCorridor — costruzione corridoio
+// per un piano specifico. Chiamato ad ogni cambio piano + teleport
+// (Shift+M in maintenance mode).
+//
+// Flusso (10 step):
+//   1. disposeCorridor() — rimuove tutte le mesh precedenti dal Group `corridor`
+//      (preserve floorSignGroup condiviso + texture/material condivisi).
+//   2. Rimuovi i bottoni ▲/▼ esterni dal buttonList (TDZ workaround).
+//   3. Determina il tema via getThemeForFloor(floor): 0→lobby, 1-3→office, 4-6→hotel, 7-9→penthouse.
+//   4. Costruisci shell del corridoio: pavimento (PlaneGeometry 2.4x11), tappeto
+//      centrale (no office), soffitto, pareti sx/dx/fondo. Le pareti merged in
+//      1 mesh tramite mergeGeometries + applyMatrix4 (V3 Step 5 Q5.2).
+//   5. Aggiungi pulsantiera esterna (addExternalCallPanel): header + display
+//      piano + ▲/▼ clickabili. Top floor: solo ▼. Bottom floor: solo ▲.
+//   6. Aggiungi 4 lampade soffitto (PointLight + plane LED + box frame, merged in
+//      2 BufferGeometry — V3 Step 5 Q5.2).
+//   7. Aggiungi arredi specifici del tema: lobby (bancone, piante, divani),
+//      office (scrivanie), hotel (porte camere + wall lamps), penthouse (divani,
+//      vetrata skyline, lampada da terra, suite).
+//   8. Disegna cartello corridoio (drawFloorSign) con il piano + freccia
+//      intenzione (se coda non vuota).
+//   9. corr.position.y segue la cabina (settato in loop()).
+//
+// Contratti D-key: D9 (BossHotelPure helpers testabili), D16 (mergeGeometries
+// + LRU cache in drawMovingSign chiamato da drawFloorSign).
+//
+// Performance: ~143 righe. Crea ~30-50 mesh per piano (shell merged + arredi
+// singoli). Chiamato ad ogni cambio piano + teleport. Profilare con
+// runBenchmark per regressioni future (corridor rebuild è pesante).
 function buildCorridor(floor) {
   disposeCorridor();
   // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
@@ -3379,46 +3952,83 @@ function buildCorridor(floor) {
     m.position.set(0, CORRIDOR_H, sZ + CORRIDOR_D/2);
     corridor.add(m);
   }
-  // Parete sinistra
+  // Polish Pack V3 Step 5 (Q5.2): merge 3 pareti (sx, dx, fondo) in un'unica
+  // BufferGeometry. Stesso materiale (theme.wall) e stessa shadow flag → 1
+  // draw call invece di 3. Risparmio ~2 draw call per piano rebuild.
+  // PlaneGeometry ha bisogno di essere posizionata (rotation/translate), e
+  // mergeGeometries non supporta transform per geometry. Applichiamo le
+  // transform via matrix (geometry.applyMatrix4) PRIMA del merge.
   {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.rotation.y = Math.PI / 2;
-    m.position.set(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    m.receiveShadow = true;
-    corridor.add(m);
-  }
-  // Parete destra
-  {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.rotation.y = -Math.PI / 2;
-    m.position.set(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
-    m.receiveShadow = true;
-    corridor.add(m);
-  }
-  // Parete di fondo
-  {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H),
-      new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    m.position.set(0, CORRIDOR_H/2, eZ);
-    m.receiveShadow = true;
-    corridor.add(m);
+    const wallGeo1 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+    const m1 = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+    m1.setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+    wallGeo1.applyMatrix4(m1);
+    const wallGeo2 = new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H);
+    const m2 = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
+    m2.setPosition(CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2);
+    wallGeo2.applyMatrix4(m2);
+    const wallGeo3 = new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H);
+    const m3 = new THREE.Matrix4();
+    m3.setPosition(0, CORRIDOR_H/2, eZ);
+    wallGeo3.applyMatrix4(m3);
+    const mergedWalls = mergeGeometries([wallGeo1, wallGeo2, wallGeo3], false);
+    if (mergedWalls) {
+      const wallMesh = new THREE.Mesh(mergedWalls,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })
+      );
+      wallMesh.receiveShadow = true;
+      corridor.add(wallMesh);
+    } else {
+      // Fallback: 3 mesh separate (impossibile con Three.js 0.160, ma per sicurezza)
+      corridor.add(new THREE.Mesh(wallGeo1,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+      corridor.add(new THREE.Mesh(wallGeo2,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+      corridor.add(new THREE.Mesh(wallGeo3,
+        new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide })));
+    }
   }
 
   // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
   addExternalCallPanel(floor);
 
   // Luci soffitto corridoio
+  // Polish Pack V3 Step 5 (Q5.2): merge 4 lampade LED (4 PlaneGeometry stesso
+  // materiale MeshBasicMaterial) + 4 frame (4 BoxGeometry stesso materiale)
+  // in 2 BufferGeometry uniche. Risparmio ~6 draw call per piano rebuild.
   const lampPositions = [sZ + 2.0, sZ + 4.5, sZ + 7.0, sZ + 9.5];
   for (const z of lampPositions) {
-    addCeilingLamp(corridor, 0, CORRIDOR_H - 0.04, z, theme);
+    const x = 0, y = CORRIDOR_H - 0.04;
+    // PointLight (no draw, ma presente per illuminare il corridoio)
+    const light = new THREE.PointLight(0xfff1c8, 0.5, 5, 1.5);
+    light.position.set(x, y, z);
+    corridor.add(light);
+  }
+  // Merge LED planes (4 PlaneGeometry stesse caratteristiche)
+  const ledGeos = lampPositions.map(z => {
+    const g = new THREE.PlaneGeometry(0.5, 0.5);
+    const m = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+    m.setPosition(0, CORRIDOR_H - 0.04 + 0.01, z);
+    g.applyMatrix4(m);
+    return g;
+  });
+  const mergedLeds = mergeGeometries(ledGeos, false);
+  if (mergedLeds) {
+    corridor.add(new THREE.Mesh(mergedLeds,
+      new THREE.MeshBasicMaterial({ color: 0xfff1c8 })));
+  }
+  // Merge frame boxes (4 BoxGeometry stesso materiale)
+  const frameGeos = lampPositions.map(z => {
+    const g = new THREE.BoxGeometry(0.55, 0.03, 0.55);
+    const m = new THREE.Matrix4();
+    m.setPosition(0, CORRIDOR_H - 0.04 - 0.02, z);
+    g.applyMatrix4(m);
+    return g;
+  });
+  const mergedFrames = mergeGeometries(frameGeos, false);
+  if (mergedFrames) {
+    corridor.add(new THREE.Mesh(mergedFrames,
+      new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 })));
   }
 
   // Arredi specifici per tema
@@ -4007,6 +4617,10 @@ function addSkylineWindow(parent, x, y, z, rotY) {
 }
 
 // Costruisci corridoio iniziale (piano 0)
+// Polish Pack V3 Step 1b: rileva prefers-reduced-motion OS-level PRIMA
+// della prima buildCorridor, cosi' eventuali animazioni successive
+// (es. crossfade freccia al primo cambio piano) rispettano subito la preferenza.
+initReducedMotion();
 buildCorridor(0);
 
 // ============================================================
@@ -4501,7 +5115,8 @@ function spawnNpcsAtFloor(floor) {
   if (!state.alarmOn && !state.outOfOrder) {
     const tts = NPC_TTS_BY_FLOOR[floor];
     if (tts && typeof speak === 'function' && ttsEnabled && !state.muted) {
-      speak(tts(state));
+      const txt = tts(state);
+      speakWithSubtitle(txt, { durationMs: 3500 });
     }
   }
   // Polish Pack V2 Step 10b: suoni contestuali del corridoio (per zona piano)
@@ -4966,7 +5581,8 @@ function tickInactivityPrompt() {
   if (idleMs > 30000 && performance.now() - lastInactivityPromptTs > 300000) {
     lastInactivityPromptTs = performance.now();
     if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-      speak(state.lang === 'en' ? 'Press question mark for help.' : 'Premi punto interrogativo per aiuto.');
+      const txt = state.lang === 'en' ? 'Press question mark for help.' : 'Premi punto interrogativo per aiuto.';
+      speakWithSubtitle(txt, { durationMs: 3500 });
     }
   }
 }
@@ -5020,6 +5636,443 @@ function cancelAutoClose() {
 // Polish Pack V2 Step 1d: scheduleAutoClose ascolta 'door:opened' invece di
 // essere invocato da tickDoors ogni frame (polling su state.doorsActual).
 bus.on('door:opened', scheduleAutoClose);
+
+// ============================================================
+// Polish Pack V2 Step 12: helper matematici puri.
+// Funzioni senza side-effect, esposte in window.BossHotelPure
+// per i test in tests.html. NON dipendono da state/scene.
+// ============================================================
+
+// pure: limita un valore nell'intervallo [min, max].
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// pure: interpolazione lineare tra a e b con t in [0,1].
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// pure: smoothstep classico `t*t*(3-2t)`, output [0,1] per t in [0,1].
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+// pure: clamp del numero di piano nell'intervallo valido [0, NUM_FLOORS-1].
+function clampFloor(f) { return clamp(f, 0, NUM_FLOORS - 1); }
+
+// pure: etichetta display del piano (0 -> 'T', altrimenti numero come stringa).
+function floorLabel(f) { return f === 0 ? 'T' : String(f); }
+
+// pure: delta passeggeri per piano (estratto da adjustPassengersForFloor).
+// Restituisce l'incremento da applicare al contatore passeggeri; clamp finale
+// e' responsabilita' del caller per consentire test deterministici.
+function computePassengerDelta(floor, rand) {
+  if (floor === 0) return Math.floor(rand() * 3);                   // lobby: 0..2 salgono
+  if (floor <= 3) return rand() < 0.7 ? -Math.floor(rand() * 3) : 1; // uffici: scendono
+  if (floor <= 6) return rand() < 0.5 ? 1 : -1;                      // hotel: check-in/out
+  return rand() < 0.6 ? 1 : 0;                                       // attico: +1 o 0
+}
+
+// pure: versione stateless di queueNextSmart. Sceglie la prossima richiesta
+// dalla coda in base a direzione corrente. Restituisce null se coda vuota.
+function pickNextFloor(queue, lastDirection) {
+  if (queue.length === 0) return null;
+  if (lastDirection === 'up' || lastDirection === 'down') {
+    const sameDir = queue.filter(r => r.direction === lastDirection || r.direction === null);
+    if (sameDir.length > 0) {
+      return lastDirection === 'up'
+        ? sameDir.reduce((m, r) => r.floor > m.floor ? r : m)
+        : sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+    const oppDir = lastDirection === 'up' ? 'down' : 'up';
+    const opp = queue.filter(r => r.direction === oppDir);
+    if (opp.length > 0) {
+      // Polish Pack V4 Step 2 (D22): inversione asimmetrica (look algorithm).
+      //   - inverto a 'down' (lastDir='up') → MAX della coda down: vado al piu'
+      //     alto tra i down cosi' la cabina prosegue nella direzione attuale
+      //     fino al farthest down, poi serve i restanti scendendo.
+      //   - inverto a 'up'   (lastDir='down') → MIN della coda up: vado al
+      //     piu' basso tra gli up cosi' la cabina scende al farthest up,
+      //     poi risale servendo i restanti.
+      // Vedi queueNextSmart() per la versione stateful con stessa logica.
+      return oppDir === 'down'
+        ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
+        : opp.reduce((m, r) => r.floor < m.floor ? r : m);
+    }
+  }
+  return queue[0];
+}
+
+// pure: verifica se le porte possono essere aperte (no allarme, no OOO).
+// Estratto da setDoors() in elevator.html per essere testabile deterministicamente.
+// Polish Pack V3 Step 2 (Q2.6 A+B).
+function canOpenDoors(s) {
+  if (!s) return false;
+  return !s.alarmOn && !s.outOfOrder;
+}
+
+// pure: determina se l'annuncio "porte in chiusura" deve essere pronunciato.
+// Polish Pack V3 Step 2 (Q2.6 C): no-op se le porte sono gia' chiuse.
+// Soglia 0.05 coerente con setDoors().
+function shouldAnnounceDoorClose(doorsActual) {
+  return doorsActual > 0.05;
+}
+
+// pure: indica se l'attivazione del SOS deve azzerare lo stato OOO.
+// Polish Pack V3 Step 2 (Q2.4): quando l'allarme hard va ON mentre OOO era
+// attivo, forza OOO=false + emette 'ooo:off' + TTS notifica.
+function sosCancelsOOO(s) {
+  if (!s) return false;
+  // Vero solo quando il SOS (alarmOn) si attivazione mentre OOO era gia' ON.
+  // Casi diversi: alarmOn=false (no-op) o outOfOrder=false (OOO non attivo)
+  // non sono "cancellazione" -> false. Polish Pack V3 Step 2 (Q2.4).
+  return !!(s.outOfOrder && s.alarmOn);
+}
+
+// pure: verifica se la cabina sta muovendosi verso l'alto, basso o ferma.
+// Usata da pickNextFloor + dai test per la logica di routing.
+function currentMovementDirection(s) {
+  if (!s) return null;
+  if (!s.isMoving) return null;
+  return s.targetFloor > s.currentFloor ? 'up'
+    : s.targetFloor < s.currentFloor ? 'down' : null;
+}
+
+// pure: fattore di scala "respiro" pulsante per i tasti della pulsantiera.
+// Periodo 4s (Math.sin con freq=PI/2 => T=2*PI/(PI/2)=4s), ampiezza ±2%.
+// Se enabled=false ritorna 1.0 (no animation). Usato da drawModernDisplay
+// per la canvas e da tickBreathButtons per le mesh 3D dei tasti fisici.
+// Polish Pack V3 Step 4 (Q4.2).
+function breathScale(animT, enabled) {
+  if (!enabled) return 1.0;
+  return 1.0 + 0.02 * Math.sin(animT * Math.PI / 2);
+}
+
+// pure: alpha per il cartello "lampeggio gentile" pre-arrivo.
+// 3 flash in 1s = freq 3Hz (Math.sin con freq=3*PI, poi Math.abs raddoppia
+// a 6 attraversamenti/sintattici ma i PICCHI sono 3 in 1s).
+// alpha oscillante 0..1. enabled=false => alpha=0 (nessun overlay).
+// Usato in drawMovingSign. Polish Pack V3 Step 4 (Q4.3).
+function arrivalFlashAlpha(animT, enabled) {
+  if (!enabled) return 0;
+  return 0.5 + 0.5 * Math.abs(Math.sin(animT * 3 * Math.PI));
+}
+
+// pure: easing bounce-out classico. t in [0..1], ritorna posizione [0..1].
+// Decay esponenziale con oscillazione smorzata (effetto 'maniglione che
+// rimbalza dopo l'arrivo'). Usato per sostituire `*= 0.85` decay vibrazione.
+// Polish Pack V3 Step 4 (Q4.5).
+function easeOutBounce(t) {
+  if (t < 0 || t > 1) return 0;
+  // Oscillazione smorzata: ampiezza decade con exp(-3t), freq 8Hz
+  // Risultato: 1.0 a t=0, oscilla tra +/-0.3, smorzato a ~0 entro 1.5s.
+  return Math.exp(-3 * t) * Math.cos(t * 8 * Math.PI);
+}
+
+// pure: durata del fade-in per cambi stato (OOO/alarm/citofono).
+// Ritorna millisecondi. Coerente con Q4.4 = 200ms.
+// Polish Pack V3 Step 4 (Q4.4).
+function stateFadeDurationMs() {
+  return 200;
+}
+
+// pure: easing lineare per lerp fade-in. t in [0..1], ritorna 0..1.
+// Polish Pack V3 Step 4 (Q4.4): lerp semplice, easing lineare (più 'snappy').
+function easeOutLinear(t) {
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+
+// pure: aggrega samples FPS in statistiche riassuntive. samples = array di FPS.
+// Ritorna {min, max, avg, count}. Usato da runBenchmark per sintesi risultati.
+// Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler.
+function aggregateFpsStats(samples) {
+  if (!Array.isArray(samples) || samples.length === 0) {
+    return { min: 0, max: 0, avg: 0, count: 0 };
+  }
+  let mn = Infinity, mx = -Infinity, sum = 0, count = 0;
+  for (const v of samples) {
+    if (typeof v !== 'number' || isNaN(v)) continue;
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+    sum += v;
+    count++;
+  }
+  if (count === 0) return { min: 0, max: 0, avg: 0, count: 0 };
+  return { min: mn, max: mx, avg: sum / count, count };
+}
+
+// pure: confronta due snapshot FPS (before/after). Ritorna stringa tipo
+// "+5.2 FPS (+12%)". Usato per visualizzare l'impatto di un'ottimizzazione.
+// Polish Pack V3 Step 5 (Q5.4): benchmark comparison.
+function formatFpsDelta(before, after) {
+  if (typeof before !== 'number' || typeof after !== 'number') return '--';
+  const diff = after - before;
+  const pct = before > 0 ? (diff / before) * 100 : 0;
+  const sign = diff >= 0 ? '+' : '';
+  return `${sign}${diff.toFixed(1)} FPS (${sign}${pct.toFixed(0)}%)`;
+}
+
+// pure: crea una semplice cache LRU (Least Recently Used).
+// capacity = numero massimo di entry. Quando la cache e' piena, l'entry
+// meno recentemente usata viene scartata per fare spazio alla nuova.
+// Usato da textureCache (Q5.3) per evitare re-bake di canvas texture.
+// Polish Pack V3 Step 5 (Q5.3): texture LRU cache.
+function createLruCache(capacity) {
+  // Default 10 applicato solo quando capacity e' null/undefined o NaN.
+  // 0 (esplicito) deve fare il clamp a 1, non triggerare il fallback a 10.
+  const raw = (typeof capacity === 'number' && !isNaN(capacity)) ? capacity : 10;
+  const cap = Math.max(1, raw);
+  const map = new Map(); // insertion-ordered (LRU oldest first)
+  return {
+    get(key) {
+      if (!map.has(key)) return undefined;
+      // Refresh: rimuovi e reinserisci per marcare come MRU
+      const v = map.get(key);
+      map.delete(key);
+      map.set(key, v);
+      return v;
+    },
+    set(key, value) {
+      if (map.has(key)) {
+        map.delete(key);
+      } else if (map.size >= cap) {
+        // Scarta LRU (primo elemento)
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+      }
+      map.set(key, value);
+      return value;
+    },
+    has(key) { return map.has(key); },
+    delete(key) { return map.delete(key); },
+    clear() { map.clear(); },
+    get size() { return map.size; },
+    get capacity() { return cap; },
+    keys() { return Array.from(map.keys()); }
+  };
+}
+
+// pure: filtra eventi log per categoria. events = array di {label, severity, category, ts}
+// filter = {cabin: bool, door: bool, audio: bool, state: bool, maint: bool}
+// Ritorna solo gli eventi la cui category e' abilitata.
+// Polish Pack V3 Step 6 (Q6.3): filter log per category.
+function filterLogEvents(events, filter) {
+  if (!Array.isArray(events)) return [];
+  if (!filter) return events.slice();
+  return events.filter(ev => {
+    if (!ev || !ev.category) return true; // backward-compat: events senza category → sempre visibili
+    return filter[ev.category] !== false;
+  });
+}
+
+// pure: severity color map per visualizzazione in HTML. Ritorna stringa CSS color.
+// Polish Pack V3 Step 6 (Q6.2): colori severity nel maintenance overlay.
+function severityColor(sev) {
+  if (sev === 'error') return '#ff5050';
+  if (sev === 'warn') return '#ffaa33';
+  return '#7fc99a'; // info (default)
+}
+
+// pure: severity icon per compattezza visiva (1 char). info='i', warn='!', error='X'.
+// Polish Pack V3 Step 6 (Q6.2): icona severity nel maintenance log.
+function severityIcon(sev) {
+  if (sev === 'error') return 'X';
+  if (sev === 'warn') return '!';
+  return 'i';
+}
+
+// pure: aggiunge un evento a una history array (FIFO con cap). Non side-effect su input.
+// events: array esistente (ordine cronologico ascendente: [0]=oldest).
+// evt: nuovo evento. cap: max entries (default 20). Ritorna nuovo array
+// ordinato NEWEST-FIRST ([0]=newest, [N-1]=oldest) cosi' formatHistoryEvents
+// e la UI mostrano l'evento piu' recente in cima. Polish Pack V3 Step 6 (Q6.4).
+function pushHistoryEvent(events, evt, cap = 20) {
+  if (!Array.isArray(events)) return [evt];
+  // Reverse per portare l'ordine a newest-first, poi prepend del nuovo evento.
+  const arr = events.slice().reverse();
+  arr.unshift(evt);
+  if (arr.length > cap) arr.length = cap;
+  return arr;
+}
+
+// pure: format history events come lista compatta per maintenance overlay.
+// events: array di {ts, floor, reason}. lang: 'it' | 'en'.
+// Ritorna stringa multi-linea "floor:reason (hh:mm:ss)".
+// Polish Pack V3 Step 6 (Q6.4): history display formatter.
+function formatHistoryEvents(events, lang) {
+  if (!Array.isArray(events) || events.length === 0) {
+    return lang === 'en' ? 'No events' : 'Nessun evento';
+  }
+  const lines = [];
+  for (const ev of events) {
+    const d = ev.ts ? new Date(ev.ts) : null;
+    // getUTCHours/Minutes/Seconds per coerenza cross-TZ: event.ts viene
+    // salvato come ISO string (UTC) e letto coerentemente in UTC.
+    const time = d && !isNaN(d.getTime())
+      ? `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}:${String(d.getUTCSeconds()).padStart(2,'0')}`
+      : '--:--:--';
+    const reason = ev.reason || (lang === 'en' ? 'manual' : 'manuale');
+    if (ev.floor !== undefined) {
+      lines.push(`${time} ${lang === 'en' ? 'floor' : 'piano'} ${ev.floor === 0 ? 'T' : ev.floor}: ${reason}`);
+    } else {
+      lines.push(`${time} ${reason}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// Polish Pack V3 Step 8 (Q8.1): stateInvariantCheck - valida che lo state
+// rispetti tutti i contratti D-key noti. Ritorna { ok: bool, violations: [...] }.
+// Regole (~20):
+//   1. state.currentFloor in [0..NUM_FLOORS-1]
+//   2. state.targetFloor in [0..NUM_FLOORS-1]
+//   3. state.floorShown in [0..NUM_FLOORS-1]
+//   4. state.passengers in [0..MAX_PAX] (MAX_PAX = 8)
+//   5. se state.isMoving: moveFrom/moveTo validi
+//   6. state.alarmOn → state.isMoving === false (D10)
+//   7. state.alarmOn → state.outOfOrder === false (V3 Step 2 Q2.4)
+//   8. state.alarmOn → movePaused === true
+//   9. state.outOfOrder → queue.length === 0 (gestito in OOO toggle)
+//  10. state.interphoneCalling → state.alarmOn OR lecito (entrambi ON sono leciti)
+//  11. state.lang in ['it', 'en']
+//  12. state.audio.effects/music/tts in [0..1]
+//  13. state.display.brightness in [0.5..1.5]
+//  14. state.alarmCount >= 0
+//  15. state.interphoneCount >= 0
+//  16. state.alarmHistory.length <= 20
+//  17. state.interphoneHistory.length <= 20
+//  18. state._eventLog.length <= 10
+//  19. state._exportLog.length <= 50
+//  20. se state.playerInCabin === true, state.currentFloor deve essere valido (no NaN)
+function stateInvariantCheck(s) {
+  const violations = [];
+  if (!s || typeof s !== 'object') {
+    return { ok: false, violations: ['state non e\' un oggetto'] };
+  }
+  // 1-3: floors validi
+  for (const field of ['currentFloor', 'targetFloor', 'floorShown']) {
+    const v = s[field];
+    if (typeof v !== 'number' || isNaN(v) || v < 0 || !Number.isFinite(v)) {
+      violations.push(`${field} fuori range: ${v}`);
+    }
+  }
+  // 4: passengers
+  if (typeof s.passengers !== 'number' || s.passengers < 0 || s.passengers > 8) {
+    violations.push(`passengers fuori range [0..8]: ${s.passengers}`);
+  }
+  // 5: se isMoving, floorShown aggiornato
+  if (s.isMoving && (s.moveFrom === undefined || s.moveTo === undefined)) {
+    violations.push(`isMoving ma moveFrom/moveTo undefined`);
+  }
+  // 6: alarmOn → isMoving === false
+  if (s.alarmOn && s.isMoving) {
+    violations.push(`alarmOn ma isMoving=true (D10)`);
+  }
+  // 7: alarmOn → outOfOrder === false
+  if (s.alarmOn && s.outOfOrder) {
+    violations.push(`alarmOn ma outOfOrder=true (V3 Step 2 Q2.4)`);
+  }
+  // 8: alarmOn → movePaused === true (verifica solo se movePaused definito)
+  if (s.alarmOn && typeof s.movePaused !== 'undefined' && !s.movePaused) {
+    violations.push(`alarmOn ma movePaused=false`);
+  }
+  // 9: outOfOrder → queue vuota (verifica solo se queue definita)
+  if (s.outOfOrder && Array.isArray(s._queue) && s._queue.length > 0) {
+    violations.push(`outOfOrder ma queue non vuota (${s._queue.length} entries)`);
+  }
+  // 10: interphoneCalling + alarmOn sono leciti ma logica separata (warning, no fail)
+  // (non aggiungo violation - il caso e' lecito per design)
+  // 11: lang
+  if (s.lang && s.lang !== 'it' && s.lang !== 'en') {
+    violations.push(`lang non valido: ${s.lang}`);
+  }
+  // 12: audio volumes
+  if (s.audio) {
+    for (const k of ['effects', 'music', 'tts']) {
+      const v = s.audio[k];
+      if (typeof v !== 'number' || v < 0 || v > 1) {
+        violations.push(`audio.${k} fuori range [0..1]: ${v}`);
+      }
+    }
+  }
+  // 13: display brightness
+  if (s.display) {
+    const v = s.display.brightness;
+    if (typeof v !== 'number' || v < 0.5 || v > 1.5) {
+      violations.push(`display.brightness fuori range [0.5..1.5]: ${v}`);
+    }
+  }
+  // 14-15: counters
+  for (const k of ['alarmCount', 'interphoneCount']) {
+    const v = s[k];
+    if (typeof v !== 'number' || v < 0 || !Number.isFinite(v)) {
+      violations.push(`${k} deve essere >=0: ${v}`);
+    }
+  }
+  // 16-19: array caps
+  for (const [k, cap] of [['alarmHistory', 20], ['interphoneHistory', 20],
+                          ['_eventLog', 10], ['_exportLog', 50]]) {
+    if (Array.isArray(s[k]) && s[k].length > cap) {
+      violations.push(`${k} supera cap (${s[k].length} > ${cap})`);
+    }
+  }
+  // 20: playerInCabin → currentFloor valido
+  if (s.playerInCabin === true && (isNaN(s.currentFloor) || s.currentFloor < 0)) {
+    violations.push(`playerInCabin ma currentFloor invalido`);
+  }
+  return { ok: violations.length === 0, violations };
+}
+
+// pure: alpha del lampeggio del pulsante citofono (0.15..1.0).
+// nowMs = timestamp performance.now() assoluto (NON elapsed).
+// Polish Pack V2 Step 14b: lampeggio 4Hz verde.
+// Estratto da tickInterphoneCall per essere testabile deterministicamente.
+// Nota: la fase NON si resetta a inizio chiamata — continua il sin globale.
+// Questo permette di testare senza simulare l'orologio reale.
+function interphoneLampAlpha(nowMs) {
+  if (typeof nowMs !== 'number' || isNaN(nowMs) || nowMs < 0) return 0.15;
+  // 4Hz = 4 cicli/sec → omega = 4 * 2π = 8π rad/sec
+  const omega = 8 * Math.PI;
+  const k = 0.5 + 0.5 * Math.sin((nowMs / 1000) * omega);
+  return 0.15 + k * 0.85;
+}
+
+// pure: indica se la chiamata citofono deve terminare per timeout.
+// Polish Pack V2 Step 14b: INTERPHONE_DURATION_MS = 15000ms default.
+// Estratto da tickInterphoneCall per test deterministici.
+function interphoneShouldTimeout(elapsedMs, durationMs) {
+  const dur = typeof durationMs === 'number' ? durationMs : 15000;
+  return typeof elapsedMs === 'number' && !isNaN(elapsedMs) && elapsedMs >= dur;
+}
+
+// pure: stress test runner. Esegue `fn()` n volte e verifica:
+//  1. nessuna eccezione
+//  2. ogni risultato non undefined (se expectedDefined=true)
+//  3. timing avg (ms)
+// Ritorna { ok, count, avgMs, errors }. Polish Pack V3 Step 8 (Q8.3).
+function runStress(fn, n, expectedDefined = true) {
+  if (typeof fn !== 'function') return { ok: false, count: 0, avgMs: 0, errors: ['fn not function'] };
+  const count = Math.max(1, Math.min(10000, n || 100));
+  const errors = [];
+  let sumMs = 0;
+  let definedCount = 0;
+  for (let i = 0; i < count; i++) {
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    let r;
+    try { r = fn(i); } catch (e) { errors.push(`i=${i}: ${e.message}`); continue; }
+    if (expectedDefined && r === undefined) {
+      errors.push(`i=${i}: returned undefined`);
+    } else if (r !== undefined) {
+      definedCount++;
+    }
+    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    sumMs += (t1 - t0);
+  }
+  return {
+    ok: errors.length === 0,
+    count,
+    avgMs: sumMs / count,
+    definedCount,
+    errors: errors.slice(0, 5)  // primi 5 errori
+  };
+}
+
+// ============================================================
 
 // Polish Pack v1.3 #7 — numerazione camere hotel contestuale
 // Restituisce la stringa da mostrare sul display in base al piano corrente
@@ -5351,10 +6404,39 @@ function drawModernDisplay() {
     displaySemistaticReady = true;
   }
   // 3. Composizione: clear + copia i due layer cached + ridisegna il dynamic
+  // Polish Pack V3 Step 3: brightness filter applicato al canvas display.
+  // Range 0.5..1.5 (default 1.0 = nessuna modifica). ctx.filter influenza
+  // TUTTE le operazioni di disegno successive (drawImage + fillRect + testo).
+  // Polish Pack V3 Step 5 (Q5.5): ottimizzazione — skip ctx.filter quando
+  // brightness === 1.0 (default ~99% utenti). Assegnare filter='none' quando
+  // non serve evita un no-op costoso ad ogni frame.
+  const bright = (state.display && typeof state.display.brightness === 'number')
+    ? state.display.brightness : 1.0;
+  if (bright !== 1.0) {
+    ctx.filter = `brightness(${bright})`;
+  } else {
+    ctx.filter = 'none';
+  }
+  // Polish Pack V3 Step 4 (Q4.2): tasti respiro - scale pulsante ±2%
+  // con periodo 4s quando la cabina è idle (no movimento, no allarme, no OOO).
+  // Respettato prefers-reduced-motion (D12): se state.reducedMotion,
+  // breathMul = 1.0 (no animation).
+  const breathEnabled = !state.reducedMotion && !state.alarmOn
+    && !state.outOfOrder && !state.isMoving && !movePaused;
+  const breathMul = typeof breathScale === 'function'
+    ? breathScale(animT, breathEnabled) : 1.0;
+  if (breathMul !== 1.0) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(breathMul, breathMul);
+    ctx.translate(-W / 2, -H / 2);
+  }
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(displayStaticCanvas, 0, 0);
   ctx.drawImage(displaySemistaticCanvas, 0, 0);
   renderDisplayDynamicLayer(ctx, animT);
+  if (breathMul !== 1.0) ctx.restore();
+  ctx.filter = 'none'; // reset per evitare side-effect su altri contesti
 
   displayTex.needsUpdate = true;
   displayDirty = false;
@@ -5470,7 +6552,11 @@ function playBeep(freq = 800, dur = 0.08, type = 'sine', vol = 0.15) {
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   o.type = type; o.frequency.value = freq;
-  g.gain.value = vol;
+  // Polish Pack V3 Step 3: moltiplicatore effetti sonori.
+  // state.audio.effects è in [0..1]. Default 1.0 = nessuna attenuazione.
+  const effMul = (state.audio && typeof state.audio.effects === 'number')
+    ? state.audio.effects : 1.0;
+  g.gain.value = vol * effMul;
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
   o.connect(g); g.connect(audioCtx.destination);
   o.start(); o.stop(audioCtx.currentTime + dur);
@@ -5524,11 +6610,15 @@ function startWhoosh() {
   whooshFilter.frequency.value = 400;
   whooshFilter.Q.value = 1.2;
   whooshGain = audioCtx.createGain();
+  // Polish Pack V3 Step 3: whoosh rispetta state.audio.effects.
   whooshGain.gain.value = 0; // parte silente, sale gradualmente in tickMove
   whooshNode.connect(whooshFilter);
   whooshFilter.connect(whooshGain);
   whooshGain.connect(audioCtx.destination);
   whooshNode.start();
+  // Memorizza il moltiplicatore per applicarlo in tickMove (ramping graduale).
+  whooshGain._effectsMul = (state.audio && typeof state.audio.effects === 'number')
+    ? state.audio.effects : 1.0;
 }
 function stopWhoosh() {
   if (whooshGain) {
@@ -5616,8 +6706,12 @@ function startMusic() {
   filter.connect(gain).connect(audioCtx.destination);
   oscs.forEach(o => o.start());
   lfo.start();
+  // Polish Pack V3 Step 3: musica rispetta state.audio.music.
+  // Baseline 0.04 * moltiplicatore (default music=0.5 → 0.02, dimezzato).
+  const musicMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
   // fade-in 1.5s
-  try { gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5); } catch(e) {}
+  try { gain.gain.linearRampToValueAtTime(0.04 * musicMul, audioCtx.currentTime + 1.5); } catch(e) {}
 }
 function stopMusic(fast = false) {
   if (!musicNodes) return;
@@ -5810,8 +6904,11 @@ function startCorridorAudio(theme) {
   }
 
   corridorAudioNodes = { theme, layers, masterGain };
-  // fade-in 1.0s al volume target (BUG FIX v2: alzato da 0.5 a 0.8)
-  try { masterGain.gain.linearRampToValueAtTime(0.8, now + 1.0); } catch(e) {}
+  // fade-in 1.0s al volume target (BUG FIX v2: alzato da 0.5 a 0.8).
+  // Polish Pack V3 Step 3: corridoio = canale musica (state.audio.music).
+  const corrMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
+  try { masterGain.gain.linearRampToValueAtTime(0.8 * corrMul, now + 1.0); } catch(e) {}
 }
 
 function stopCorridorAudio() {
@@ -5925,8 +7022,11 @@ function startRistoranteAudio() {
     piatti, piattiGain,
     masterGain
   };
-  // fade-in 1.5s (BUG FIX v2: alzato da 0.55 a 0.9)
-  try { masterGain.gain.linearRampToValueAtTime(0.9, audioCtx.currentTime + 1.5); } catch(e) {}
+  // fade-in 1.5s (BUG FIX v2: alzato da 0.55 a 0.9).
+  // Polish Pack V3 Step 3: rispetta state.audio.music (ristorante = canale musica).
+  const ristoMul = (state.audio && typeof state.audio.music === 'number')
+    ? state.audio.music : 1.0;
+  try { masterGain.gain.linearRampToValueAtTime(0.9 * ristoMul, audioCtx.currentTime + 1.5); } catch(e) {}
 }
 
 function stopRistoranteAudio() {
@@ -6084,12 +7184,176 @@ addEventListener('beforeunload', () => {
 // ---- Modalità manutentore (Polish Pack v1.4 #19) ----
 // Overlay debug con FPS, draw calls, stato interno, ultimi eventi.
 // Wireframe sui materiali della cabina + teletrasporto diretto con tasti 1-9.
-function logEvent(label) {
-  if (!state._eventLog) state._eventLog = [];
+// Polish Pack V3 Step 6 (Q6.2): logEvent con severity + category.
+// opts = {severity: 'info'|'warn'|'error', category: 'cabin'|'door'|'audio'|'state'|'maint'}
+// Backwards-compat: logEvent('label') = severity='info', category='state'.
+function logEvent(label, opts = {}) {
+  const severity = opts.severity || 'info';
+  const category = opts.category || 'state';
   const t = new Date();
-  const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
-  state._eventLog.unshift(`${ts} ${label}`);
+  const tsHms = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  if (!state._eventLog) state._eventLog = [];
+  state._eventLog.unshift({ ts: tsHms, label, severity, category });
   if (state._eventLog.length > 10) state._eventLog.length = 10;
+  // Polish Pack V3 Step 3: mirror in exportLog (cap 50, separato dal log UI)
+  if (!state._exportLog) state._exportLog = [];
+  state._exportLog.unshift({ ts: new Date().toISOString(), label, severity, category });
+  if (state._exportLog.length > 50) state._exportLog.length = 50;
+}
+
+// Polish Pack V3 Step 3: esporta snapshot JSON dello stato corrente.
+// Scarica un file `boss-hotel-state-<timestamp>.json` con state (deep clone
+// escludendo funzioni), exportLog esteso, audio + display settings correnti.
+// Utile per issue reporting (l'utente puo' allegare lo snapshot a un bug report).
+function exportStateJSON() {
+  try {
+    // Deep clone shallow (1 livello sufficiente per state + nested objects non-function)
+    const stateClone = {};
+    for (const k of Object.keys(state)) {
+      const v = state[k];
+      if (typeof v === 'function') continue;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        // copia nested object (audio, display, ...)
+        const nested = {};
+        for (const nk of Object.keys(v)) {
+          if (typeof v[nk] !== 'function') nested[nk] = v[nk];
+        }
+        stateClone[k] = nested;
+      } else {
+        stateClone[k] = v;
+      }
+    }
+    // Polish Pack V3 Step 6 (Q6.5): export enhancement.
+    // Log filtrato per category+severity correnti (stessa logica del UI).
+    const filteredLog = typeof filterLogEvents === 'function'
+      ? filterLogEvents(state._exportLog || [], state._logFilter)
+      : (state._exportLog || []);
+    const payload = {
+      meta: {
+        exportedAt: new Date().toISOString(),
+        buildVersion: 'BOSS HOTEL Premium Edition',
+        polishPack: 'V3 Step 6',
+        numFloors: NUM_FLOORS,
+        lang: state.lang
+      },
+      state: stateClone,
+      exportLog: filteredLog,
+      history: {
+        alarmCount: state.alarmCount || 0,
+        interphoneCount: state.interphoneCount || 0,
+        alarmHistory: (state.alarmHistory || []).slice(),
+        interphoneHistory: (state.interphoneHistory || []).slice()
+      },
+      logFilter: state._logFilter,
+      lastBenchmark: state._lastBenchmark
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `boss-hotel-state-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // feedback utente
+    if (typeof showSubtitle === 'function') {
+      const msg = (STRINGS[state.lang] && STRINGS[state.lang].settingsExportReady)
+        || 'Stato esportato';
+      showSubtitle(msg, 2000);
+    }
+    if (typeof logEvent === 'function') logEvent('Export JSON OK', { severity: 'info', category: 'state' });
+  } catch (e) {
+    if (typeof logEvent === 'function') logEvent('Export JSON FAIL: ' + e.message, { severity: 'error', category: 'state' });
+  }
+}
+
+// Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler.
+// Misura FPS idle (cabina ferma) per 5s, poi muove automaticamente la cabina
+// per 5s e misura FPS durante movimento. Output: min/max/avg FPS + avg draw
+// calls per scenario. Mostra risultato in subtitle HUD + log event.
+// Usa state._fpsBuf esistente (tickMaintenance) + state._dcBuf (nuovo).
+// Bottone trigger: #m-benchmark-btn (visibile solo in maintenance overlay).
+function runBenchmark() {
+  if (!state.maintenanceMode) return;
+  if (typeof logEvent !== 'function') return;
+  const lang = state.lang;
+  const s = STRINGS[lang] || STRINGS.it;
+  if (typeof showSubtitle === 'function') {
+    showSubtitle(s.maintBenchmarkRunning || 'Benchmarking...', 2500);
+  }
+  logEvent('Benchmark START');
+  // Inizializza buffer di campioni
+  state._dcBuf = []; // draw calls per frame
+  state._benchIdle = { samples: [], dc: [] };
+  state._benchMoving = { samples: [], dc: [] };
+  state._benchPhase = 'idle';
+  state._benchStartMs = performance.now();
+  // tickBenchmark viene chiamato ogni frame dal loop RAF.
+}
+
+// Polish Pack V3 Step 5 (Q5.4): tick benchmark. Campiona FPS + draw calls.
+// Fase 1 (0-5s): idle. Fase 2 (5-10s): muovi cabina al piano opposto + misura.
+// Fase 3 (10s): termina, mostra risultati.
+function tickBenchmark(now) {
+  if (!state._benchPhase) return;
+  const elapsedMs = now - state._benchStartMs;
+  // Calcola FPS corrente dal buffer
+  const fpsBuf = state._fpsBuf || [];
+  let fps = 0;
+  if (fpsBuf.length > 1) {
+    const span = (fpsBuf[fpsBuf.length-1] - fpsBuf[0]) / 1000;
+    fps = Math.round((fpsBuf.length - 1) / span);
+  }
+  const dc = (renderer.info && renderer.info.render && renderer.info.render.calls) || 0;
+  const phase = state._benchPhase === 'idle' ? state._benchIdle : state._benchMoving;
+  if (phase) {
+    phase.samples.push(fps);
+    phase.dc.push(dc);
+  }
+  // Transizione di fase
+  if (state._benchPhase === 'idle' && elapsedMs >= 5000) {
+    state._benchPhase = 'moving';
+    // Avvia movimento: vai al piano opposto
+    if (!state.isMoving && typeof requestFloor === 'function') {
+      const opposite = NUM_FLOORS - 1 - state.currentFloor;
+      requestFloor(opposite);
+    }
+  }
+  if (elapsedMs >= 10000) {
+    // Benchmark completo
+    const idleStats = aggregateFpsStats(state._benchIdle.samples);
+    const movingStats = aggregateFpsStats(state._benchMoving.samples);
+    const idleDc = state._benchIdle.dc.reduce((a,b)=>a+b, 0) / Math.max(1, state._benchIdle.dc.length);
+    const movingDc = state._benchMoving.dc.reduce((a,b)=>a+b, 0) / Math.max(1, state._benchMoving.dc.length);
+    const lang = state.lang;
+    const s = STRINGS[lang] || STRINGS.it;
+    const idleLbl = s.maintBenchmarkIdle || 'Idle';
+    const movLbl = s.maintBenchmarkMoving || 'Moving';
+    const done = s.maintBenchmarkDone || 'Done';
+    const msg = `${done}: ${idleLbl} ${idleStats.avg.toFixed(1)} FPS / ${Math.round(idleDc)} dc | ${movLbl} ${movingStats.avg.toFixed(1)} FPS / ${Math.round(movingDc)} dc`;
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 6000);
+    // Polish Pack V3 Step 6 (Q6.5): salva benchmark results in state
+    // per inclusione nell'export JSON.
+    state._lastBenchmark = {
+      idleStats: { min: idleStats.min, max: idleStats.max, avg: idleStats.avg, count: idleStats.count },
+      movingStats: { min: movingStats.min, max: movingStats.max, avg: movingStats.avg, count: movingStats.count },
+      idleDc: Math.round(idleDc),
+      movingDc: Math.round(movingDc),
+      ts: new Date().toISOString()
+    };
+    if (typeof logEvent === 'function') {
+      logEvent(`Benchmark: idle ${idleStats.avg.toFixed(1)} avg / moving ${movingStats.avg.toFixed(1)} avg`, { category: 'maint' });
+    }
+    // Salva nel maintenance log
+    if (state._eventLog) {
+      state._eventLog.unshift({ ts: '', label: `${idleStats.avg.toFixed(1)}/${movingStats.avg.toFixed(1)} FPS idle/moving`, severity: 'info', category: 'maint' });
+      if (state._eventLog.length > 10) state._eventLog.length = 10;
+    }
+    state._benchPhase = null;
+    state._benchIdle = null;
+    state._benchMoving = null;
+  }
 }
 
 // Polish Pack V2 Step 10d · Log manutenzione realistica
@@ -6110,6 +7374,7 @@ const MAINT_LOG_TEMPLATES = [
 const MAINT_LOG_CABLES = ['primario', 'secondario', 'contromassa', 'freno'];
 const MAINT_LOG_SIDES = ['L (left)', 'R (right)'];
 function tickMaintenanceLog() {
+  const opts = { severity: 'info', category: 'maint' };
   if (!state.maintenanceMode) {
     if (Math.random() < 0.12) {
       // ~12% probabilita' ad ogni tick (30s) = ~1 log ogni 4 min
@@ -6123,7 +7388,7 @@ function tickMaintenanceLog() {
         .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
         .replace('${cable}', cable)
         .replace('${ms}', String(ms));
-      logEvent(txt);
+      logEvent(txt, opts);
     }
   } else {
     // in maintenance mode: genera log piu' frequentemente (33%)
@@ -6138,7 +7403,7 @@ function tickMaintenanceLog() {
         .replace('${side}', state.lang === 'en' ? side.replace(' (left)', ' L').replace(' (right)', ' R') : side)
         .replace('${cable}', cable)
         .replace('${ms}', String(ms));
-      logEvent(txt);
+      logEvent(txt, opts);
     }
   }
 }
@@ -6168,17 +7433,24 @@ function applyWireframe(on) {
 function toggleMaintenance() {
   state.maintenanceMode = !state.maintenanceMode;
   const overlay = document.getElementById('maint-overlay');
+  // Polish Pack V3 Step 3: refresh visibility del bottone export JSON
+  // in base a maintenanceMode (visibile solo in maintenance).
+  const expBtn = document.getElementById('m-export-json');
+  if (expBtn) expBtn.style.display = state.maintenanceMode ? 'block' : 'none';
+  // Polish Pack V3 Step 5 (Q5.4): benchmark button visibility
+  const benchBtn = document.getElementById('m-benchmark-btn');
+  if (benchBtn) benchBtn.style.display = state.maintenanceMode ? 'block' : 'none';
   if (state.maintenanceMode) {
     overlay.classList.add('show');
     applyWireframe(true);
-    logEvent(state.lang === 'en' ? 'Maint ON' : 'Manut ON');
+    logEvent(state.lang === 'en' ? 'Maint ON' : 'Manut ON', { category: 'maint' });
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode ON (Shift+M to exit)' : 'Modalità manutentore ON (Shift+M per uscire)';
     setTimeout(() => updateFloorDisplay(), 2000);
   } else {
     overlay.classList.remove('show');
     applyWireframe(false);
-    logEvent(state.lang === 'en' ? 'Maint OFF' : 'Manut OFF');
+    logEvent(state.lang === 'en' ? 'Maint OFF' : 'Manut OFF', { category: 'maint' });
     const status = document.getElementById('statusText');
     if (status) status.textContent = state.lang === 'en' ? 'Maintenance mode OFF' : 'Modalità manutentore OFF';
     setTimeout(() => updateFloorDisplay(), 1500);
@@ -6224,8 +7496,31 @@ function tickMaintenance(now) {
     'm-queue-lbl': s.maintQueue + ':',
     'm-pax-lbl': s.maintPax + ':',
     'm-mode-lbl': s.maintMode + ':',
-    'm-ooo-lbl': s.maintOOO + ':'
+    'm-ooo-lbl': s.maintOOO + ':',
+    'm-interphone-lbl': s.maintInterphone + ':',
+    // Polish Pack V3 Step 6 (Q6.4): counters + history
+    'm-alarm-count-lbl': s.maintAlarmCount + ':',
+    'm-interphone-count-lbl': s.maintInterphoneCount + ':',
+    'm-alarm-history-lbl': (state.lang === 'en' ? 'Last alarm: ' : 'Ultimo allarme: '),
+    'm-interphone-history-lbl': (state.lang === 'en' ? 'Last interphone: ' : 'Ultimo citofono: '),
+    // Polish Pack V3 Step 6 (Q6.3): filter label
+    'm-filter-lbl': s.maintFilter + ':'
   };
+  // Polish Pack V3 Step 6 (Q6.3): filter buttons text + state
+  const filterBtnLbl = {
+    cabin: s.maintCatCabin,
+    door: s.maintCatDoor,
+    audio: s.maintCatAudio,
+    state: s.maintCatState,
+    maint: s.maintCatMaint
+  };
+  for (const btn of document.querySelectorAll('#maint-overlay .m-filter-btn')) {
+    const cat = btn.dataset.cat;
+    if (filterBtnLbl[cat]) btn.textContent = filterBtnLbl[cat];
+    // initial class state
+    const enabled = state._logFilter[cat] !== false;
+    btn.classList.toggle('off', !enabled);
+  }
   for (const [id, txt] of Object.entries(lblMap)) {
     const el = document.getElementById(id);
     if (el && el.textContent.trim() === '') el.textContent = txt;
@@ -6252,8 +7547,49 @@ function tickMaintenance(now) {
   document.getElementById('m-pax').textContent = `${state.passengers}/8`;
   document.getElementById('m-mode').textContent = state.playerInCabin ? STRINGS[state.lang].maintMode.toLowerCase() : STRINGS[state.lang].corridorMode.toLowerCase();
   document.getElementById('m-ooo').textContent = state.outOfOrder ? (state.lang === 'en' ? 'YES' : 'SÌ') : (state.lang === 'en' ? 'no' : 'no');
-  document.getElementById('m-events').innerHTML = (state._eventLog || [])
-    .map(e => `<div>${e}</div>`).join('');
+  // Polish Pack V2 Step 14d: riga HUD manutentore "Citofono" (ON/OFF).
+  // Usa interphoneStatusLabel (esposto in BossHotelPure) per consistenza
+  // con i test. Il helper accetta state+lang e ritorna l'etichetta i18n.
+  const ipEl = document.getElementById('m-interphone');
+  if (ipEl) ipEl.textContent = interphoneStatusLabel(state, state.lang);
+  // Polish Pack V3 Step 6 (Q6.2+Q6.3): events rendering con severity icon
+  // + color + filter per category. state._eventLog ora contiene oggetti
+  // {ts, label, severity, category}. Backwards-compat: events stringa legacy.
+  const eventsEl = document.getElementById('m-events');
+  if (eventsEl) {
+    const evs = (state._eventLog || []);
+    // filter per category
+    const filtered = typeof filterLogEvents === 'function'
+      ? filterLogEvents(evs, state._logFilter)
+      : evs;
+    eventsEl.innerHTML = filtered.map(e => {
+      // backwards-compat: se e' una stringa (vecchio formato), wrap in obj
+      const ev = (typeof e === 'string') ? { ts: '', label: e, severity: 'info', category: 'state' } : e;
+      const sev = ev.severity || 'info';
+      const icon = typeof severityIcon === 'function' ? severityIcon(sev) : 'i';
+      const color = typeof severityColor === 'function' ? severityColor(sev) : '#aaffcc';
+      // escape del label per HTML
+      const safe = String(ev.label || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>');
+      const ts = ev.ts ? `${ev.ts} ` : '';
+      return `<div style="color:${color}">[${icon}] ${ts}${safe}</div>`;
+    }).join('');
+  }
+  // Polish Pack V3 Step 6 (Q6.4): counters allarmi/interphonate.
+  const acEl = document.getElementById('m-alarm-count');
+  if (acEl) acEl.textContent = String(state.alarmCount || 0);
+  const icEl = document.getElementById('m-interphone-count');
+  if (icEl) icEl.textContent = String(state.interphoneCount || 0);
+  // History detail (ultimo evento) per debug
+  const ahEl = document.getElementById('m-alarm-history');
+  if (ahEl) ahEl.textContent = state.alarmHistory && state.alarmHistory.length > 0
+    ? (state.alarmHistory[0].floor !== undefined
+      ? `${state.alarmHistory[0].ts ? state.alarmHistory[0].ts.slice(11,19) : '--'} p${state.alarmHistory[0].floor === 0 ? 'T' : state.alarmHistory[0].floor}`
+      : 'N/A')
+    : '--';
+  const ihEl = document.getElementById('m-interphone-history');
+  if (ihEl) ihEl.textContent = state.interphoneHistory && state.interphoneHistory.length > 0
+    ? (state.interphoneHistory[0].ts ? state.interphoneHistory[0].ts.slice(11,19) : '--')
+    : '--';
 }
 
 // ============================================================
@@ -6262,6 +7598,13 @@ function tickMaintenance(now) {
 let ttsEnabled = true;
 let italianVoice = null;
 let englishVoice = null;
+
+// Polish Pack V3 Step 5 (Q5.3): textureCache LRU per le canvas texture della
+// cabina (targa, citofono, header pulsantiera). Evita re-bake inutili quando
+// la lingua o il brand hotel cambiano + l'utente ri-clicca "Indietro".
+// capacity 10 entry (piu' che sufficiente per ~4-6 cabin textures).
+const textureCache = (typeof createLruCache === 'function')
+  ? createLruCache(10) : null;
 // Polish Pack V2 Step 8c: carica voci IT (priorità it-XX) e EN (en-GB > en-US > en-XX).
 function loadVoices() {
   if (!('speechSynthesis' in window)) return;
@@ -6293,13 +7636,276 @@ function speak(text, opts = {}) {
     window.speechSynthesis.cancel(); // interrompi eventuali annunci precedenti
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'en' ? 'en-GB' : 'it-IT';
+    // Polish Pack V3 Step 3: TTS volume da state.audio.tts.
+    // opts.volume esplicito ha priorita' (per test/override).
+    const ttsMul = (state.audio && typeof state.audio.tts === 'number')
+      ? state.audio.tts : 0.85;
+    u.volume = typeof opts.volume === 'number' ? opts.volume : ttsMul;
     u.rate = opts.rate || 0.95;
     u.pitch = opts.pitch || 1.0;
-    u.volume = opts.volume || 0.85;
     if (lang === 'en' && englishVoice) u.voice = englishVoice;
     else if (lang === 'it' && italianVoice) u.voice = italianVoice;
     window.speechSynthesis.speak(u);
   } catch (e) { /* ignore */ }
+}
+
+// Polish Pack V3 Step 1a: helper esplicito per accoppiare TTS + sottotitoli.
+// speak() resta puro (solo sintesi vocale); chi vuole TTS+sottotitoli
+// garantiti chiama speakWithSubtitle. durationMs opzionale: se omessa,
+// calcolata da computeSubtitleDuration in base a ~150 parole/min.
+// Vedi anche acceptance criteria PIANO_V3.md §Step 1 (1a).
+function speakWithSubtitle(text, opts = {}) {
+  speak(text, opts);
+  const dur = (opts.durationMs != null)
+    ? opts.durationMs
+    : computeSubtitleDuration(text, opts.lang || state.lang);
+  showSubtitle(text, dur);
+}
+
+// Stima durata sottotitolo in ms: ~400 ms a parola + base 1500 ms,
+// clampata in [2000, 6000]. Esposta in BossHotelPure per i test.
+function computeSubtitleDuration(text, lang) {
+  const t = String(text || '').trim();
+  if (!t) return 2000;
+  const words = t.split(/\s+/).filter(Boolean).length;
+  const ms = Math.round(words * 400 + 1500);
+  return Math.max(2000, Math.min(6000, ms));
+}
+
+// Polish Pack V3 Step 1b: helper puro per decidere se disabilitare le
+// micro-animazioni non essenziali. Riduce solo le animazioni cosmetiche
+// (crossfade freccia, futuri "respiro" tasti dello Step 4); quelle
+// essenziali per sicurezza/realismo (porte, vibrazione, allarme) restano.
+// Esposto in BossHotelPure per i test.
+function shouldDisableMotion(s) {
+  return !!(s && s.reducedMotion);
+}
+
+// Init OS-level: rileva prefers-reduced-motion e ascolta i cambi a runtime.
+// Aggiorna state.reducedMotion in tempo reale (es. utente cambia impostazione
+// OS durante una sessione). Graceful degradation se matchMedia non supportato.
+function initReducedMotion() {
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    state.reducedMotion = false;
+    return;
+  }
+  const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+  state.reducedMotion = !!mql.matches;
+  // API moderna: addEventListener('change', ...). Fallback: addListener (vecchi).
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', (e) => { state.reducedMotion = !!e.matches; });
+  } else if (typeof mql.addListener === 'function') {
+    mql.addListener((e) => { state.reducedMotion = !!e.matches; });
+  }
+}
+
+// Polish Pack V3 Step 9 (Q9.4): detection dispositivo mobile/touch.
+// Usa matchMedia (pointer: coarse) + (max-width: 768px) per essere robusto
+// su laptop con touch screen. Riascolta cambiamenti runtime (es. resize finestra).
+// Polish Pack V3 Step 9 (Q9.4): isMobileDevice() helper.
+// Riascolta cambi runtime (es. resize finestra, tablet ruotato).
+function isMobileDevice() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  return !!mql.matches;
+}
+function initMobileDetection() {
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    state.isMobile = false;
+    return;
+  }
+  state.isMobile = isMobileDevice();
+  // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
+  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  const handler = (e) => {
+    const wasMobile = state.isMobile;
+    state.isMobile = !!e.matches;
+    // Se cambia mode, refresh HUD visibility (touch controls vs pointer lock).
+    if (wasMobile !== state.isMobile && typeof refreshMobileControls === 'function') {
+      refreshMobileControls();
+    }
+  };
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', handler);
+  } else if (typeof mql.addListener === 'function') {
+    mql.addListener(handler);
+  }
+}
+
+// Polish Pack V3 Step 9 (Q9.2): init touch controls (mobile only).
+// Schema input:
+//   - Drag dito (qualsiasi punto dello schermo tranne virtual controls)
+//     = mouse-look (yaw/pitch).
+//   - Joystick virtuale sx = movimento analogico WASD.
+//   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
+// Polish Pack V3 Step 9 (Q9.2): init touch controls (mobile only).
+// Schema input:
+//   - Drag dito (touchmove su canvas) = mouse-look yaw/pitch.
+//   - Joystick virtuale sx = movimento analogico WASD.
+//   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
+// Aggiunge `body.mobile-mode` per attivare HUD responsive via CSS.
+function initTouchControls() {
+  if (!state.isMobile) return;
+  // Aggiungi classe al body per attivare CSS mobile
+  document.body.classList.add('mobile-mode');
+  // Touch drag = mouse-look (yaw + pitch). Solo se playerInCabin (match mouse-look).
+  const rendererEl = document.querySelector('canvas');
+  if (rendererEl) {
+    let lastX = 0, lastY = 0, dragging = false;
+    rendererEl.addEventListener('touchstart', (e) => {
+      // Ignora touch sul joystick virtuale o pulsanti call (propagano qui)
+      if (e.target.closest('#touch-controls')) return;
+      if (e.touches.length !== 1) return;
+      dragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      e.preventDefault();
+    }, { passive: false });
+    rendererEl.addEventListener('touchmove', (e) => {
+      if (!dragging || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - lastX;
+      const dy = touch.clientY - lastY;
+      lastX = touch.clientX;
+      lastY = touch.clientY;
+      // Converti a yaw/pitch. Stessa logica del mouse-look desktop.
+      // yaw = -dx * 0.0035 (sinistra = guarda sinistra)
+      // pitch = -dy * 0.0035 (su = guarda su)
+      const yawDelta = -dx * 0.0035;
+      const pitchDelta = -dy * 0.0035;
+      if (typeof yawObj !== 'undefined' && yawObj) {
+        yawObj.rotation.y += yawDelta;
+        pitchObj.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitchObj.rotation.x + pitchDelta));
+      }
+      e.preventDefault();
+    }, { passive: false });
+    const endDrag = () => { dragging = false; };
+    rendererEl.addEventListener('touchend', endDrag);
+    rendererEl.addEventListener('touchcancel', endDrag);
+  }
+  // Joystick virtuale (analogico) - drag in basso a sinistra.
+  const joystick = document.getElementById('virtual-joystick');
+  if (joystick) {
+    const knob = joystick.querySelector('.joystick-knob');
+    let jsDragging = false;
+    let jsCenterX = 0, jsCenterY = 0;
+    const JS_MAX = 35;  // pixel di spostamento max
+    const onStart = (clientX, clientY) => {
+      jsDragging = true;
+      const rect = joystick.getBoundingClientRect();
+      jsCenterX = rect.left + rect.width / 2;
+      jsCenterY = rect.top + rect.height / 2;
+      joystick.classList.add('active');
+    };
+    const onMove = (clientX, clientY) => {
+      if (!jsDragging) return;
+      let dx = clientX - jsCenterX;
+      let dy = clientY - jsCenterY;
+      // Clamp al raggio massimo
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > JS_MAX) {
+        dx = dx * JS_MAX / dist;
+        dy = dy * JS_MAX / dist;
+      }
+      // Aggiorna posizione knob visiva
+      if (knob) {
+        knob.style.left = `calc(50% + ${dx}px)`;
+        knob.style.top = `calc(50% + ${dy}px)`;
+      }
+      // Aggiorna state.joystick (normalizzato in [-1..1])
+      state._joystick.dx = dx / JS_MAX;
+      state._joystick.dz = dy / JS_MAX;
+    };
+    const onEnd = () => {
+      jsDragging = false;
+      joystick.classList.remove('active');
+      if (knob) {
+        knob.style.left = '50%';
+        knob.style.top = '50%';
+      }
+      state._joystick.dx = 0;
+      state._joystick.dz = 0;
+    };
+    joystick.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) onStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    joystick.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    joystick.addEventListener('touchend', onEnd);
+    joystick.addEventListener('touchcancel', onEnd);
+  }
+  // Pulsanti call panel virtuali ▲▼ (chiama piano).
+  document.querySelectorAll('.virtual-call-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dir = btn.dataset.dir;
+      if (dir === 'up' && typeof requestFloor === 'function') {
+        requestFloor(state.currentFloor + 1);
+      } else if (dir === 'down' && typeof requestFloor === 'function') {
+        requestFloor(state.currentFloor - 1);
+      }
+    });
+  });
+  // Nascondi pointer hint desktop (mobile non ha mouse-look).
+  const hintEl = document.getElementById('pointerhint');
+  if (hintEl) {
+    hintEl.textContent = 'Tap + drag per guardare. Usa il joystick per muoverti.';
+  }
+}
+
+// Polish Pack V3 Step 9 (Q9.2): refresh UI quando isMobile cambia runtime
+// (es. ruotando tablet, ridimensionando finestra).
+function refreshMobileControls() {
+  if (state.isMobile) {
+    document.body.classList.add('mobile-mode');
+    initTouchControls();  // re-bind listeners (potrebbe essere già fatto, idempotente)
+  } else {
+    document.body.classList.remove('mobile-mode');
+    const hintEl = document.getElementById('pointerhint');
+    if (hintEl) {
+      hintEl.textContent = (STRINGS[state.lang] && STRINGS[state.lang].pointerHint)
+        || 'Click to activate the pointer';
+    }
+  }
+}
+
+// Polish Pack V3 Step 1d: helper per il calcolo del contrast ratio WCAG.
+// Accetta stringhe hex (#rgb, #rrggbb) o numeri 0xRRGGBB. Ritorna il rapporto
+// di contrasto (1.0 = stesso colore, 21.0 = bianco su nero). WCAG AA richiede
+// >= 4.5 per testo piccolo, >= 3.0 per testo grande. Esposto in BossHotelPure
+// per i test (e per future utility di audit contrasto).
+// Input invalido: ritorna NaN (segnalazione "non calcolabile"). Test e UI
+// possono cosi' distinguere 1:1 nero-su-nero (valido) da errore parse hex.
+function relativeLuminance(hexColor) {
+  let r, g, b;
+  if (typeof hexColor === 'number') {
+    r = ((hexColor >> 16) & 0xff) / 255;
+    g = ((hexColor >> 8) & 0xff) / 255;
+    b = (hexColor & 0xff) / 255;
+  } else {
+    const s = String(hexColor == null ? '' : hexColor).replace('#', '').trim();
+    if (s.length !== 3 && s.length !== 6) return NaN;
+    const full = s.length === 3
+      ? s.split('').map(c => c + c).join('')
+      : s;
+    const n = parseInt(full, 16);
+    if (isNaN(n)) return NaN;
+    r = ((n >> 16) & 0xff) / 255;
+    g = ((n >> 8) & 0xff) / 255;
+    b = (n & 0xff) / 255;
+  }
+  const f = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrastRatio(fg, bg) {
+  const L1 = relativeLuminance(fg);
+  const L2 = relativeLuminance(bg);
+  if (isNaN(L1) || isNaN(L2)) return NaN;
+  const [hi, lo] = L1 >= L2 ? [L1, L2] : [L2, L1];
+  return (hi + 0.05) / (lo + 0.05);
 }
 
 // Polish Pack v1.2 #11: sottotitoli per annunci vocali su HUD
@@ -6342,8 +7948,8 @@ function announceArrival(floor) {
   const finalTxt = state.lang === 'en'
     ? `Arriving at ${target}, please`
     : `${target}, prego`;
-  speak(finalTxt);
-  showSubtitle(finalTxt.charAt(0).toUpperCase() + finalTxt.slice(1));
+  const display = finalTxt.charAt(0).toUpperCase() + finalTxt.slice(1);
+  speakWithSubtitle(display);
 }
 
 function announceAlarm() {
@@ -6351,8 +7957,7 @@ function announceAlarm() {
   const txt = s.alarmActive || (state.lang === 'en'
     ? 'Alarm. Emergency call in progress. Please remain calm.'
     : 'Allarme. Chiamata di soccorsi in corso. Restate calmi.');
-  speak(txt);
-  showSubtitle(txt, 5000);
+  speakWithSubtitle(txt, { durationMs: 5000 });
 }
 
 function announceDoorClosing() {
@@ -6360,8 +7965,7 @@ function announceDoorClosing() {
   const txt = s.doorClosing || (state.lang === 'en'
     ? 'Caution. Doors are closing.'
     : 'Attenzione. Le porte si stanno chiudendo.');
-  speak(txt);
-  showSubtitle(txt, 2500);
+  speakWithSubtitle(txt, { durationMs: 2500 });
 }
 
 // Annuncia l'inizio del movimento di salita/discesa verso il piano richiesto.
@@ -6373,8 +7977,8 @@ function announceMoveStart(fromFloor, toFloor) {
     : (state.lang === 'en' ? 'Going down to' : 'In discesa verso');
   const target = floorName(toFloor);
   const txt = `${direction} ${target}`;
-  speak(txt);
-  showSubtitle(txt.charAt(0).toUpperCase() + txt.slice(1), 2500);
+  const display = txt.charAt(0).toUpperCase() + txt.slice(1);
+  speakWithSubtitle(display, { durationMs: 2500 });
 }
 
 // ============================================================
@@ -6385,7 +7989,7 @@ let moveFrom = 0;
 let moveTo = 0;
 let moveDuration = 0;
 let moveElapsed = 0;
-let movePaused = false;
+// Polish Pack V3 Step 4: movePaused spostato in CONFIGURATION (TDZ safety).
 
 // ============================================================
 // POLISH PACK V2 STEP 7a — Coda con direzione (intenzione viaggio)
@@ -6408,7 +8012,9 @@ function queueNextSmart(currentFloor, lastDirection) {
   // Polish Pack V2 Step 7d: routing intelligente.
   // Dato l'ultima direzione del movimento, sceglie la prossima richiesta:
   // 1. Cerca richieste con stessa direzione o null (no specifica): prendi la piu' lontana
-  // 2. Se non ci sono: inversione, prendi la piu' lontana nella direzione opposta
+  // 2. Se non ci sono: inversione asimmetrica (vedi D22, V4 Step 2)
+  //    - lastDir='up', invert to 'down' → MAX della coda down
+  //    - lastDir='down', invert to 'up' → MIN della coda up
   // 3. Fallback FIFO
   const cu = state.requestedFloors;
   if (cu.length === 0) return null;
@@ -6422,11 +8028,11 @@ function queueNextSmart(currentFloor, lastDirection) {
         return sameDir.reduce((m, r) => r.floor < m.floor ? r : m);
       }
     }
-    // Inversione
+    // Inversione asimmetrica (D22): vedi commento esteso in pickNextFloor().
     const oppDir = lastDirection === 'up' ? 'down' : 'up';
     const opp = cu.filter(r => r.direction === oppDir);
     if (opp.length > 0) {
-      return oppDir === 'up'
+      return oppDir === 'down'
         ? opp.reduce((m, r) => r.floor > m.floor ? r : m)
         : opp.reduce((m, r) => r.floor < m.floor ? r : m);
     }
@@ -6482,6 +8088,15 @@ function requestFloor(floor, directionHint) {
     // metti in coda con directionHint (Polish Pack V2 Step 7a)
     queueAdd(directionHint || null, floor);
     lightFloorButton(floor, true);
+    // Polish Pack V3 Step 2: feedback uditivo/visivo per click display durante
+    // movimento. La cabina è già in moto verso un altro piano: l'utente ha
+    // appena registrato una fermata intermedia. Senza feedback rischia di
+    // cliccare di nuovo pensando che il click non sia stato registrato.
+    if (typeof playBeep === 'function') playBeep(440, 0.06, 'sine', 0.08);
+    if (typeof showSubtitle === 'function') {
+      const ack = (STRINGS[state.lang] && STRINGS[state.lang].queueAck) || 'Request queued';
+      showSubtitle(ack, 1500);
+    }
     return;
   }
   startMoveTo(floor, directionHint || null);
@@ -6517,22 +8132,70 @@ function actuallyStartMove() {
   playBeep(700, 0.1, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 120);
   moveT = 0; moveElapsed = 0;
+  // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
+  state._arrivalPhase = 'normal';
   // annuncia l'inizio del movimento (direzione + piano target) dopo i beep
   if (typeof announceMoveStart === 'function') announceMoveStart(moveFrom, moveTo);
   updateFloorDisplay();
 }
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickMove — motore movimento cabina.
+// Gestisce il ciclo di vita di un movimento cabina:
+//   1. Audio whoosh loop (startWhoosh/stopWhoosh in base a state.isMoving + movePaused)
+//   2. Vibrazione residua post-arrivo (state._vibSnap + easeOutBounce — V3 Step 4 Q4.5)
+//   3. Aggiornamento elapsed time + easing easeInOutCubic per frenata/accelerazione
+//   4. Calcolo y cabina = moveFrom + (moveTo-moveFrom) * easing
+//   5. Audio whoosh pitch + gain modulati dalla speed envelope (V3 Step 3 audio.effects)
+//   6. Vibrazione multi-band (X/Z/Roll/Pitch) con envelope speed
+//   7. Display passo-passo (floorShown arrotondato) + cartello "passo passo"
+//   8. Detection lampeggio gentile pre-arrivo (state._arrivalPhase — V3 Step 4 Q4.3)
+//   9. All'arrivo (moveT >= 1): snap currentFloor + reset arrivalPhase +
+//      snapshot vibrazione + logEvent + announceArrival + ricostruisci corridoio
+//      + setDoors(true) + logica passeggeri/NPC + emit 'floor:arrived' +
+//      processa coda con queueNextSmart (V2 Step 7d) per il prossimo movimento
+//
+// Contratti D-key rilevanti: D12 (reduced-motion: arrival flash skippato),
+// D15 (micro-animazioni cosmetiche rispettate), D16 (whoosh moltiplicato
+// per state.audio.effects), V2 D7 (coda FIFO con direction).
+//
+// Performance: chiamato ogni frame dal loop RAF. ~194 righe di logica
+// per il movimento + audio + vibrazione + display. Profilare con
+// runBenchmark (V3 Step 5 Q5.4) per regressioni future.
 function tickMove(dt) {
   // whoosh loop (Fase 10 #3) — start/stop in base allo stato di movimento
   if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
   if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
   // decay dello shake quando la cabina è ferma
   if (!state.isMoving || movePaused) {
-    state.vibrationX *= 0.85;
-    state.vibrationZ *= 0.85;
-    state.vibrationRoll *= 0.85;
-    state.vibrationPitch *= 0.85;
+    // Polish Pack V3 Step 4 (Q4.5): curva bounce-out per vibrazione residua.
+    // Prima: `*= 0.85` decay esponenziale puro (troppo 'flat').
+    // Ora: oscilla damped (exp(-3t) * cos(8π t)) per ~1.5s dopo l'arrivo,
+    // simulando il 'maniglione che rimbalza'. easeOutBounce e' in BossHotelPure.
+    if (state._vibSnap) {
+      const elapsedS = (now - state._vibSnap.stopTimeMs) / 1000;
+      if (elapsedS >= 1.5) {
+        // dopo 1.5s, vibrazione completamente smorzata
+        state.vibrationX = 0;
+        state.vibrationZ = 0;
+        state.vibrationRoll = 0;
+        state.vibrationPitch = 0;
+      } else {
+        const k = typeof easeOutBounce === 'function'
+          ? easeOutBounce(elapsedS)
+          : Math.exp(-3 * elapsedS) * Math.cos(elapsedS * 8 * Math.PI);
+        state.vibrationX = state._vibSnap.x * k;
+        state.vibrationZ = state._vibSnap.z * k;
+        state.vibrationRoll = state._vibSnap.roll * k;
+        state.vibrationPitch = state._vibSnap.pitch * k;
+      }
+    } else {
+      // fallback: comportamento originale (decay esponenziale) se _vibSnap non c'e'
+      state.vibrationX *= 0.85;
+      state.vibrationZ *= 0.85;
+      state.vibrationRoll *= 0.85;
+      state.vibrationPitch *= 0.85;
+    }
     return;
   }
   moveElapsed += dt;
@@ -6545,7 +8208,10 @@ function tickMove(dt) {
   const speed = 12 * moveT * (1 - moveT); // 0..0.75..0, derivata analitica
   if (whooshGain && whooshFilter) {
     whooshFilter.frequency.value = 300 + speed * 700;
-    whooshGain.gain.value = 0.025 * speed;
+    // Polish Pack V3 Step 3: whoosh moltiplicato per state.audio.effects.
+    const effMul = (state.audio && typeof state.audio.effects === 'number')
+      ? state.audio.effects : 1.0;
+    whooshGain.gain.value = 0.025 * speed * effMul;
   }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
@@ -6570,8 +8236,18 @@ function tickMove(dt) {
   state.floorShown = floorShown;
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
+  // Polish Pack V3 Step 4 (Q4.3): detection fase lampeggio gentile pre-arrivo.
+  // Negli ultimi 1s prima dell'arrivo, setta _arrivalPhase='blinking'.
+  // drawMovingSign viene chiamato ogni frame per animare l'overlay.
+  const remainingMs = (moveDuration - moveElapsed) * 1000;
+  const newArrivalPhase = (moveElapsed > 0 && remainingMs < 1000 && remainingMs > 0)
+    ? 'blinking' : 'normal';
+  if (newArrivalPhase !== state._arrivalPhase) {
+    state._arrivalPhase = newArrivalPhase;
+  }
   // Polish Pack v1.3 #4: cartello "passo passo" — aggiorna solo quando cambia il piano mostrato
-  if (floorShown !== state._lastShownFloor) {
+  // OPPURE durante la fase di lampeggio gentile (animazione overlay).
+  if (floorShown !== state._lastShownFloor || state._arrivalPhase === 'blinking') {
     state._lastShownFloor = floorShown;
     drawMovingSign(moveFrom, moveTo, floorShown);
   }
@@ -6581,6 +8257,18 @@ function tickMove(dt) {
     state.currentFloor = moveTo;
     state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
     state.isMoving = false;
+    // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
+    state._arrivalPhase = 'normal';
+    // Polish Pack V3 Step 4 (Q4.5): snapshot vibrazione per bounce-out post-arrivo.
+    // tickMove poi usa questi valori come baseline per la curva bounce-out
+    // (sostituisce il decay esponenziale `* 0.85` che era troppo 'flat').
+    state._vibSnap = {
+      x: state.vibrationX,
+      z: state.vibrationZ,
+      roll: state.vibrationRoll,
+      pitch: state.vibrationPitch,
+      stopTimeMs: now
+    };
     lightFloorButton(moveTo, false);
     state.requestedFloors = state.requestedFloors.filter(r => r.floor !== moveTo);
     // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
@@ -6614,12 +8302,53 @@ function tickMove(dt) {
 // ============================================================
 // ANIMAZIONE PORTE
 // ============================================================
-let doorAnim = null; // { from, to, dur, t }
+// Polish Pack V3 Step 2 (Q2.3=B): promise-chaining per evitare il "bounce"
+// quando una nuova animazione porte arriva mentre un'altra è in corso
+// (es. utente clicca ◄| durante apertura automatica, poi clicca un piano).
+// Prima: animateDoorsTo() sostituiva l'animazione corrente perdendo la
+// resolve() della precedente (memory leak) e causando un brusco inversione
+// di marcia. Ora: una coda `doorAnimQueue` accumula le animazioni pending;
+// tickDoors processa la coda quando l'animazione corrente termina.
+// Le Promise resolutions sono rispettate (niente leak).
+// ============================================================
+let doorAnim = null; // { from, to, dur, t, resolve }
+let doorAnimQueue = []; // Array<{ target, dur, resolve }>
 function animateDoorsTo(target, dur = 1.0) {
   return new Promise(resolve => {
-    doorAnim = { from: state.doorsActual, to: target, dur, t: 0, resolve };
+    // Edge case: target gia' raggiunto (no-op immediato). Evita di sprecare
+    // un'animazione di 0.8s quando le porte sono gia' dove devono essere
+    // (es. queue dopo che una chiusura le ha gia' portate a 0).
+    if (Math.abs(state.doorsActual - target) < 0.01 && !doorAnim) {
+      resolve();
+      return;
+    }
+    if (!doorAnim) {
+      doorAnim = { from: state.doorsActual, to: target, dur, t: 0, resolve };
+    }
+    else {
+      // Animazione in corso: accoda (FIFO). La Promise verra' risolta
+      // quando questa animazione specifica termina (non quando la coda
+      // finisce), cosi' le await/.then() del chiamante sono rispettati.
+      doorAnimQueue.push({ target, dur, resolve });
+    }
   });
 }
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickDoors — motore animazione porte.
+// Gestisce UNA animazione alla volta + coda pending (V3 Step 2 Q2.3=B promise-chaining).
+//   1. Se `doorAnim` attivo: avanza t con dt, calcola easing ease-out cubic
+//      (1 - (1-t)^3), interpola state.doorsActual da 'from' a 'to'.
+//   2. A fine animazione (t >= 1): risolve la Promise del chiamante (no leak),
+//      emette 'door:opened' / 'door:closed' sul bus (Q2.3 promise rispettata),
+//      processa la coda `doorAnimQueue` (V3 Step 2 fix bounce visivo):
+//        - skip se target === posizione attuale (no-op 0-duration)
+//        - altrimenti avvia la prossima animazione dalla posizione attuale
+//   3. Applica posizione porte ai mesh (doorLeft.x / doorRight.x con offset).
+//
+// Contratti D-key: D9 (promise rispettata via resolve callback, no leak),
+// V3 Step 2 Q2.3 (queue + skip no-op).
+//
+// Performance: ~30 righe. Chiamato ogni frame dal loop RAF quando c'è
+// un'animazione porte attiva. Profilare con runBenchmark.
 function tickDoors(dt) {
   if (doorAnim) {
     doorAnim.t += dt;
@@ -6628,6 +8357,24 @@ function tickDoors(dt) {
     state.doorsActual = doorAnim.from + (doorAnim.to - doorAnim.from) * e;
     if (t >= 1) {
       const r = doorAnim.resolve; doorAnim = null; r && r();
+      // Polish Pack V3 Step 2 (Q2.3=B): processa coda animazioni porte.
+      // Se ci sono animazioni in attesa, avviala subito (dal valore attuale).
+      if (doorAnimQueue.length > 0) {
+        const next = doorAnimQueue.shift();
+        // Edge case: se il target coincide con la posizione attuale, skip
+        if (Math.abs(state.doorsActual - next.target) < 0.01) {
+          if (next.resolve) next.resolve();
+          // Continua a processare la coda (potrebbe esserci un'altra anim.)
+          // Riassegna doorAnim alla prossima iterazione del tick successivo
+          // inserendo in testa la prossima entry, se esiste.
+          if (doorAnimQueue.length > 0) {
+            const n2 = doorAnimQueue.shift();
+            doorAnim = { from: state.doorsActual, to: n2.target, dur: n2.dur, t: 0, resolve: n2.resolve };
+          }
+        } else {
+          doorAnim = { from: state.doorsActual, to: next.target, dur: next.dur, t: 0, resolve: next.resolve };
+        }
+      }
       // Polish Pack V2 Step 1d: emetti evento fine animazione porte.
       // scheduleAutoClose e drawModernDisplay ascoltano 'door:opened' invece
       // di fare polling ogni frame su state.doorsActual.
@@ -6642,7 +8389,28 @@ function tickDoors(dt) {
 }
 
 function setDoors(open) {
-  if (state.alarmOn && open) return; // non aprire durante allarme? ok in realtà le porte si bloccano
+  // Polish Pack V3 Step 2 (Q2.6 A+B): gate apertura durante allarme / OOO.
+  // Prima il silent fail senza feedback creava UX ambigua ("perché non si aprono?").
+  // Ora: beep 220Hz + subtitle breve per spiegare il blocco.
+  // La chiusura forzata da toggleAlarm/setDoors(false) bypassa il gate perché
+  // `open=false` non è soggetto al check (l'allarme PUÒ chiudere le porte).
+  if (open && state.alarmOn) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    const msg = (STRINGS[state.lang] && STRINGS[state.lang].doorBlockedAlarm) || 'Porte bloccate per allarme';
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 1500);
+    return;
+  }
+  if (open && state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    const msg = (STRINGS[state.lang] && STRINGS[state.lang].doorBlockedOOO) || 'Fuori servizio';
+    if (typeof showSubtitle === 'function') showSubtitle(msg, 1500);
+    return;
+  }
+  // Polish Pack V3 Step 2 (Q2.6 C): no-op se la chiusura è già in corso
+  // (evita di ri-annunciare "porte si chiudono" su click ripetuti del tasto close).
+  if (!open && !state.doorsOpen && state.doorsTarget === 0 && state.doorsActual < 0.05) {
+    return;
+  }
   state.doorsOpen = open;
   state.doorsTarget = open ? 1 : 0;
   playDoorSound(open);
@@ -6650,7 +8418,11 @@ function setDoors(open) {
     cancelDoorCountdown();
     cancelAutoClose(); // l'utente ha appena aperto: timer si resettera' quando le porte sono completamente aperte
   } else {
-    if (typeof announceDoorClosing === 'function') announceDoorClosing();
+    // Annuncio "porte in chiusura" solo se le porte erano effettivamente aperte
+    // o in fase di apertura (no spam su click multipli a porta gia' chiusa).
+    if (state.doorsActual > 0.05) {
+      if (typeof announceDoorClosing === 'function') announceDoorClosing();
+    }
     if (typeof startDoorCountdown === 'function') startDoorCountdown();
     cancelAutoClose(); // chiusura esplicita, niente auto-close in coda
   }
@@ -6669,23 +8441,245 @@ function toggleAlarm() {
   const wasOn = state.alarmOn;
   state.alarmOn = !state.alarmOn;
   if (state.alarmOn) {
+    // Polish Pack V3 Step 2 (Q2.4=A): SOS forza OOO OFF. L'allarme hard
+    // presuppone che l'impianto sia sotto controllo soccorsi (NON 'guasto'):
+    // due stati 'fuori servizio' sovrapposti sono ambigui per l'utente.
+    // Azzeriamo OOO prima di attivare il SOS + emettiamo l'evento per i
+    // consumatori (display, HUD) che ascoltano 'ooo:off'.
+    if (state.outOfOrder) {
+      state.outOfOrder = false;
+      queueClear();
+      bus.emit('ooo:off');
+      if (typeof markDisplayDirty === 'function') markDisplayDirty();
+      const oooMsg = (STRINGS[state.lang] && STRINGS[state.lang].oooCancelledByAlarm)
+        || 'Allarme attivato. Fuori servizio annullato.';
+      if (typeof showSubtitle === 'function') showSubtitle(oooMsg, 2000);
+    }
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
     state.isMoving = false;
     movePaused = true;
     cancelAutoClose(); // l'allarme chiude le porte manualmente, niente auto-close
     setDoors(false);
-    alarmLight.intensity = 4;
+    // Polish Pack V3 Step 4 (Q4.4): fade-in 200ms invece di snap.
+    // tickFadeStates() lerpa alarmLight.intensity da current → 4 in 200ms.
+    state._fadeAlarm = {
+      from: alarmLight.intensity,
+      target: 4,
+      startMs: performance.now()
+    };
+    // Polish Pack V3 Step 6 (Q6.4): history allarmi + counter (severity error).
+    state.alarmCount = (state.alarmCount || 0) + 1;
+    const evt = {
+      ts: new Date().toISOString(),
+      floor: state.currentFloor,
+      reason: 'manual'
+    };
+    state.alarmHistory = typeof pushHistoryEvent === 'function'
+      ? pushHistoryEvent(state.alarmHistory || [], evt, 20)
+      : [evt].concat(state.alarmHistory || []).slice(0, 20);
+    saveHistory();
     playAlarm();
     if (typeof announceAlarm === 'function') announceAlarm();
+    if (typeof logEvent === 'function') {
+      logEvent((state.lang === 'en' ? 'Alarm ON (floor ' : 'Allarme ON (piano ') +
+        (state.currentFloor === 0 ? 'T' : String(state.currentFloor)) + ')',
+        { severity: 'error', category: 'state' });
+    }
   } else {
     movePaused = false;
-    alarmLight.intensity = 0;
+    // Polish Pack V3 Step 4 (Q4.4): fade-out 200ms invece di snap.
+    state._fadeAlarm = {
+      from: alarmLight.intensity,
+      target: 0,
+      startMs: performance.now()
+    };
     if (state._alarmId) clearInterval(state._alarmId);
   }
   // Polish Pack V2 Step 1d: emetti evento allarme (consumatori: display, audio)
   bus.emit(state.alarmOn ? 'alarm:on' : 'alarm:off');
   updateFloorDisplay();
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
+}
+
+// Polish Pack V2 Step 14b: PAIRING CITOFONO <-> SOS
+// Due sistemi di emergenza distinti (Q14.2=B):
+//   - CITOFONO (state.interphoneCalling) = chiamata SOFT alla reception
+//     operatoria dell'hotel. EN 81-28. Comportamento:
+//       * Nessun blocco cabina, nessuna chiusura porte forzata.
+//       * Nessuna luce rossa, nessuna sirena.
+//       * Lampeggio pulsante verde a 4Hz per 5s.
+//       * TTS soft: 'Chiamata in corso. Attendere prego.'
+//       * Voce reception simulata dopo 2s (Q14.3=B):
+//         'Centralino. Buongiorno. Come posso aiutarla?'
+//       * Subtitle HUD sincronizzato.
+//       * logEvent + bus.emit('interphone:on'/'interphone:off').
+//
+//   - SOS (state.alarmOn via toggleAlarm) = allarme HARD soccorsi.
+//     EN 81-28 §5.4 / ASME A17.1 §2.27. Comportamento:
+//       * Blocco cabina immediato (movePaused=true).
+//       * Chiusura porte forzata, annullamento auto-close.
+//       * Luci rosse pulsanti + sirena alternata 660/880Hz.
+//       * TTS hard: 'Allarme. Chiamata di soccorsi in corso. Restate calmi.'
+//
+// I due sistemi sono INDIPENDENTI: il giocatore può attivare il citofono
+// mentre l'allarme è attivo (e viceversa) senza conflitti. Le luci rosse
+// dell'allarme hanno priorita' visiva sulla cabina; il citofono lampeggia
+// sul pulsante verde indipendentemente dal contesto.
+// Nessuna escalation: citofono non chiama automaticamente i soccorsi.
+
+// ============================================================
+// POLISH PACK V2 STEP 14 — CITOFONO INTERATTIVO (EN 81-28)
+// Sistema di chiamata "soft" alla reception, distinto dal SOS (allarme
+// soccorsi "hard" gestito da toggleAlarm). Citofono e SOS possono essere
+// attivi contemporaneamente senza conflitti.
+// ============================================================
+const INTERPHONE_DURATION_MS = 5000;     // durata totale della chiamata
+const INTERPHONE_RECEPTION_DELAY_MS = 2000;  // delay prima della voce reception
+const INTERPHONE_BLINK_HZ = 4;           // frequenza lampeggio pulsante verde
+
+// pure: durata totale della chiamata in ms. Esposto in BossHotelPure.
+function interphoneDurationMs() { return INTERPHONE_DURATION_MS; }
+// pure: true se la chiamata è attiva (semplice lettura state wrapper).
+function isInterphoneActive(s) { return !!(s && s.interphoneCalling); }
+// pure: etichetta i18n per lo stato del citofono ('ON' | 'OFF').
+function interphoneStatusLabel(s, lang) {
+  return isInterphoneActive(s)
+    ? (lang === 'en' ? 'ON' : 'ATTIVO')
+    : (lang === 'en' ? 'OFF' : 'NON ATTIVO');
+}
+
+// handleInterphoneCall: avvia una nuova chiamata al citofono.
+// Se gia' attiva, ignora (idempotente). Annuncio TTS soft, lampeggio
+// pulsante verde, subtitle HUD. La voce reception simulata (Q14.3=B)
+// viene pronunciata dopo INTERPHONE_RECEPTION_DELAY_MS dal tick.
+function handleInterphoneCall() {
+  if (state.interphoneCalling) return;  // gia' in corso, ignora
+  if (state.outOfOrder) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    showSubtitle(state.lang === 'en'
+      ? 'Interphone unavailable (out of service)'
+      : 'Citofono non disponibile (fuori servizio)', 3000);
+    return;
+  }
+  state.interphoneCalling = true;
+  state._interphoneStart = performance.now();
+  state._interphoneReceptionAnnounced = false;
+  // beep breve di conferma
+  if (typeof playBeep === 'function') playBeep(660, 0.1, 'sine', 0.1);
+  // annuncio soft + subtitle
+  const txt = state.lang === 'en'
+    ? 'Calling. Please wait.'
+    : 'Chiamata in corso. Attendere prego.';
+  if (typeof speak === 'function') speak(txt);
+  if (typeof showSubtitle === 'function') showSubtitle(txt, 3000);
+  // Polish Pack V3 Step 6 (Q6.4): history interphone + counter (severity info).
+  state.interphoneCount = (state.interphoneCount || 0) + 1;
+  const evt = {
+    ts: new Date().toISOString(),
+    reason: 'start'
+  };
+  state.interphoneHistory = typeof pushHistoryEvent === 'function'
+    ? pushHistoryEvent(state.interphoneHistory || [], evt, 20)
+    : [evt].concat(state.interphoneHistory || []).slice(0, 20);
+  if (typeof saveHistory === 'function') saveHistory();
+  // log per maintenance overlay
+  if (typeof logEvent === 'function') logEvent('interphone:start', { severity: 'info', category: 'state' });
+  // evento bus per audit/eventuali consumatori futuri
+  if (typeof bus !== 'undefined' && bus) bus.emit('interphone:on');
+  // salvataggio prefs (la chiamata e' uno stato transitorio ma
+  // lo salviamo per consentire a 14c la persistenza post-refresh)
+  if (typeof savePrefs === 'function') savePrefs();
+}
+
+// tickInterphoneCall: aggiorna lo stato del citofono. Chiamato dal
+// loop RAF ogni frame. Gestisce: lampeggio pulsante verde, voce
+// reception dopo 2s, termine automatico della chiamata.
+function tickInterphoneCall(now) {
+  if (!state.interphoneCalling) return;
+  const elapsed = now - state._interphoneStart;
+  // voce reception simulata (Q14.3=B): dopo 2s, pronuncia TTS di benvenuto
+  if (!state._interphoneReceptionAnnounced && elapsed >= INTERPHONE_RECEPTION_DELAY_MS) {
+    state._interphoneReceptionAnnounced = true;
+    const txt = state.lang === 'en'
+      ? 'Reception. Good morning. How may I help you?'
+      : 'Centralino. Buongiorno. Come posso aiutarla?';
+    if (typeof speak === 'function') speak(txt);
+    if (typeof showSubtitle === 'function') showSubtitle(txt, 3000);
+    if (typeof logEvent === 'function') logEvent('interphone:reception');
+  }
+  // lampeggio pulsante verde: alterna emissive intensity a INTERPHONE_BLINK_HZ
+  const btn = state._interphoneButton;
+  if (btn && btn.material) {
+    const phase = (now / 1000) * INTERPHONE_BLINK_HZ * 2 * Math.PI;
+    const k = 0.5 + 0.5 * Math.sin(phase);
+    btn.material.emissiveIntensity = 0.15 + k * 0.85;  // 0.15..1.0
+  }
+  // termine automatico della chiamata
+  if (elapsed >= INTERPHONE_DURATION_MS) stopInterphoneCall('timeout');
+}
+
+// Polish Pack V3 Step 4 (Q4.4): fade gentile per cambi stato.
+// Lerp 200ms su alarmLight.intensity (rosso allarme) + emissiveIntensity
+// del pulsante citofono. Lo stato fade target/from/startMs e' in
+// state._fadeAlarm e state._fadeInterphone, inizializzato nei toggle
+// corrispondenti. Skip completo se state.reducedMotion (snap immediato).
+// Chiamato ogni frame dal loop RAF.
+function tickFadeStates(now) {
+  if (state.reducedMotion) return;
+  const dur = 200; // ms, coerente con stateFadeDurationMs()
+  // alarm light
+  if (state._fadeAlarm && alarmLight) {
+    const elapsed = now - state._fadeAlarm.startMs;
+    const t = Math.min(1, elapsed / dur);
+    alarmLight.intensity = state._fadeAlarm.from
+      + (state._fadeAlarm.target - state._fadeAlarm.from) * t;
+  }
+  // interphone button emissive (base level, NON sostituisce il blink di
+  // tickInterphoneCall — quello continua a pulsare sopra il base).
+  if (state._fadeInterphone && state._interphoneButton && state._interphoneButton.material) {
+    const elapsed = now - state._fadeInterphone.startMs;
+    const t = Math.min(1, elapsed / dur);
+    const baseEmissive = state._fadeInterphone.from
+      + (state._fadeInterphone.target - state._fadeInterphone.from) * t;
+    // Il blink attivo (tickInterphoneCall) sovrascrive emissiveIntensity,
+    // quindi questo e' solo un base level per quando la chiamata NON e'
+    // attiva. tickInterphoneCall continua a gestire il blink attivo.
+    if (!state.interphoneCalling) {
+      state._interphoneButton.material.emissiveIntensity = baseEmissive;
+    }
+  }
+}
+
+// stopInterphoneCall: termina la chiamata citofono. Chiamato da
+// tickInterphoneCall al timeout o manualmente. Ripristina emissive
+// intensity del pulsante e pulisce stato.
+function stopInterphoneCall(reason) {
+  if (!state.interphoneCalling) return;
+  state.interphoneCalling = false;
+  const btn = state._interphoneButton;
+  // Polish Pack V3 Step 4 (Q4.4): fade-out 200ms invece di snap.
+  // tickFadeStates() lerpa emissiveIntensity al valore base (0.3).
+  if (btn && btn.material) {
+    state._fadeInterphone = {
+      from: btn.material.emissiveIntensity,
+      target: 0.3,
+      startMs: performance.now()
+    };
+  }
+  // Polish Pack V3 Step 6 (Q6.4): aggiungi evento 'stop' in history
+  // (manteniamo il counter solo per gli start, lo stop e' solo per audit).
+  const stopEvt = {
+    ts: new Date().toISOString(),
+    reason: 'stop:' + (reason || 'manual'),
+    durationMs: state._interphoneStart ? Math.round(performance.now() - state._interphoneStart) : 0
+  };
+  state.interphoneHistory = typeof pushHistoryEvent === 'function'
+    ? pushHistoryEvent(state.interphoneHistory || [], stopEvt, 20)
+    : [stopEvt].concat(state.interphoneHistory || []).slice(0, 20);
+  if (typeof saveHistory === 'function') saveHistory();
+  if (typeof logEvent === 'function') logEvent('interphone:stop:' + (reason || 'manual'), { severity: 'info', category: 'state' });
+  if (typeof bus !== 'undefined' && bus) bus.emit('interphone:off');
+  if (typeof savePrefs === 'function') savePrefs();
 }
 
 // ============================================================
@@ -6915,6 +8909,13 @@ function pressButton(btn) {
     if (!state.playerInCabin) {
       requestFloor(state.currentFloor, btn.userData.direction);
     }
+  } else if (btn.userData.action === 'interphone') {
+    // Polish Pack V2 Step 14a: citofono interattivo. Sistema "soft"
+    // (chiamata reception) distinto dal SOS (toggleAlarm, "hard").
+    // Se state._interphoneButton non e' stato ancora agganciato, fallo
+    // qui lazy (copre il caso di inizializzazione posticipata).
+    if (!state._interphoneButton) state._interphoneButton = btn;
+    handleInterphoneCall();
   }
 }
 
@@ -6973,10 +8974,8 @@ function tickIRSensor() {
       // Annuncio vocale + beep IR (stile ascensore reale)
       playBeep(880, 0.15, 'square', 0.15);
       if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-        speak(state.lang === 'en' ? 'Caution. Doors detect an obstacle.' : 'Attenzione. Le porte rilevano un ostacolo.');
-      }
-      if (typeof showSubtitle === 'function') {
-        showSubtitle(state.lang === 'en' ? 'Obstacle detected' : 'Ostacolo rilevato', 2000);
+        const txt = state.lang === 'en' ? 'Caution. Doors detect an obstacle.' : 'Attenzione. Le porte rilevano un ostacolo.';
+        speakWithSubtitle(txt, { durationMs: 3500 });
       }
       bus.emit('door:obstacle', { source: 'ir-sensor' });
     }
@@ -7008,7 +9007,8 @@ function tickIRSensor() {
       playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2);
       setTimeout(() => playBeep(IR_NUDGING_BEEP_HZ, 0.2, 'square', 0.2), 280);
       if (typeof speak === 'function' && ttsEnabled && !state.muted) {
-        speak(state.lang === 'en' ? 'Forced door closing. Caution.' : 'Chiusura porte forzata. Attenzione.');
+        const txt = state.lang === 'en' ? 'Forced door closing. Caution.' : 'Chiusura porte forzata. Attenzione.';
+        speakWithSubtitle(txt, { durationMs: 3000 });
       }
       // Forza chiusura ignorando l'ostacolo
       state.irObstacleActive = false;
@@ -7207,6 +9207,26 @@ status.textContent = STRINGS[state.lang].calledFloor(floor === 0 ? 'T' : floor);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
+// Polish Pack V3 Step 7 (Q7.1+Q7.2): tickPlayer — movimento FPS nel corridoio.
+// Chiamato ogni frame SOLO quando state.playerInCabin === false
+// (l'utente è uscito dalla cabina e cammina nel corridoio con WASD).
+//
+// Flusso:
+//   1. Early-return se in cabina (movimento è gestito da altre funzioni).
+//   2. Leggi flag keys[] (popolati dai keydown/keyup listeners): W/S forward/back,
+//      A/D side (strafe).
+//   3. Calcola vettore 'forward' dalla yawObj.quaternion (rotazione mouse-look).
+//      Applicato a Vector3(0,0,-1) (forward di default in Three.js), azzerata
+//      la y per movimento orizzontale.
+//   4. Calcola posizione target = yawObj.position + forward*fwd + right*side.
+//   5. Collision detection vs pareti corridoio (CABIN.w boundaries).
+//   6. Aggiorna yawObj.position (player position).
+//
+// Contratti: nessun D-key diretto, ma utilizza state.playerInCabin
+// (settato da enterCabin/exitCabin, V1.6 #14).
+//
+// Performance: ~30 righe. Chiamato ogni frame. Nessun side-effect visibile
+// quando in cabina (early return) → costo trascurabile.
 function tickPlayer(dt) {
   if (state.playerInCabin) return;
   let fwd = 0, side = 0;
@@ -7214,6 +9234,16 @@ function tickPlayer(dt) {
   if (keys['KeyS']) fwd -= 1;
   if (keys['KeyA']) side -= 1;
   if (keys['KeyD']) side += 1;
+  // Polish Pack V3 Step 9 (Q9.2): joystick virtuale mobile.
+  // state._joystick.dx = orizzontale [-1..1] (strafe dx)
+  // state._joystick.dz = verticale [-1..1] (fwd, dz positivo = avanti in joystick)
+  // Mappato analogicamente per movimento smooth (vs WASD binario).
+  if (state._joystick) {
+    const jx = state._joystick.dx || 0;
+    const jz = state._joystick.dz || 0;
+    if (Math.abs(jx) > 0.1) side += jx;
+    if (Math.abs(jz) > 0.1) fwd += jz;  // dz positivo (drag su) = fwd (avanti)
+  }
 
   // direzioni nel mondo (yawObj.quaternion dà la rotazione corrente del giocatore)
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObj.quaternion);
@@ -7362,10 +9392,18 @@ function loop(now) {
   tickIRSensor();
   // Polish Pack V2 Step 2b: prompt vocale inattivita' 30s in-game
   tickInactivityPrompt();
+  // Polish Pack V2 Step 14: gestione chiamata citofono (lampeggio + voce reception + timeout)
+  tickInterphoneCall(now);
+  // Polish Pack V3 Step 4 (Q4.4): fade gentile alarm + citofono (lerp 200ms)
+  tickFadeStates(now);
+  // Polish Pack V3 Step 5 (Q5.4): benchmark FPS profiler (idle 5s + moving 5s)
+  tickBenchmark(now);
   // Polish Pack V2 Step 10a: muove e rimuove NPC passeggeri scaduti
   tickNpcs(dt, now);
   // Polish Pack V2 Step 9b: crossfade freccia direzione (200ms)
   tickArrowFade(now);
+  // Polish Pack V3 Step 4 (Q4.2): tasti "respiro" pulsantiera 3D
+  tickBreathButtons(now);
   // Polish Pack V2 Step 10c: re-check dayPhase (ogni 60s via setInterval, ma ridondante sicuro)
   tickTimeOfDay();
   // il corridoio segue la cabina in altezza (porte chiuse durante il movimento)
@@ -7376,7 +9414,13 @@ function loop(now) {
   // lampeggio allarme / modalità notte (Fase 8)
   if (state.alarmOn) {
     const k = 0.5 + 0.5 * Math.sin(now * 0.012);
-    alarmLight.intensity = 2 + k * 4;
+    // Polish Pack V3 Step 4 (Q4.4): durante il fade-in (primi 200ms dopo
+    // toggleAlarm) salta il blink modulation di alarmLight cosi' tickFadeStates()
+    // lerp ha effetto visibile. Dopo i 200ms, blink modulation normale.
+    const fadeElapsed = state._fadeAlarm ? (now - state._fadeAlarm.startMs) : Infinity;
+    if (fadeElapsed >= 200) {
+      alarmLight.intensity = 2 + k * 4;
+    }
     ceilingLight.intensity = 0.6 + (1 - k) * 0.4;
     scene.fog.color.setHSL(0, 1, 0.05 + 0.02 * k);
   } else if (state.nightMode) {
@@ -7437,8 +9481,142 @@ cabin.rotation.z = state.vibrationRoll;
 
   updateHover();
   renderer.render(scene, camera);
-  requestAnimationFrame(loop);
 }
+
+// ============================================================
+// POLISH PACK V3 STEP 3: Settings QoL — UI wiring
+// Sliders audio + display nel pannello Personalizza hotel (H).
+// Bottone export JSON nel maintenance overlay (Shift+M).
+// Persistenza separata in bossHotelAudio@v1 + bossHotelDisplay@v1.
+// ============================================================
+
+function refreshSettingsQoLLabels() {
+  // Aggiorna label i18n dei sliders Settings QoL.
+  const s = STRINGS[state.lang] || STRINGS.it;
+  const titleEl = document.getElementById('hc-settings-title');
+  const lblE = document.getElementById('hc-lbl-effects');
+  const lblM = document.getElementById('hc-lbl-music');
+  const lblT = document.getElementById('hc-lbl-tts');
+  const lblB = document.getElementById('hc-lbl-brightness');
+  const expBtn = document.getElementById('m-export-json');
+  const benchBtn = document.getElementById('m-benchmark-btn');
+  if (titleEl) titleEl.textContent = s.settingsTitle || 'Settings';
+  if (lblE) lblE.textContent = s.audioEffects || 'Effects';
+  if (lblM) lblM.textContent = s.audioMusic || 'Music';
+  if (lblT) lblT.textContent = s.audioTts || 'TTS';
+  if (lblB) lblB.textContent = s.displayBrightness || 'Brightness';
+  if (expBtn) expBtn.textContent = (s.settingsExportReady || 'Export') + ' JSON';
+  if (benchBtn) benchBtn.textContent = s.maintBenchmark || 'Benchmark 5s';
+}
+
+function updateSettingsQoLValueDisplays() {
+  // Aggiorna label "100%" / "50%" / "85%" accanto agli slider.
+  const e = document.getElementById('hc-val-effects');
+  const m = document.getElementById('hc-val-music');
+  const t = document.getElementById('hc-val-tts');
+  const b = document.getElementById('hc-val-brightness');
+  if (e) e.textContent = Math.round((state.audio.effects || 0) * 100) + '%';
+  if (m) m.textContent = Math.round((state.audio.music || 0) * 100) + '%';
+  if (t) t.textContent = Math.round((state.audio.tts || 0) * 100) + '%';
+  if (b) b.textContent = Math.round((state.display.brightness || 1) * 100) + '%';
+}
+
+function initSettingsQoL() {
+  // Init slider values da state (gia' caricato da loadAudioSettings/loadDisplaySettings)
+  const sE = document.getElementById('hc-slider-effects');
+  const sM = document.getElementById('hc-slider-music');
+  const sT = document.getElementById('hc-slider-tts');
+  const sB = document.getElementById('hc-slider-brightness');
+  if (sE) {
+    sE.value = state.audio.effects;
+    sE.addEventListener('input', () => {
+      state.audio.effects = parseFloat(sE.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sM) {
+    sM.value = state.audio.music;
+    sM.addEventListener('input', () => {
+      state.audio.music = parseFloat(sM.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sT) {
+    sT.value = state.audio.tts;
+    sT.addEventListener('input', () => {
+      state.audio.tts = parseFloat(sT.value);
+      saveAudioSettings();
+      updateSettingsQoLValueDisplays();
+    });
+  }
+  if (sB) {
+    sB.value = state.display.brightness;
+    sB.addEventListener('input', () => {
+      state.display.brightness = parseFloat(sB.value);
+      saveDisplaySettings();
+      updateSettingsQoLValueDisplays();
+      if (typeof markDisplayDirty === 'function') markDisplayDirty();
+    });
+  }
+  // Export JSON button nel maintenance overlay.
+  const expBtn = document.getElementById('m-export-json');
+  if (expBtn) {
+    expBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      exportStateJSON();
+    });
+  }
+  // Polish Pack V3 Step 5 (Q5.4): bottone benchmark FPS.
+  const benchBtn = document.getElementById('m-benchmark-btn');
+  if (benchBtn) {
+    benchBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      runBenchmark();
+    });
+  }
+  // Polish Pack V3 Step 6 (Q6.3): filter buttons per categoria log.
+  // Event delegation: un listener sul parent .m-filter gestisce tutti i click.
+  const filterEl = document.getElementById('m-filter');
+  if (filterEl) {
+    filterEl.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.m-filter-btn');
+      if (!btn) return;
+      ev.stopPropagation();
+      const cat = btn.dataset.cat;
+      if (!cat || !state._logFilter) return;
+      state._logFilter[cat] = !state._logFilter[cat];
+      btn.classList.toggle('off', !state._logFilter[cat]);
+    });
+  }
+  // Mostra/nascondi bottone export + benchmark in base a maintenanceMode.
+  syncExportBtnVisibility();
+  refreshSettingsQoLLabels();
+  updateSettingsQoLValueDisplays();
+}
+
+function syncExportBtnVisibility() {
+  const eb = document.getElementById('m-export-json');
+  const bb = document.getElementById('m-benchmark-btn');
+  const vis = state.maintenanceMode ? 'block' : 'none';
+  if (eb) eb.style.display = vis;
+  if (bb) bb.style.display = vis;
+}
+
+// Refresh visibility export button + labels quando si apre il customizer.
+const _origOpenHotelCustomizer = openHotelCustomizer;
+openHotelCustomizer = function() {
+  _origOpenHotelCustomizer.apply(this, arguments);
+  refreshSettingsQoLLabels();
+  updateSettingsQoLValueDisplays();
+};
+
+// (initSettingsQoL chiamato dopo loadAudioSettings/loadDisplaySettings
+// piu' avanti nel file, cosi' gli slider riflettono i settings caricati
+// da localStorage invece dei default.)
+
+requestAnimationFrame(loop);
 
 // ============================================================
 // AVVIO
@@ -7490,6 +9668,15 @@ function loadPrefs() {
       if (typeof p.muted === 'boolean') state.muted = p.muted;
       if (typeof p.tts === 'boolean') ttsEnabled = p.tts;
       if (typeof p.night === 'boolean') state.nightMode = p.night;
+      // Polish Pack V2 Step 14c: persistenza stato citofono.
+      // Una chiamata citofono non puo' sopravvivere a un page reload
+      // (la connessione con la reception e' simulata e decade al refresh).
+      // Se al load era true, mostra subtitle informativo e resetta a false.
+      if (typeof p.interphone === 'boolean' && p.interphone) {
+        state.interphoneCalling = false;
+        // segnala per il deferred subtitle (eseguito dopo init DOM)
+        pendingInterphoneInterruptNotice = true;
+      }
     }
   } catch(e) { /* localStorage non disponibile o corrotto: ignora */ }
 }
@@ -7500,13 +9687,151 @@ function savePrefs() {
       muted: state.muted,
       tts: ttsEnabled,
       night: state.nightMode,
+      // Polish Pack V2 Step 14c: persistenza stato citofono
+      interphone: state.interphoneCalling,
     }));
   } catch(e) { /* quota esaurita o storage disabilitato: ignora */ }
 }
 
+// Polish Pack V3 Step 3: persistenza Settings QoL.
+// Due chiavi separate @v1 (Q3.5=A): granularità indipendente + migrazione
+// forward-compatible (un campo nuovo si puo' aggiungere senza rompere l'altro).
+const AUDIO_PREFS_KEY = 'bossHotelAudio@v1';
+const DISPLAY_PREFS_KEY = 'bossHotelDisplay@v1';
+function clampAudio(v, fallback) {
+  // Pure helper: clamp volume 0..1 con fallback difensivo.
+  if (typeof v !== 'number' || isNaN(v)) return fallback;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+function clampBrightness(v, fallback) {
+  // Pure helper: clamp brightness 0.5..1.5 con fallback difensivo.
+  if (typeof v !== 'number' || isNaN(v)) return fallback;
+  return v < 0.5 ? 0.5 : v > 1.5 ? 1.5 : v;
+}
+
+// pure: formatta volume 0..1 come stringa percentuale intera (es. 0.5 → "50%").
+// Coerente con updateSettingsQoLValueDisplays() nell'UI.
+function formatVolumePercent(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '--';
+  return Math.round(v * 100) + '%';
+}
+
+// pure: shape dell'export JSON (senza funzioni). Helper per test deterministici
+// che non richiedono di importare l'intera state machine.
+function stateShapeForExport(s) {
+  if (!s || typeof s !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(s)) {
+    const v = s[k];
+    if (typeof v === 'function') continue;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const nested = {};
+      for (const nk of Object.keys(v)) {
+        if (typeof v[nk] !== 'function') nested[nk] = v[nk];
+      }
+      out[k] = nested;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+function loadAudioSettings() {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    state.audio.effects = clampAudio(p.effects, state.audio.effects);
+    state.audio.music   = clampAudio(p.music, state.audio.music);
+    state.audio.tts     = clampAudio(p.tts, state.audio.tts);
+  } catch(e) { /* ignore */ }
+}
+function saveAudioSettings() {
+  try {
+    localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify({
+      v: 1,
+      effects: state.audio.effects,
+      music: state.audio.music,
+      tts: state.audio.tts
+    }));
+  } catch(e) { /* ignore */ }
+}
+function loadDisplaySettings() {
+  try {
+    const raw = localStorage.getItem(DISPLAY_PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    state.display.brightness = clampBrightness(p.brightness, state.display.brightness);
+  } catch(e) { /* ignore */ }
+}
+function saveDisplaySettings() {
+  try {
+    localStorage.setItem(DISPLAY_PREFS_KEY, JSON.stringify({
+      v: 1,
+      brightness: state.display.brightness
+    }));
+  } catch(e) { /* ignore */ }
+}
+
+// Polish Pack V3 Step 6 (Q6.4): persistenza history allarmi/interphonate
+// + counters. localStorage 'bossHotelHistory@v1'. Capacity 20 entries.
+const HISTORY_KEY = 'bossHotelHistory@v1';
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (!p || p.v !== 1) return;
+    if (Array.isArray(p.alarmHistory)) state.alarmHistory = p.alarmHistory.slice(0, 20);
+    if (typeof p.alarmCount === 'number') state.alarmCount = p.alarmCount;
+    if (Array.isArray(p.interphoneHistory)) state.interphoneHistory = p.interphoneHistory.slice(0, 20);
+    if (typeof p.interphoneCount === 'number') state.interphoneCount = p.interphoneCount;
+  } catch(e) { /* ignore */ }
+}
+function saveHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify({
+      v: 1,
+      alarmHistory: state.alarmHistory || [],
+      alarmCount: state.alarmCount || 0,
+      interphoneHistory: state.interphoneHistory || [],
+      interphoneCount: state.interphoneCount || 0
+    }));
+  } catch(e) { /* ignore */ }
+}
+
+// Polish Pack V2 Step 14c: flag per mostrare subtitle "Chiamata interrotta
+// dal refresh" al primo paint dopo loadPrefs(). Verrà consumato in init().
+let pendingInterphoneInterruptNotice = false;
+
 loadPrefs();
+// Polish Pack V3 Step 3: carica settings QoL (volumi audio + luminosità display).
+loadAudioSettings();
+loadDisplaySettings();
+// Polish Pack V3 Step 6 (Q6.4): carica history allarmi/interphonate da localStorage.
+loadHistory();
+// Polish Pack V3 Step 3: init sliders QoL DOPO il caricamento da localStorage
+// (cosi' gli slider riflettono le preferenze salvate dell'utente).
+initSettingsQoL();
+// Polish Pack V3 Step 9 (Q9.4): init mobile detection + touch controls.
+initMobileDetection();
+initTouchControls();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
+// Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
+if (pendingInterphoneInterruptNotice) {
+  pendingInterphoneInterruptNotice = false;
+  // mostra subtitle dopo che showSubtitle e' disponibile (in pratica subito)
+  setTimeout(() => {
+    if (typeof showSubtitle === 'function') {
+      showSubtitle(state.lang === 'en'
+        ? 'Interphone call interrupted by page reload'
+        : 'Chiamata citofono interrotta dal refresh della pagina', 4000);
+    }
+  }, 1500);
+}
 // Polish Pack V2 Step 10c: determina dayPhase iniziale (giorno/sera/notte) e applica luci
 state.dayPhase = getDayPhase();
 applyTimeOfDayLights(state.dayPhase);
@@ -7600,7 +9925,7 @@ function buildStartScreenKeys() {
 
 // Slides del carosello - riga 710-735 di elevator.html
 const SLIDE_DEFS = [
-  { emoji: '\ud83e\udddf', titleKey: 'slideCabinTitle',  descKey: 'slideCabinDesc' },
+  { emoji: '\ud83d\uded7', titleKey: 'slideCabinTitle',  descKey: 'slideCabinDesc' },
   { emoji: '\ud83d\udcf1', titleKey: 'slideTouchTitle', descKey: 'slideTouchDesc' },
   { emoji: '\u2600\ufe0f', titleKey: 'slideWeatherTitle', descKey: 'slideWeatherDesc' },
   { emoji: '\ud83c\udf5c', titleKey: 'slideTTSTitle',   descKey: 'slideTTSDesc' },
@@ -7710,6 +10035,9 @@ function applyLangToDOM() {
   // Refresh anche le derivati (refreshHudButtons, refreshLangSwitch, ecc.)
   if (typeof refreshHudButtons === 'function') refreshHudButtons();
   if (typeof refreshLangSwitch === 'function') refreshLangSwitch();
+  // Polish Pack V3 Step 3: refresh label sliders QoL (audio + display)
+  // + bottone export JSON del maintenance overlay.
+  if (typeof refreshSettingsQoLLabels === 'function') refreshSettingsQoLLabels();
 }
 (function applyLangToStartScreen() {
   applyLangToDOM();
@@ -7840,6 +10168,43 @@ if (langSwitchBtn) {
 }
 
 requestAnimationFrame(loop);
+
+// ============================================================
+// Polish Pack V2 Step 12: Esposizione funzioni pure per test.
+// tests.html legge questo namespace per eseguire assert su
+// helper senza side-effect. Non influenza il gameplay.
+// ============================================================
+window.BossHotelPure = {
+  // helper matematici (vedi definizioni sopra)
+  clamp, lerp, smoothstep, clampFloor, floorLabel,
+  // logiche di business pure
+  computePassengerDelta, pickNextFloor,
+  // funzioni originali gia' pure
+  floorRoomRange, getThemeForFloor, parseHexColor,
+  getDayPhase, easeInOutCubic,
+  // helper citofono (Polish Pack V2 Step 14)
+  interphoneDurationMs, isInterphoneActive, interphoneStatusLabel,
+  // Polish Pack V3 Step 1a/1b: helper accessibility
+  computeSubtitleDuration, shouldDisableMotion,
+  // Polish Pack V3 Step 1d: helper contrasto WCAG
+  relativeLuminance, contrastRatio,
+  // Polish Pack V3 Step 2: helper corner case UX
+  canOpenDoors, shouldAnnounceDoorClose, sosCancelsOOO, currentMovementDirection,
+  // Polish Pack V3 Step 3: helper Settings QoL (audio + display + export)
+  clampAudio, clampBrightness, formatVolumePercent, stateShapeForExport,
+  // Polish Pack V3 Step 4: helper micro-animazioni (respiro + flash + bounce)
+  breathScale, arrivalFlashAlpha, easeOutBounce, stateFadeDurationMs, easeOutLinear,
+  // Polish Pack V3 Step 5: helper Performance (benchmark + LRU cache)
+  aggregateFpsStats, formatFpsDelta, createLruCache,
+  // Polish Pack V3 Step 6: helper QoL manutenzione (log filter + history)
+  filterLogEvents, severityColor, severityIcon, pushHistoryEvent, formatHistoryEvents,
+  // Polish Pack V3 Step 8: helper test coverage estesa (invariants + timing + stress)
+  stateInvariantCheck, interphoneLampAlpha, interphoneShouldTimeout, runStress,
+  // Polish Pack V3 Step 9: helper mobile responsive
+  isMobileDevice,
+  // costanti utili per i test
+  NUM_FLOORS
+};
 </script>
 </body>
 </html>

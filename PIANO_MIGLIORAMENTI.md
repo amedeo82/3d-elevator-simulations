@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅** · Aggiornato 2026-09-25
+**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 parziale (Step 1-2)** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -2406,3 +2406,62 @@ approvate via `question` tool. Pattern: matchMedia detection + CSS overlay
 Polish Pack V3 ha chiuso il gap tra V1 (proof-of-concept) e V2 (production-ready)
 verso un simulatore 3D maturo, accessibile, performante, ben documentato,
 testato, e ora anche mobile-responsive.
+
+---
+
+## Polish Pack V4 — **APERTO 2026-09-25**
+
+Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
+(6 step totali: T1 3 + T2 2 + T3 1).
+
+**Risultato parziale V4**: **2/6 step completati (33%)** ✅
+- Step 1 (Test exposure gap): ✅ chiuso senza modifiche al codice (audit
+  obsoleto, gap reale assente; tutte le 32 funzioni `pure:` erano già
+  esportate da V2/V3).
+- Step 2 (Routing bug fix D22): ✅ chiuso con fix codice.
+
+### Fase 23 — Polish Pack V4 Step 2: Routing bug fix D22 ✅ (2026-09-25, branch `feature/v4-step-2-routing-bug`)
+
+**Bug identificato**: `pickNextFloor`/`queueNextSmart` applicavano la regola
+`oppDir === 'up' ? MAX : MIN` per il caso "inversione" (no same-dir nella
+coda). Questa euristica è fisicamente incoerente con l'algoritmo elevator
+classico (look algorithm): la cabina dovrebbe proseguire nella direzione
+attuale fino al farthest della direzione opposta, poi servire i restanti
+tornando indietro. Le due inversioni sono quindi asimmetriche:
+
+- `lastDir='up'`, invert a `down` → MAX (highest) della coda down
+- `lastDir='down'`, invert a `up` → MIN (lowest) della coda up
+
+**Decisione** (Q22.1 via `question` tool): MAX/MIN asimmetrico (look
+algorithm standard). La formulazione letterale del piano ("MAX per
+entrambe le direzioni") è stata corretta in favore dell'euristica
+fisicamente coerente.
+
+**Modifiche al codice** (elevator.html):
+- `pickNextFloor` (riga 5671-5698): inversione ora ritorna MAX se
+  `oppDir='down'`, MIN se `oppDir='up'`. Commento esteso esplicativo.
+- `queueNextSmart` (riga 8003-8031): stessa modifica per la versione
+  stateful (le due devono restare in sync per D9).
+
+**Test** (tests.html):
+- 4 test esistenti aggiornati (documentavano il vecchio comportamento
+  errato).
+- 6 nuovi edge case aggiunti nella sezione `pickNextFloor (routing
+  edge cases)`: inversione con coda singola, coda disordinata,
+  priorita same-dir su inversione, ecc.
+- Totale suite: 206 → **212 test / 343 → 349 assert**, tutti pass.
+
+**Contratto D22** introdotto in AGENTS.md con descrizione completa del
+look algorithm asimmetrico.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa (node --check OK).
+- Screenshot `tests-step2-bottom.png` mostra 211/211 PASS in tutti i
+  describe blocks (incluso `pickNextFloor` intelligente + edge cases).
+- Smoke test `elevator-step2-smoke.png` mostra start screen pulito.
+
+**Branch**: `feature/v4-step-2-routing-bug` → merge su `main` con
+`--no-ff` (commit `c98ba78` + merge commit).
+
+**Prossimo step proposto**: Step 3 (A11y aria attributes, T1c) —
+unico step T1 rimasto aperto.
