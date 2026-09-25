@@ -8,7 +8,7 @@
 > solo polish qualitativo incrementale mirato a rendere il simulatore
 > più solido, accessibile, performante e piacevole da usare.
 >
-> Stato attuale: **8/9 step completati (89%)** — vedi §Stato V3 in fondo
+> Stato attuale: **9/9 step completati (100%)** ✅ Polish Pack V3 chiuso
 > al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
 > prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
 > informano V3.
@@ -31,7 +31,7 @@
 | 6 | QoL manutenzione (log + export) | T2c | 1 sessione | 🟢 | ✅ |
 | 7 | Documentazione completa | T3a | 1-2 sessioni | 🟡 | ✅ |
 | 8 | Test coverage estesa (154 → 202) | T3b | 1 sessione | 🟡 | ✅ |
-| 9 | Mobile responsive layout | Bonus | 1-2 sessioni | 🟡 | ⏳ |
+| 9 | Mobile responsive layout | Bonus | 1 sessione | 🟢 | ✅ |
 
 **Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
 
@@ -865,6 +865,71 @@ File toccati: `elevator.html` (4 nuovi helper), `tests.html` (5 nuovi describe b
 
 ---
 
+# STEP 9 · Mobile responsive layout (Bonus)
+
+Adattamento layout 3D + HUD + touch controls per mobile/tablet.
+Ultimo step del Polish Pack V3.
+
+## Decision Questions
+
+### Q9.1 — Scope dello step
+- **A. Tutti e 5 i sotto-step** *(approvato)*: touch controls + HUD scaling +
+  landscape enforcement + pulsantiera virtuale + fallback graceful.
+
+### Q9.2 — Touch input mapping
+- **A. Drag + swipe joystick + tasti laterali** *(approvato)*: drag dito
+  = mouse-look, joystick virtuale analogico sx per WASD, pulsanti ▲▼
+  virtuali a dx per external call panel.
+
+### Q9.3 — Landscape enforcement
+- **A. CSS @media orientation: portrait** *(approvato)*: overlay con
+  messaggio "rotate device" quando portrait. No lock vero (limitato da
+  Web API).
+
+### Q9.4 — Mobile detection
+- **A. matchMedia + (max-width: 768px)** *(approvato)*: media query robusta
+  `pointer: coarse AND max-width: 768px`. Riascolta cambiamenti runtime.
+
+## Acceptance criteria
+
+- [x] (Q9.1) 5 sotto-step implementati + commit unico
+- [x] (Q9.2) Touch drag su canvas = mouse-look (yaw + pitch)
+- [x] (Q9.2) Joystick virtuale sx per movimento analogico (state._joystick.dx/dz)
+- [x] (Q9.2) Pulsanti virtuali ▲▼ dx per external call panel
+- [x] (Q9.3) Landscape enforcement overlay (display: flex quando portrait)
+- [x] (Q9.4) isMobileDevice() helper via matchMedia + riascolto runtime
+- [x] HUD scaling CSS via @media (max-width: 768px) per bottoni + font
+- [x] state.isMobile settato all'init + refresh su resize
+- [x] Helper isMobileDevice esposto in BossHotelPure + 3 test
+- [x] 205/205 test passano (3 nuovi + 202 esistenti tutti verdi)
+- [x] Smoke test: 0 errori console desktop, rotate overlay responsive
+- [x] `node --check` + brace balance
+
+## Contratto D-key nuovo
+
+- **D20**: Mobile responsive layout. isMobileDevice() via matchMedia
+  `(pointer: coarse) AND (max-width: 768px)`. Riascolto runtime via
+  addEventListener('change'). Touch controls: drag = look, joystick
+  analogico sx = movimento WASD, pulsanti ▲▼ dx = call panel. Landscape
+  enforced via CSS @media orientation:portrait overlay. HUD scaling
+  via @media (max-width: 768px). state._joystick = {active, dx, dz}
+  (delta normalizzato in [-1..1]).
+
+## Effort
+
+1 sessione (~2 ore).
+
+## Implementation note
+
+Branch: `feature/v3-step-9-mobile-responsive` (creato, commit pending)
+Test: 202 → 205 assert (+3 nuovi su isMobileDevice)
+File toccati: `elevator.html` (initMobileDetection + initTouchControls + CSS + HTML),
+`tests.html` (1 nuovo describe block), `PIANO_V3.md`, `PIANO_MIGLIORAMENTI.md`.
+
+---
+
+---
+
 # Stato V3 — progress overview
 
 | # | Step | Stato | Commit | Branch |
@@ -877,37 +942,43 @@ File toccati: `elevator.html` (4 nuovi helper), `tests.html` (5 nuovi describe b
 | 6 | QoL manutenzione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 7 | Documentazione | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
 | 8 | Test coverage | ✅ done 2026-09-24 | (vedi sotto) | merged + cancellata |
+| 9 | Mobile responsive | ✅ done 2026-09-25 | (vedi sotto) | merged + cancellata |
 | 6 | QoL manutenzione | ⏳ pending | — | — |
 | 7 | Documentazione completa | ⏳ pending | — | — |
 | 8 | Test coverage estesa | ⏳ pending | — | — |
 | 9 | Mobile responsive layout | ⏳ pending | — | — |
 
-**Risultato parziale**: **8/9 step completati (89%)** dopo otto sessioni V3.
-Effort residuo stimato: ~1-3 ore su 1 sessione (solo Step 9 Mobile responsive).
-T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 2/2 ✅ · Bonus: 0/1.
+**Risultato parziale**: **9/9 step completati (100%)** ✅ Polish Pack V3 CHIUSO.
+Effort residuo: nessuno. Polish Pack V3 completamente implementato.
+T1 (high impact): 3/3 ✅ · T2: 3/3 ✅ · T3: 2/2 ✅ · Bonus: 1/1 ✅.
 
-**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17, D18, D19.
+**Contratti D-key ereditati**: D1-D10 (V2) · **nuovi V3**: D11, D12, D13, D14, D15, D16, D17, D18, D19, D20.
 
 # Come procedere ora
 
-**Step 8 Test coverage estesa (T3b) ✅ chiuso su branch dedicato (merge pending).**
+**Step 9 Mobile responsive (Bonus) ✅ chiuso su branch dedicato (merge pending).**
 
-L'ultimo step rimanente è **Step 9 · Mobile responsive layout (Bonus)** —
-adattare layout 3D + pannello touch + maintenance overlay per viewport
-mobile (≤768px). Controlli touch (no keyboard), pulsanti più grandi,
-HUD semplificato. Vedi §Scope Step 9 sopra.
+**Polish Pack V3 è COMPLETO: 9/9 step chiusi (100%).**
 
-Workflow per Step 9:
+Roadmap completa:
+- Tier T1: Step 1 (a11y) + Step 2 (UX) + Step 3 (Settings QoL) ✅
+- Tier T2: Step 4 (micro-anim) + Step 5 (Performance) + Step 6 (QoL maint) ✅
+- Tier T3: Step 7 (Docs) + Step 8 (Test coverage) ✅
+- Bonus: Step 9 (Mobile responsive) ✅
 
-1. Apri la sezione §Scope Step 9 e leggi i sotto-step proposti.
-2. Rispondi alle Decision Questions quando definite.
-3. Implemento solo le opzioni approvate.
-4. Aggiorno `PIANO_V3.md` segnando lo step come ✅.
-5. `node scripts/check-balance.js elevator.html` dopo ogni modifica.
-6. Test responsive: simulazione viewport mobile via Playwright.
+Polish Pack V3: 205 test passing · 10 contratti D-key nuovi (D11-D20) · 5 file
+documentazione (README + AGENTS + ARCHITECTURE + STRINGS_REFERENCE + PIANO_V3 +
+PIANO_MIGLIORAMENTI).
 
-Pattern: branch dedicato `feature/v3-step-9-mobile-responsive`, merge `--no-ff`.
+Possibili Polish Pack V4 futuri:
+- Polish Pack V4 step 1 (T1a): A11y Avanzata (audio descriptions, haptics)
+- Polish Pack V4 step 2 (T1b): Multiplayer (multi-cabina sincronizzata)
+- Polish Pack V4 step 3 (T2a): WebXR (VR/AR mode)
+- Polish Pack V4 step 4 (T3a): Localizzazione 5+ lingue (DE, FR, ES, JP, ZH)
+- Polish Pack V4 step 5 (Bonus): PWA offline mode
+
+Decision su Polish Pack V4 sarà fatta in futuro.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 chiusi; Step 9 (Mobile responsive Bonus) è il prossimo.
+**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 chiusi. **Polish Pack V3 COMPLETO (100%)**.

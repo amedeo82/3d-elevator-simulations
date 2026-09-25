@@ -1373,6 +1373,29 @@
           }
         });
       });
+
+      // ============================================================
+      // POLISH PACK V3 STEP 9: MOBILE RESPONSIVE
+      // ============================================================
+
+      // ---- isMobileDevice (Q9.4 detection) -----------------------
+      describe('isMobileDevice (mobile detection)', () => {
+        test('esiste ed e\' function', () => {
+          assertEq(typeof P.isMobileDevice, 'function');
+        });
+        test('ritorna boolean', () => {
+          const r = P.isMobileDevice();
+          assertEq(typeof r, 'boolean');
+        });
+        test('matchMedia API presente nel browser corrente', () => {
+          // Se matchMedia funziona (come nel test runner), isMobileDevice
+          // ritorna un valore coerente con la viewport (desktop Chromium
+          // headless → false).
+          assertEq(typeof window.matchMedia, 'function');
+          const mq = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+          assertEq(P.isMobileDevice(), !!mq.matches);
+        });
+      });
     }
 
     // ============================================================

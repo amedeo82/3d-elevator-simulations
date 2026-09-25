@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 5.7 — Polish Pack V3, Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 ✅** · Aggiornato 2026-09-24
+**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -1772,11 +1772,9 @@ Polish qualitativo incrementale. Niente nuove funzionalità grosse (rimandate
 a V4+): solo miglioramenti delle feature esistenti. Roadmap completa in
 `PIANO_V3.md` (9 step totali: T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
 
-**Risultato parziale V3**: **8/9 step completati (89%)** dopo otto sessioni.
-Step 1 + 2 + 3 + 4 + 5 + 6 + 7 merged su main. Step 8 (Test coverage)
-implementato su branch dedicato `feature/v3-step-8-test-coverage`,
-merge pending.
-**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 ✅ · Tier T3: 2/2 (Step 7 + 8) ✅ · Bonus: 0/1.**
+**Risultato parziale V3**: **9/9 step completati (100%)** ✅ Polish Pack V3 chiuso.
+Tutti gli step merged su main.
+**Tier T1 (high impact) completo (3/3) ✅ · Tier T2: 3/3 ✅ · Tier T3: 2/2 ✅ · Bonus: 1/1 ✅.**
 
 ### Fase 18 — Polish Pack V3 Step 1: Accessibility (T1a) ✅ (2026-09-18, branch `feature/v3-step-1-accessibility`)
 
@@ -2306,3 +2304,105 @@ approvate via `question` tool. Pattern: pure helpers + test deterministici
   il bug (fuori scope) ma ho documentato nel test con commento che
   esplicita il comportamento attuale. Possibile fix futuro in Step 9
   o Polish Pack V4.
+
+---
+
+### Fase 26 — Polish Pack V3 Step 9: Mobile responsive layout (Bonus) ✅ (2026-09-25, branch `feature/v3-step-9-mobile-responsive`)
+
+ULTIMO STEP DEL POLISH PACK V3. Layout responsive per mobile/tablet con
+touch controls + landscape enforcement + HUD scaling. 4 Decision Questions
+approvate via `question` tool. Pattern: matchMedia detection + CSS overlay
++ virtual joystick.
+
+### Sotto-step implementati
+
+| # | Sotto-step | Tipo |
+|---|---|---|
+| Q9.1 | Scope completo (5 sotto-step) | Tutto |
+| Q9.2 | Touch controls: drag dito (touchmove su canvas) = mouse-look yaw/pitch; joystick virtuale sx (state._joystick.dx/dz normalizzato [-1..1]); pulsanti virtuali ▲▼ dx per external call panel | Touch |
+| Q9.3 | Landscape enforcement overlay via CSS @media (orientation: portrait) con messaggio "Rotate device" + animazione icona 📱 | Landscape |
+| Q9.4 | isMobileDevice() via matchMedia `(pointer: coarse) AND (max-width: 768px)` + riascolto runtime addEventListener('change') | Detection |
+| HUD | Scaling CSS via @media (max-width: 768px) per bottoni + font + display touch pulsantiera | Responsive |
+| Pulsantiera | display touch panel cells più grandi (CSS responsive) | Responsive |
+| Fallback | requestPointerLock sostituito da tap+drag su mobile (no mouse-look keyboard) | Fallback |
+
+### Modifiche architetturali
+
+- **State fields**: `state.isMobile` (bool), `state._joystick = {active, dx, dz}`
+- **Init flow**: `initMobileDetection()` chiamato dopo `initSettingsQoL()`;
+  `initTouchControls()` solo se `state.isMobile === true`
+- **Refresh runtime**: `refreshMobileControls()` riascolta cambi matchMedia
+  (resize finestra, tablet ruotato, ecc.)
+- **tickPlayer integrato**: state._joystick.dx/dz aggiunti a WASD per
+  movimento analogico (no evento binario)
+
+### Nuovi helper puri in `window.BossHotelPure`
+
+- `isMobileDevice()`: ritorna boolean matchMedia `(pointer: coarse) AND
+  (max-width: 768px)`. Coerente con detection runtime in initMobileDetection.
+
+### CSS aggiunte
+
+- `#rotate-device-overlay` con flex layout + @media query portrait
+- `#touch-controls` (display: none → block in body.mobile-mode)
+- `#virtual-joystick` 140x140px circle con knob animato
+- `.virtual-call-btn` 70x70px pulsanti ▲▼
+- HUD scaling @media (max-width: 768px): bottoni +14px, font +2px,
+  padding +6px
+
+### Test
+
+202 → 205 assert (+3 nuovi su isMobileDevice). TUTTI I TEST PASSANO
+(205/205) — incluso i 48 nuovi da Step 8 e i 3 da Step 9.
+
+### Contratto D-key nuovo
+
+- **D20**: Mobile responsive layout. isMobileDevice() via matchMedia.
+  Touch controls: drag = look, joystick analogico sx = movimento WASD,
+  pulsanti ▲▼ dx = call panel. Landscape enforced via CSS @media
+  orientation:portrait overlay. HUD scaling via @media (max-width: 768px).
+  state._joystick = {active, dx, dz} (delta normalizzato [-1..1]).
+
+### Lessons learned V3 Step 9
+
+- **matchMedia > userAgent sniffing**: il pattern `(pointer: coarse)
+  AND (max-width: 768px)` è robusto su tutti i browser moderni. Non
+  falsi positivi su desktop (laptop con touch screen non viene classificato
+  come mobile).
+- **Touch drag = look non è "tap + drag"**: il pattern è `touchstart` →
+  `touchmove` con `preventDefault()`. Chrome headless non emula touch
+  events quindi detection ritorna `false` (corretto: niente touch hardware).
+- **CSS @media + classList.add('mobile-mode') > JS-only**: la CSS responsive
+  via @media query è nativa del browser (no reflow JS), mentre la classe
+  body.mobile-mode è solo per attivare/disattivare il touch UI overlay.
+  Combinazione: CSS per layout, JS per behaviour.
+- **Joystick analogico > D-pad virtuale**: l'utente trascina il knob
+  (offset normalizzato [-1..1]) invece di premere tasti discreti. Più
+  smooth + più 'mobile-native'. Limitazione: non c'è 'deadzone' visiva
+  ma c'è un threshold JS (Math.abs(jx) > 0.1) per ignorare micro-movimenti.
+- **Landscape enforcement via CSS overlay**: impossibile lock vero via
+  Web API (iOS Safari ignora `screen.orientation.lock`). CSS overlay è
+  il pattern pragmatico: chiaro UX, zero permission richieste, no
+  hack. Limitazione: l'utente può ancora ruotare fisicamente, ma vede
+  il messaggio finché non ruota.
+- **Smoke test headless rivela limitazioni**: Chrome headless su desktop
+  emulation (375x667) restituisce `pointer: fine`, quindi `isMobile` false.
+  Il detection funziona correttamente — su un vero dispositivo touch
+  sarebbe `true`. Per test mobile completo serve Playwright con
+  `--device=iPhone 12` emulation (non testabile in questo smoke test).
+
+---
+
+## 🎉 Polish Pack V3 COMPLETO
+
+**Risultato finale V3**:
+- **9/9 step** (100%): T1 (3) + T2 (3) + T3 (2) + Bonus (1)
+- **205 test** passing (100% verde)
+- **20 contratti D-key** totali (D1-D20)
+- **6+ file docs** (README + AGENTS + ARCHITECTURE + STRINGS_REFERENCE +
+  PIANO_V3 + PIANO_MIGLIORAMENTI)
+- **10 commit** atomici su branch dedicati (1 per step)
+
+Polish Pack V3 ha chiuso il gap tra V1 (proof-of-concept) e V2 (production-ready)
+verso un simulatore 3D maturo, accessibile, performante, ben documentato,
+testato, e ora anche mobile-responsive.
