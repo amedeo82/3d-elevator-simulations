@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    name: Sintassi + brace balance
+    name: Sintassi + brace balance + invarianti build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,42 @@ jobs:
 
       - name: Verifica sintassi e bilanciamento braces/parens
         run: node scripts/check-balance.js elevator.html
+
+      - name: SHA256 parity dist/index.html === elevator.html (build copy non-drift)
+        run: |
+          # dist/index.html e' la copia deployabile di elevator.html (build copy).
+          # Se divergono, qualcuno ha modificato solo uno dei due file: errore
+          # di workflow. Fix: rigenera dist/index.html (copia esatta) e ri-commit.
+          if [ ! -f dist/index.html ]; then
+            echo "::error::dist/index.html mancante — copia elevator.html in dist/index.html"
+            exit 1
+          fi
+          SHA_MAIN=$(sha256sum elevator.html | awk '{print $1}')
+          SHA_DIST=$(sha256sum dist/index.html | awk '{print $1}')
+          echo "  elevator.html : $SHA_MAIN"
+          echo "  dist/index.html: $SHA_DIST"
+          if [ "$SHA_MAIN" != "$SHA_DIST" ]; then
+            echo "::error::SHA256 dist/index.html ($SHA_DIST) != elevator.html ($SHA_MAIN). dist deve essere copia identica."
+            exit 1
+          fi
+          echo "OK: dist/index.html allineato a elevator.html"
+
+      - name: Funzioni < 150 righe (invariante D24 Polish Pack V4)
+        run: |
+          # Contratto D24: tutte le funzioni top-level devono essere < 150 righe.
+          # find-long-fns.js fa il conteggio rigoroso (brace-balance).
+          # Cerchiamo "  NNN lines" con NNN >= 150 nell'output del tool.
+          OUT=$(node scripts/find-long-fns.js 2>&1)
+          echo "$OUT" | tail -40
+          # Conta righe >= 150 guardando le intestazioni "  NNN lines" o "  NNN  L..."
+          # Il formato di find-long-fns.js emette "  NNN lines" (>= 2 spazi) o "  NNN  L".
+          LONG_FNS=$(echo "$OUT" | grep -E '^\s+([0-9]{3,})\s+(lines|L)' | awk '{print $1}' | awk -v t=150 '$1 >= t' | wc -l)
+          if [ "$LONG_FNS" != "0" ]; then
+            echo "::error::$LONG_FNS funzioni >= 150 righe (D24 violato):"
+            echo "$OUT" | grep -E '^\s+([0-9]{3,})\s+(lines|L)' | awk -v t=150 '$1 >= t'
+            exit 1
+          fi
+          echo "OK: 0 funzioni >= 150 righe (D24 invariante rispettato)"
 
   tests:
     name: Test framework (Polish Pack V2 Step 12)
