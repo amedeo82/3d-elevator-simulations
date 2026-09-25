@@ -663,6 +663,143 @@
     to   { box-shadow: 0 4px 40px rgba(255, 185, 56, 0.9); transform: translateX(-50%) scale(1.05); }
   }
 
+  /* ============================================================ */
+  /* Polish Pack V3 Step 9 (Q9.2-Q9.3): Mobile responsive layout   */
+  /* Touch controls + landscape enforcement + HUD scaling.        */
+  /* ============================================================ */
+
+  /* Landscape enforcement: overlay quando portrait. Niente lock vero
+     (limitato da Web API), ma chiara UX "rotate device". */
+  #rotate-device-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 100000;
+    color: #ffd66b;
+    font-family: 'Courier New', monospace;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  #rotate-device-overlay .rotate-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    animation: rotatePulse 2s infinite;
+  }
+  #rotate-device-overlay .rotate-text {
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+  @keyframes rotatePulse {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+
+  /* Touch controls: joystick virtuale (left) + pulsanti ▲▼ (right). */
+  #touch-controls {
+    display: none;  /* visibile solo su mobile (via .mobile-mode) */
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    pointer-events: none;  /* i figli (joystick + buttons) abilitano */
+    z-index: 5000;
+  }
+  body.mobile-mode #touch-controls {
+    display: block;
+  }
+  /* Joystick virtuale a sinistra in basso (analogico WASD). */
+  #virtual-joystick {
+    position: absolute;
+    bottom: 30px; left: 30px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 215, 107, 0.5);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #virtual-joystick .joystick-knob {
+    position: absolute;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 215, 107, 0.8);
+    border: 2px solid #ffd66b;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: background 0.15s;
+  }
+  #virtual-joystick.active .joystick-knob {
+    background: rgba(255, 215, 107, 1.0);
+    box-shadow: 0 0 20px rgba(255, 215, 107, 0.6);
+  }
+  /* Pulsanti call panel virtuali (▲▼) a destra in basso. */
+  #virtual-call-buttons {
+    position: absolute;
+    bottom: 30px; right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    pointer-events: auto;
+  }
+  .virtual-call-btn {
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: rgba(109, 217, 111, 0.25);
+    border: 3px solid rgba(109, 217, 111, 0.7);
+    color: #6fd96f;
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .virtual-call-btn:active {
+    background: rgba(109, 217, 111, 0.6);
+    transform: scale(0.92);
+  }
+  .virtual-call-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* Mobile HUD scaling: bottoni + font più grandi su schermi piccoli. */
+  @media (max-width: 768px) {
+    #hud-reenter-btn, #hud-exit-btn {
+      padding: 14px 28px;
+      font-size: 16px;
+    }
+    #hud-hint {
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+    #mode-badge {
+      top: 60px;
+      font-size: 12px;
+      padding: 6px 14px;
+    }
+    #statusText {
+      font-size: 14px;
+      padding: 10px 18px;
+    }
+    /* Pointer hint: istruzione touch-friendly su mobile */
+    body.mobile-mode #pointerhint {
+      font-size: 15px;
+      padding: 14px 22px;
+      max-width: 90vw;
+    }
+    /* Landscape enforced */
+    @media (orientation: portrait) {
+      #rotate-device-overlay { display: flex; }
+    }
+  }
+
   #mode-badge {
     position: absolute;
     top: 50px;
@@ -744,6 +881,26 @@
   <button id="hud-exit-btn" class="hud-action" style="display:none;"></button>
   <button id="hud-reenter-btn" class="hud-action" style="display:none;"></button>
   <div id="pointerhint"></div>
+</div>
+
+<!-- Polish Pack V3 Step 9 (Q9.3): landscape enforcement overlay -->
+<div id="rotate-device-overlay">
+  <div class="rotate-icon">📱</div>
+  <div class="rotate-text">
+    Rotate your device to landscape to play.<br>
+    Ruota il dispositivo in orizzontale per giocare.
+  </div>
+</div>
+
+<!-- Polish Pack V3 Step 9 (Q9.2): virtual touch controls (mobile only) -->
+<div id="touch-controls">
+  <div id="virtual-joystick">
+    <div class="joystick-knob"></div>
+  </div>
+  <div id="virtual-call-buttons">
+    <button class="virtual-call-btn" data-dir="up">▲</button>
+    <button class="virtual-call-btn" data-dir="down">▼</button>
+  </div>
 </div>
 
 <!-- Polish Pack V2 Step 2b: overlay tooltip contestuale per il tutorial prima volta -->
@@ -1763,7 +1920,13 @@ const state = {
   // Lerp gestito in tickFadeStates() ogni frame.
   _fadeAlarm: { target: 0, from: 0, startMs: 0 },
   _fadeOOO: { target: 0, from: 0, startMs: 0 },
-  _fadeInterphone: { target: 0, from: 0, startMs: 0 }
+  _fadeInterphone: { target: 0, from: 0, startMs: 0 },
+  // Polish Pack V3 Step 9 (Q9.4): flag mobile/touch detection. Settato
+  // all'init via isMobileDevice(). Cambia il flow di input (no pointerLock,
+  // si attivano touch listeners + HUD virtuale joystick/pulsanti ▲▼).
+  isMobile: false,
+  // Joystick virtuale state (Q9.2): posizione drag attiva (touch drag).
+  _joystick: { active: false, dx: 0, dz: 0 }
 };
 
 // Polish Pack V3 Step 4 (Q4.2): movePaused dichiarato in CONFIGURATION
@@ -7528,6 +7691,179 @@ function initReducedMotion() {
   }
 }
 
+// Polish Pack V3 Step 9 (Q9.4): detection dispositivo mobile/touch.
+// Usa matchMedia (pointer: coarse) + (max-width: 768px) per essere robusto
+// su laptop con touch screen. Riascolta cambiamenti runtime (es. resize finestra).
+// Polish Pack V3 Step 9 (Q9.4): isMobileDevice() helper.
+// Riascolta cambi runtime (es. resize finestra, tablet ruotato).
+function isMobileDevice() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  return !!mql.matches;
+}
+function initMobileDetection() {
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    state.isMobile = false;
+    return;
+  }
+  state.isMobile = isMobileDevice();
+  // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
+  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  const handler = (e) => {
+    const wasMobile = state.isMobile;
+    state.isMobile = !!e.matches;
+    // Se cambia mode, refresh HUD visibility (touch controls vs pointer lock).
+    if (wasMobile !== state.isMobile && typeof refreshMobileControls === 'function') {
+      refreshMobileControls();
+    }
+  };
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', handler);
+  } else if (typeof mql.addListener === 'function') {
+    mql.addListener(handler);
+  }
+}
+
+// Polish Pack V3 Step 9 (Q9.2): init touch controls (mobile only).
+// Schema input:
+//   - Drag dito (qualsiasi punto dello schermo tranne virtual controls)
+//     = mouse-look (yaw/pitch).
+//   - Joystick virtuale sx = movimento analogico WASD.
+//   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
+// Polish Pack V3 Step 9 (Q9.2): init touch controls (mobile only).
+// Schema input:
+//   - Drag dito (touchmove su canvas) = mouse-look yaw/pitch.
+//   - Joystick virtuale sx = movimento analogico WASD.
+//   - Tap pulsanti ▲▼ virtuali = chiama piano su/giù.
+// Aggiunge `body.mobile-mode` per attivare HUD responsive via CSS.
+function initTouchControls() {
+  if (!state.isMobile) return;
+  // Aggiungi classe al body per attivare CSS mobile
+  document.body.classList.add('mobile-mode');
+  // Touch drag = mouse-look (yaw + pitch). Solo se playerInCabin (match mouse-look).
+  const rendererEl = document.querySelector('canvas');
+  if (rendererEl) {
+    let lastX = 0, lastY = 0, dragging = false;
+    rendererEl.addEventListener('touchstart', (e) => {
+      // Ignora touch sul joystick virtuale o pulsanti call (propagano qui)
+      if (e.target.closest('#touch-controls')) return;
+      if (e.touches.length !== 1) return;
+      dragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      e.preventDefault();
+    }, { passive: false });
+    rendererEl.addEventListener('touchmove', (e) => {
+      if (!dragging || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - lastX;
+      const dy = touch.clientY - lastY;
+      lastX = touch.clientX;
+      lastY = touch.clientY;
+      // Converti a yaw/pitch. Stessa logica del mouse-look desktop.
+      // yaw = -dx * 0.0035 (sinistra = guarda sinistra)
+      // pitch = -dy * 0.0035 (su = guarda su)
+      const yawDelta = -dx * 0.0035;
+      const pitchDelta = -dy * 0.0035;
+      if (typeof yawObj !== 'undefined' && yawObj) {
+        yawObj.rotation.y += yawDelta;
+        pitchObj.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitchObj.rotation.x + pitchDelta));
+      }
+      e.preventDefault();
+    }, { passive: false });
+    const endDrag = () => { dragging = false; };
+    rendererEl.addEventListener('touchend', endDrag);
+    rendererEl.addEventListener('touchcancel', endDrag);
+  }
+  // Joystick virtuale (analogico) - drag in basso a sinistra.
+  const joystick = document.getElementById('virtual-joystick');
+  if (joystick) {
+    const knob = joystick.querySelector('.joystick-knob');
+    let jsDragging = false;
+    let jsCenterX = 0, jsCenterY = 0;
+    const JS_MAX = 35;  // pixel di spostamento max
+    const onStart = (clientX, clientY) => {
+      jsDragging = true;
+      const rect = joystick.getBoundingClientRect();
+      jsCenterX = rect.left + rect.width / 2;
+      jsCenterY = rect.top + rect.height / 2;
+      joystick.classList.add('active');
+    };
+    const onMove = (clientX, clientY) => {
+      if (!jsDragging) return;
+      let dx = clientX - jsCenterX;
+      let dy = clientY - jsCenterY;
+      // Clamp al raggio massimo
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > JS_MAX) {
+        dx = dx * JS_MAX / dist;
+        dy = dy * JS_MAX / dist;
+      }
+      // Aggiorna posizione knob visiva
+      if (knob) {
+        knob.style.left = `calc(50% + ${dx}px)`;
+        knob.style.top = `calc(50% + ${dy}px)`;
+      }
+      // Aggiorna state.joystick (normalizzato in [-1..1])
+      state._joystick.dx = dx / JS_MAX;
+      state._joystick.dz = dy / JS_MAX;
+    };
+    const onEnd = () => {
+      jsDragging = false;
+      joystick.classList.remove('active');
+      if (knob) {
+        knob.style.left = '50%';
+        knob.style.top = '50%';
+      }
+      state._joystick.dx = 0;
+      state._joystick.dz = 0;
+    };
+    joystick.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) onStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    joystick.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    joystick.addEventListener('touchend', onEnd);
+    joystick.addEventListener('touchcancel', onEnd);
+  }
+  // Pulsanti call panel virtuali ▲▼ (chiama piano).
+  document.querySelectorAll('.virtual-call-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dir = btn.dataset.dir;
+      if (dir === 'up' && typeof requestFloor === 'function') {
+        requestFloor(state.currentFloor + 1);
+      } else if (dir === 'down' && typeof requestFloor === 'function') {
+        requestFloor(state.currentFloor - 1);
+      }
+    });
+  });
+  // Nascondi pointer hint desktop (mobile non ha mouse-look).
+  const hintEl = document.getElementById('pointerhint');
+  if (hintEl) {
+    hintEl.textContent = 'Tap + drag per guardare. Usa il joystick per muoverti.';
+  }
+}
+
+// Polish Pack V3 Step 9 (Q9.2): refresh UI quando isMobile cambia runtime
+// (es. ruotando tablet, ridimensionando finestra).
+function refreshMobileControls() {
+  if (state.isMobile) {
+    document.body.classList.add('mobile-mode');
+    initTouchControls();  // re-bind listeners (potrebbe essere già fatto, idempotente)
+  } else {
+    document.body.classList.remove('mobile-mode');
+    const hintEl = document.getElementById('pointerhint');
+    if (hintEl) {
+      hintEl.textContent = (STRINGS[state.lang] && STRINGS[state.lang].pointerHint)
+        || 'Click to activate the pointer';
+    }
+  }
+}
+
 // Polish Pack V3 Step 1d: helper per il calcolo del contrast ratio WCAG.
 // Accetta stringhe hex (#rgb, #rrggbb) o numeri 0xRRGGBB. Ritorna il rapporto
 // di contrasto (1.0 = stesso colore, 21.0 = bianco su nero). WCAG AA richiede
@@ -8888,6 +9224,16 @@ function tickPlayer(dt) {
   if (keys['KeyS']) fwd -= 1;
   if (keys['KeyA']) side -= 1;
   if (keys['KeyD']) side += 1;
+  // Polish Pack V3 Step 9 (Q9.2): joystick virtuale mobile.
+  // state._joystick.dx = orizzontale [-1..1] (strafe dx)
+  // state._joystick.dz = verticale [-1..1] (fwd, dz positivo = avanti in joystick)
+  // Mappato analogicamente per movimento smooth (vs WASD binario).
+  if (state._joystick) {
+    const jx = state._joystick.dx || 0;
+    const jz = state._joystick.dz || 0;
+    if (Math.abs(jx) > 0.1) side += jx;
+    if (Math.abs(jz) > 0.1) fwd += jz;  // dz positivo (drag su) = fwd (avanti)
+  }
 
   // direzioni nel mondo (yawObj.quaternion dà la rotazione corrente del giocatore)
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObj.quaternion);
@@ -9459,6 +9805,9 @@ loadHistory();
 // Polish Pack V3 Step 3: init sliders QoL DOPO il caricamento da localStorage
 // (cosi' gli slider riflettono le preferenze salvate dell'utente).
 initSettingsQoL();
+// Polish Pack V3 Step 9 (Q9.4): init mobile detection + touch controls.
+initMobileDetection();
+initTouchControls();
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
 // Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
@@ -9841,6 +10190,8 @@ window.BossHotelPure = {
   filterLogEvents, severityColor, severityIcon, pushHistoryEvent, formatHistoryEvents,
   // Polish Pack V3 Step 8: helper test coverage estesa (invariants + timing + stress)
   stateInvariantCheck, interphoneLampAlpha, interphoneShouldTimeout, runStress,
+  // Polish Pack V3 Step 9: helper mobile responsive
+  isMobileDevice,
   // costanti utili per i test
   NUM_FLOORS
 };
