@@ -2,7 +2,7 @@
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
-**Versione 6.0 — Polish Pack V3 COMPLETO, Step 1-9 ✅ + Polish Pack V4 Tier T1+T2 chiusi (Step 1-5)** · Aggiornato 2026-09-25
+**Versione 7.0 — Polish Pack V3 COMPLETO + Polish Pack V4 COMPLETO (Step 1-6, 100%)** · Aggiornato 2026-09-25
 
 > Questo documento traccia il piano originale, le decisioni approvate, lo stato di implementazione di ogni fase, gli scostamenti dal piano e i bug fix successivi. Per la documentazione del progetto vedi `README.md`.
 
@@ -2414,7 +2414,7 @@ testato, e ora anche mobile-responsive.
 Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
 (6 step totali: T1 3 + T2 2 + T3 1).
 
-**Risultato parziale V4**: **5/6 step completati (83%)** ✅
+**Risultato parziale V4**: **6/6 step completati (100%)** ✅ 🎉
 - Step 1 (Test exposure gap): ✅ chiuso senza modifiche al codice (audit
   obsoleto, gap reale assente; tutte le 32 funzioni `pure:` erano già
   esportate da V2/V3).
@@ -2422,6 +2422,9 @@ Polish qualitativo basato sull'audit finale di V3. Roadmap in `PIANO_V4.md`
 - Step 3 (A11y aria attributes D23): ✅ chiuso con attributi ARIA + i18n.
 - Step 4 (Funzioni lunghe + commenti D24): ✅ 2 split minimi + 16 commenti narrativi.
 - Step 5 (Helper `mergePlanes` DRY D25): ✅ helper + 3 callsites refactorati.
+- Step 6 (Open source boilerplate D26): ✅ LICENSE + CHANGELOG auto + CONTRIBUTING.
+
+Polish Pack V4 chiuso al 100%.
 
 ### Fase 23 — Polish Pack V4 Step 2: Routing bug fix D22 ✅ (2026-09-25, branch `feature/v4-step-2-routing-bug`)
 
@@ -2617,3 +2620,53 @@ Totale suite: 226 → **232 test / 384 → 396 assert**, tutti pass.
 
 **Prossimo step proposto**: Step 6 (Open source boilerplate, T3a) —
 ultimo step V4.
+
+### Fase 27 — Polish Pack V4 Step 6: Open source boilerplate D26 ✅ (2026-09-25, branch `feature/v4-step-6-os-boilerplate`) — V4 CHIUSO 100%
+
+Step T3a (community, basso impatto). Aggiunti 3 file standard per rendere
+il progetto pronto per la community open source.
+
+**Decisioni** (Q26.1=A, Q26.2=B, Q26.3=A via `question` tool):
+- LICENSE: copyright aggiornato a "Amedeo Vecchi 2026".
+- CHANGELOG.md: auto-generato via `scripts/generate-changelog.js`.
+- CONTRIBUTING.md: comprehensive con D-key contracts 1-26.
+
+**Modifiche** (3 file nuovi + 1 aggiornato):
+- `LICENSE` (21 righe, MIT standard) — copyright "Amedeo Vecchi 2026".
+- `CHANGELOG.md` (182 righe) — auto-generato, 191 commit buckettati:
+  V1: 12, V2: 68, V3: 24, V4: 11, altro: 76.
+- `CONTRIBUTING.md` (114 righe) — guida contributor completa:
+  prereq + quick start + 19 contratti D-key sommario + workflow Polish
+  Pack + code style + PR convention.
+- `scripts/generate-changelog.js` (95 righe) — parser `git log` con
+  regex euristiche. Placeholder `XXHASHXX` come separatore (git non
+  supporta `%x00`). Gestione date con spazi (`2026-09-25 16:52:43 +0200`).
+
+**Contratto D26** introdotto in AGENTS.md: open source boilerplate.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- `node scripts/generate-changelog.js` → genera CHANGELOG.md corretto.
+- Screenshot `tests-step6.png` → **232/232 PASS** (no regressioni).
+
+**Branch**: `feature/v4-step-6-os-boilerplate`.
+
+---
+
+## 🎉 Polish Pack V4 COMPLETO
+
+**Risultato finale V4**:
+- **6/6 step** (100%): T1 (3) + T2 (2) + T3 (1)
+- **26 contratti D-key** totali (D1-D26)
+- **232 test** passing (100% verde)
+- **396 assert** totali
+- **~1 ora** di lavoro (1 giorno, 6 sessioni)
+
+Polish Pack V4 ha aggiunto al simulatore V3:
+1. **Correttezza routing** (Step 2 D22): look algorithm asimmetrico.
+2. **Accessibilità standard** (Step 3 D23): ARIA + i18n label.
+3. **Manutenibilità** (Step 4 D24 + Step 5 D25): funzioni <150 + DRY helper.
+4. **Community ready** (Step 6 D26): LICENSE + CHANGELOG + CONTRIBUTING.
+
+Il progetto e ora pronto per V5+ (WebXR, Multiplayer, PWA, Localizzazione).
+Vedi `PIANO_V4.md` sezione "Roadmap possibile post-V4" per idee.
