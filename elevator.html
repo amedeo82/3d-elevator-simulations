@@ -9729,6 +9729,15 @@ cabin.rotation.z = state.vibrationRoll;
 
   updateHover();
   renderer.render(scene, camera);
+  // FIX: re-schedule loop RAF. Senza questa riga, il game loop si ferma
+  // dopo UNA sola frame (l'unica richiamata dal requestAnimationFrame esterno
+  // al module scope) e tutta la scena resta congelata al primo paint: porte
+  // bloccate al primo frame di animazione (~3% aperte dopo 1.2s di durata),
+  // display touch non aggiornato, tickDoors/tickMove/tickPlayer morti.
+  // Sintomo utente: "scena rimane nera, il gioco non si avvia".
+  // Introdotto per refattorizzazione in Polish Pack V3 Step 3 (ef6b0c0),
+  // riscoperto dopo pubblicazione GitHub Pages.
+  requestAnimationFrame(loop);
 }
 
 // ============================================================
