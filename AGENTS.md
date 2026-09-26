@@ -144,6 +144,8 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D24 | **Funzioni core <150 righe con commenti narrativi** | Polish Pack V4 Step 4. Tutte le funzioni top-level in `elevator.html` devono essere <150 righe (target raggiunto: 0 funzioni >=150). Le 16 funzioni piu' lunghe (>=80 righe) hanno commenti narrativi stile V3 Step 7 (`Polish Pack V4 Step 4 (D24):` + scopo + sezioni + contratti D-key + performance). Pattern di split consentito: estrarre helper mantenendo stesso module scope + side-effect su `state`. Esempi: `buildCorridor` 178 → 76 (estratto `buildCorridorShell` + `buildCorridorLights`); `startCorridorAudio` 156 → ~50 (estratto 4 helper `setupLobbyAudio`/`setupOfficeAudio`/`setupHotelAudio`/`setupPenthouseAudio`). Helper tool: `node scripts/find-long-fns.js` (brace-counting corretto) da rieseguire dopo refactor importanti. |
 | D25 | **Helper `mergePlanes` DRY per mergeGeometries** | Polish Pack V4 Step 5. Helper `mergePlanes(transforms, material, useGroups=false)` clona le geometries di input (non muta), applica la matrix via `applyMatrix4`, esegue `mergeGeometries` (three.js BufferGeometryUtils), e ritorna un `THREE.Mesh` con il materiale passato (o `null` se merge fallisce). Sostituisce 3 callsites duplicati in `buildCorridorShell` (3 pareti) + `buildCorridorLights` (4 LED planes + 4 frame boxes). Esposto in `BossHotelPure` per testing cross-iframe. Test: input vuoto → null, input non-array → null, merge 3 plane 1x1 → 12 vertici + 18 indici, NON mutazione input, materiale propagato. |
 | D26 | **Open source boilerplate (LICENSE + CHANGELOG + CONTRIBUTING)** | Polish Pack V4 Step 6. `LICENSE` MIT + copyright Amedeo Vecchi 2026. `CHANGELOG.md` auto-generato da `scripts/generate-changelog.js` (~85 righe) che parsa `git log` con regex euristiche e bucketa per Polish Pack V1..V4. `CONTRIBUTING.md` comprehensive (~110 righe): prereq + quick start + comandi utili + sommario 19 contratti D-key + workflow Polish Pack + code style + PR convention. |
+| D26est | **`state.inputMode` come single source of truth per scene selection** | Polish Pack V4 Step 7 (D26 esteso). Il progetto era nato desktop-first con tutti gli interventi mobile come overlay sopra logiche desktop (causando "mix confuso" su iPhone: cheatsheet WASD + joystick + ▲▼ + pointer hint desktop tutti visibili). Soluzione: aggiungere `state.inputMode = 'desktop' \| 'mobile'` dichiarato nel state object in CONFIGURATION (top of file per evitare TDZ), derivato da `isMobileDevice()` al boot e ricalcolato su resize/orientationchange/matchMedia change. Tutti i branch UI/handler/tutorial/cheatsheet leggono SOLO questo flag (non piu' controlli sparsi su `state.isMobile`). Data structures paralleli: `PANEL_HELP_KEYS_MOBILE` (13 voci touch-friendly) vs `PANEL_HELP_KEYS` (15 voci desktop); `TUTORIAL_STEPS_MOBILE` vs `TUTORIAL_STEPS`; `START_SCREEN_KEYS_MOBILE` vs `START_SCREEN_KEYS`. Helper mode-aware: `getPanelHelpKeys()`, `getStartScreenKeys()`, `getTutorialSteps()`. Per-mode onboarded flag: `localStorage[bossHotelOnboarded@v1]` (desktop) vs `localStorage[bossHotelOnboardedMobile@v1]` (mobile). Keydown short-circuit su mobile: il listener `keydown` ritorna subito tranne per tasti tutorial (`?`, Enter, Esc) per evitare che tastiere Bluetooth/USB inneschino azioni WASD/M/V/N/O/K/H/L. CSS split: `body.mobile-mode #panel-help/#crosshair { display: none }` + `body:not(.mobile-mode) #touch-controls { display: none }`. Runtime toggle in `initMobileDetection.recheck()`: su mode change chiama `applyLangToDOM()` e riavvia il tutorial con i nuovi step. |
+| D27 | **Mobile hamburger menu (☰ top-left) per azioni keyboard-only** | Polish Pack V4 Step 8. Il progetto mostrava contenuti mobile-friendly dopo D26est ma le 9 azioni keyboard-only (M audio, V annunci, N notte, O fuori servizio, K comando vocale, ? tutorial, H customizer, L lingua, Shift+M manutenzione) restavano inaccessibili via touch. Soluzione: bottone ☰ fisso top-left 44×44 px glassmorphism (`display: none` di default, `display: block` su `body.mobile-mode`) + overlay slide-in da destra (320px max-width 90vw, transform `translateX(100%)→0` con transition 250ms, z-index 5800). 9 voci in 2 sezioni: 5 toggle rapidi (audio/V/notte/OOO/vocale con badge ON/OFF colorato via `aria-checked`) + 4 link ad altri overlay (tutorial/customizer/manutenzione/lingua). 25 nuove stringhe IT/EN: `mmTitle`, `mmSectionToggles/Actions`, `mmAudio/Voice/Night/OOO/VoiceCmd/Tutorial/Customize/Maint/Lang`, `mmStateOn/Off` + 13 `ariaMm*`. 7 nuove funzioni JS: `openMobileMenu/closeMobileMenu/toggleMobileMenu/isMobileMenuOpen/handleMobileMenuAction/refreshMobileMenuStates/initMobileMenu`. Esposti in `BossHotelPure` per testing cross-iframe. Sicurezza UX: `openMobileMenu()` rilascia `pointer-lock` + chiude tutorial attivo (evita overlay stacking). **FIX cabin nera iOS**: `#mobile-menu` usa `visibility: hidden` di default + `visibility: visible` su `.mobile-menu-shown` invece del solo `pointer-events: none` per evitare interferenza col rendering WebGL canvas su iOS Safari (problema noto con `preserveDrawingBuffer: true`). |
 
 ---
 
@@ -164,13 +166,17 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 
 ---
 
-## Backlog attivo (V3)
+## Polish Pack attivi
 
-Vedi `PIANO_V3.md` per i 9 step pianificati (T1a/b/c + T2a/b/c + T3a/b + Bonus mobile).
-**Stato attuale**: 5/9 step ✅ (Step 1 Accessibility, 2 Bug fix UX, 3 Settings QoL,
-4 Micro-animazioni, 5 Performance). Prossimo: Step 6 QoL manutenzione.
-Polish Pack V2 è chiuso al 77% (10/13 step; Step 6 PWA, 11 L-block, 13 WebXR
-rinviati a V4+).
+- **Polish Pack V4**: 8/8 step (100%) — chiuso il 2026-09-26.
+  Step 1-6 (Test exposure/Routing/A11y/Funzioni lunghe/Helper DRY/Open source)
+  + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
+  Contratti D-key totali: **27** (D1-D20 V1+V2+V3 + D21-D27 V4).
+  Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
+  Totale test vanilla: **262 test / ~456 assert**.
+
+- **Polish Pack V3**: 9/9 step (100%) — chiuso il 2026-09-23 (vedi
+  `PIANO_V3.md` storico per roadmap completa).
 
 ---
 

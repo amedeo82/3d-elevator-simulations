@@ -1,6 +1,40 @@
 | Key | IT | EN |
 |---|---|---|
 | `alarm` | ALLARME | ALARM |
+| `ariaBenchmark` | Avvia benchmark FPS 5 secondi | Run 5-second FPS benchmark |
+| `ariaCallDown` | Chiama un piano inferiore (tasto freccia giu) | Call a lower floor (down arrow) |
+| `ariaCallUp` | Chiama un piano superiore (tasto freccia su) | Call an upper floor (up arrow) |
+| `ariaCustomizeApply` | Applica e salva la personalizzazione hotel | Apply and save hotel customization |
+| `ariaCustomizeClose` | Chiudi il pannello personalizzazione | Close customization panel |
+| `ariaCustomizeReset` | Ripristina i valori predefiniti | Restore default values |
+| `ariaExitCabin` | Esci dalla cabina (tasto E) | Exit cabin (key E) |
+| `ariaExportJson` | Esporta stato in JSON | Export state as JSON |
+| `ariaFilterAudio` | Filtro eventi: audio | Filter events: audio |
+| `ariaFilterCabin` | Filtro eventi: cabina | Filter events: cabin |
+| `ariaFilterDoor` | Filtro eventi: porte | Filter events: doors |
+| `ariaFilterMaint` | Filtro eventi: manutenzione | Filter events: maintenance |
+| `ariaFilterState` | Filtro eventi: stato | Filter events: state |
+| `ariaHamburger` | Apri menu impostazioni | Open settings menu |
+| `ariaJoystick` | Joystick virtuale per movimento nel corridoio (touch) | Virtual joystick for corridor movement (touch) |
+| `ariaMmClose` | Chiudi menu | Close menu |
+| `ariaMmOpenCustomize` | Apri personalizzazione hotel | Open hotel customization |
+| `ariaMmOpenMaint` | Apri pannello manutentore | Open maintenance panel |
+| `ariaMmOpenTutorial` | Apri tutorial contestuale | Open context tutorial |
+| `ariaMmToggleAudio` | Attiva/disattiva audio (tasto M) | Toggle audio (key M) |
+| `ariaMmToggleLang` | Cambia lingua IT/EN | Switch language IT/EN |
+| `ariaMmToggleNight` | Attiva/disattiva modalit\u00e0 notte (tasto N) | Toggle night mode (key N) |
+| `ariaMmToggleOOO` | Attiva/disattiva fuori servizio (tasto O) | Toggle out of service (key O) |
+| `ariaMmToggleVoice` | Attiva/disattiva annunci vocali (tasto V) | Toggle voice announcements (key V) |
+| `ariaMmToggleVoiceCmd` | Attiva/disattiva comando vocale (tasto K) | Toggle voice command (key K) |
+| `ariaModeBadge` | Modalita' corrente (in cabina o corridoio) | Current mode (in cabin or corridor) |
+| `ariaPointerHint` | Suggerimento puntatore | Pointer hint |
+| `ariaReenterCabin` | Rientra nella cabina (tasto E) | Re-enter cabin (key E) |
+| `ariaRenderer` | Renderizzatore 3D della cabina e del corridoio | 3D renderer for cabin and corridor |
+| `ariaRotateIcon` | Icona rotazione dispositivo | Device rotation icon |
+| `ariaStartGame` | Entra nell'ascensore (inizia la simulazione) | Enter the elevator (start simulation) |
+| `ariaSubtitle` | Sottotitolo annuncio vocale | Voice announcement subtitle |
+| `ariaTutorialNext` | Vai al passo successivo del tutorial | Go to next tutorial step |
+| `ariaTutorialSkip` | Salta il tutorial | Skip tutorial |
 | `arrivalIt` | Piano | Floor |
 | `arrivalPrefix` | Piano | Floor |
 | `arrivalSuffix` | — | — |
@@ -71,22 +105,35 @@
 | `floorStripLabel` | PIANO | FLOOR |
 | `fuoriServizio` | FUORI SERVIZIO | OUT OF SERVICE |
 | `helpAudio` | toggle suono | toggle audio |
+| `helpAudioMobile` | toggle suono | toggle audio |
 | `helpCall` | chiama un piano | call a floor |
+| `helpCallMobile` | chiama un piano | call a floor |
 | `helpCustomize` | personalizza hotel | customize hotel |
+| `helpCustomizeMobile` | personalizza hotel | customize hotel |
 | `helpExit` | esci / rientra cabina | exit / re-enter cabin |
+| `helpExitMobile` | esci / rientra cabina | exit / re-enter cabin |
 | `helpLang` | lingua IT / EN | language IT / EN |
+| `helpLangMobile` | lingua IT / EN | language IT / EN |
 | `helpLookAround` | guarda intorno | look around |
+| `helpLookAroundMobile` | guarda intorno | look around |
 | `helpMaint` | manutentore | maintenance |
+| `helpMaintMobile` | manutentore | maintenance |
 | `helpNight` | toggle modalit\u00e0 notte | toggle night mode |
+| `helpNightMobile` | toggle modalit\u00e0 notte | toggle night mode |
 | `helpOOO` | fuori servizio | out of order |
+| `helpOOOMobile` | fuori servizio | out of order |
 | `helpPlaceholder` | (azione) | (action) |
 | `helpPressButton` | premi un pulsante | press a button |
+| `helpPressButtonMobile` | tocca un pulsante | tap a button |
 | `helpReleaseMouse` | rilascia il mouse | release the mouse |
 | `helpTitle` | Comandi | Controls |
 | `helpTutorial` | apri / rivedi tutorial | open / review tutorial |
+| `helpTutorialMobile` | apri / rivedi tutorial | open / review tutorial |
 | `helpVoice` | toggle annunci vocali | toggle voice |
 | `helpVoiceCmd` | comando vocale | voice command |
+| `helpVoiceMobile` | toggle annunci vocali | toggle voice |
 | `helpWASD` | movimento nel corridoio | corridor movement |
+| `helpWASDMobile` | movimento nel corridoio | corridor movement |
 | `inCabinBadge` | Dentro la cabina | Inside the cabin |
 | `inCorridorBadge` | Nel corridoio | In the corridor |
 | `inDiscesa` | In discesa verso piano | Going down to floor |
@@ -130,6 +177,20 @@
 | `maintTarget` | Target | Target |
 | `maintTitle` | MANUTENZIONE | MAINTENANCE |
 | `manutenzione` | \u2014 MANUTENZIONE IN CORSO \u2014 | \u2014 MAINTENANCE IN PROGRESS \u2014 |
+| `mmAudio` | Audio | Audio |
+| `mmCustomize` | Personalizza hotel | Customize hotel |
+| `mmLang` | Lingua IT / EN | Language IT / EN |
+| `mmMaint` | Manutentore | Maintenance |
+| `mmNight` | Modalit\u00e0 notte | Night mode |
+| `mmOOO` | Fuori servizio | Out of service |
+| `mmSectionActions` | Altro | More |
+| `mmSectionToggles` | Impostazioni rapide | Quick toggles |
+| `mmStateOff` | OFF | OFF |
+| `mmStateOn` | ON | ON |
+| `mmTitle` | Menu | Menu |
+| `mmTutorial` | Rivedi tutorial | Review tutorial |
+| `mmVoice` | Annunci vocali | Voice announcements |
+| `mmVoiceCmd` | Comando vocale | Voice command |
 | `moving` | IN VIAGGIO | IN TRANSIT |
 | `movingDown` | IN DISCESA | GOING DOWN |
 | `movingUp` | IN SALITA | GOING UP |
@@ -149,6 +210,7 @@
 | `pass` | Passeggeri | Passengers |
 | `passengers` | Passeggeri | Passengers |
 | `pointerHint` | Clicca per attivare il puntatore | Click to activate the pointer |
+| `pointerHintMobile` | Trascina il dito per guardare. Usa il joystick per muoverti. | Drag to look around. Use the joystick to move. |
 | `portaChiusa` | Le porte si stanno chiudendo | Doors are closing |
 | `prenotationLabel` | PRENOTATA \u00b7 Tieni premuto E per entrare | BOOKED \u00b7 Hold E to enter |
 | `pressORestore` | Premere O per ripristinare | Press O to restore |
@@ -204,16 +266,26 @@
 | `tutorialHelpPrompt` | Premi ? per aiuto. | Press ? for help. |
 | `tutorialNext` | Avanti \u2192 | Next \u2192 |
 | `tutorialSkip` | Salta tutorial | Skip tutorial |
-| `tutorialStep1Text` | Benvenuto al <strong></strong>. Sei nella cabina al piano Terra. | Welcome to <strong></strong>. You are in the cabin at the ground floor. |
+| `tutorialStep1Text` | Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra. | Welcome to <strong>{}</strong>. You are in the cabin at the ground floor. |
+| `tutorialStep1TextMobile` | Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra. | Welcome to <strong>{}</strong>. You are in the cabin at the ground floor. |
 | `tutorialStep1Voice` | Benvenuto a {}. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano. | Welcome to {}. Press one, two, three, four, five, six, seven, eight or nine to call a floor. |
+| `tutorialStep1VoiceMobile` | Benvenuto a {}. Tocca le frecce su o giu per chiamare un piano. | Welcome to {}. Tap the up or down arrows to call a floor. |
 | `tutorialStep2Text` | Premi <kbd>E</kbd> per <strong>uscire</strong> dalla cabina ed esplorare il corridoio. | Press <kbd>E</kbd> to <strong>exit</strong> the cabin and explore the corridor. |
+| `tutorialStep2TextMobile` | Tocca <strong>\u25b2</strong> o <strong>\u25bc</strong> in basso a destra per <strong>chiamare un piano</strong>. | Tap <strong>\u25b2</strong> or <strong>\u25bc</strong> at the bottom right to <strong>call a floor</strong>. |
 | `tutorialStep2Voice` | Premi E per uscire dalla cabina. | Press E to exit the cabin. |
+| `tutorialStep2VoiceMobile` | Tocca le frecce per chiamare un piano. | Tap the arrows to call a floor. |
 | `tutorialStep3Text` | Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Premi di nuovo <kbd>E</kbd> vicino alle porte per rientrare. | In the corridor use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move. Press <kbd>E</kbd> again near the doors to re-enter. |
+| `tutorialStep3TextMobile` | Quando le porte sono aperte tocca il bottone <strong>Esci dalla cabina</strong> in alto per esplorare il corridoio. | When the doors open tap the <strong>Exit cabin</strong> button at the top to explore the corridor. |
 | `tutorialStep3Voice` | Nel corridoio usa WASD per muoverti. Premi E vicino alle porte per rientrare. | In the corridor use WASD to move. Press E near the doors to re-enter. |
+| `tutorialStep3VoiceMobile` | Tocca Esci dalla cabina per esplorare il corridoio. | Tap Exit cabin to explore the corridor. |
 | `tutorialStep4Text` | Comandi utili: <kbd>M</kbd> audio, <kbd>V</kbd> annunci, <kbd>K</kbd> vocale, <kbd>N</kbd> notte, <kbd>O</kbd> fuori servizio. | Useful controls: <kbd>M</kbd> audio, <kbd>V</kbd> announcements, <kbd>K</kbd> voice, <kbd>N</kbd> night mode, <kbd>O</kbd> out of order. |
+| `tutorialStep4TextMobile` | Nel corridoio: <strong>trascina il dito</strong> sullo schermo per guardarti intorno, e usa il <strong>joystick</strong> in basso a sinistra per muoverti. | In the corridor: <strong>drag your finger</strong> on the screen to look around, and use the <strong>joystick</strong> at the bottom left to move. |
 | `tutorialStep4Voice` | Comandi utili: M per muto, V per annunci, K per vocale, N per notte, O per fuori servizio. | Useful controls: M for mute, V for announcements, K for voice, N for night mode, O for out of order. |
+| `tutorialStep4VoiceMobile` | Trascina il dito per guardare. Usa il joystick per muoverti. | Drag your finger to look around. Use the joystick to move. |
 | `tutorialStep5Text` | In qualsiasi momento premi <kbd>?</kbd> per rivedere il tutorial. <kbd>H</kbd> per personalizzare l'hotel. | Press <kbd>?</kbd> to review the tutorial. <kbd>H</kbd> to customise the hotel. |
+| `tutorialStep5TextMobile` | Tocca il bottone <strong>Rientra</strong> per tornare in cabina. Tocca il menu <strong>IT/EN</strong> in alto a destra per cambiare lingua. | Tap the <strong>Re-enter</strong> button to return to the cabin. Tap the <strong>IT/EN</strong> menu at the top right to change language. |
 | `tutorialStep5Voice` | In qualsiasi momento premi punto interrogativo per rivedere il tutorial. | Press question mark at any time to review the tutorial. |
+| `tutorialStep5VoiceMobile` | Tocca Rientra per tornare in cabina. Cambia lingua dal menu in alto. | Tap Re-enter to return to the cabin. Change language from the menu at the top. |
 | `voiceOff` | Voce: OFF | Voice: OFF |
 | `voiceOn` | Voce: ON | Voice: ON |
 | `weatherApiKeyRome` | Roma | Rome |
