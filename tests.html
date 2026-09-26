@@ -1517,8 +1517,57 @@
           // ritorna un valore coerente con la viewport (desktop Chromium
           // headless → false).
           assertEq(typeof window.matchMedia, 'function');
-          const mq = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+          const mq = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
           assertEq(P.isMobileDevice(), !!mq.matches);
+        });
+      });
+
+      // ---- FIX mobile iPhone landscape (startBtn unreachable) ----
+      // Regressione: bug per cui su iPhone 15 Pro landscape (852x393) il
+      // contenuto dello start screen (h1 + p + .keys 15 righe + .slides +
+      // startBtn ~700px) overflow il viewport (393px) e il startBtn sticky
+      // era sotto il fold, intrappolato sotto joystick/call buttons.
+      // Verifica: (1) body ha classe start-active di default, (2) CSS
+      // contiene regole per il layout responsive, (3) CSS nasconde
+      // touch-controls mentre start screen e' visibile.
+      describe('FIX mobile iPhone landscape (startBtn irraggiungibile)', () => {
+        const doc = iframe.contentDocument;
+        test('body ha classe "start-active" di default', () => {
+          const body = doc.body;
+          assert(body.classList.contains('start-active'),
+            'manca body.start-active (aggiunto a <body> per nascondere touch controls)');
+        });
+        test('CSS contiene @media (max-width: 768px), (max-height: 500px)', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(css.includes('@media (max-width: 768px), (max-height: 500px)'),
+            'manca media query per catturare telefoni landscape');
+        });
+        test('CSS contiene #startscreen { overflow-y: auto } per scroll mobile', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/#startscreen\s*{[^}]*overflow-y:\s*auto/m.test(css),
+            'manca overflow-y:auto su #startscreen per viewport bassi');
+        });
+        test('CSS contiene #startscreen #startBtn { position: sticky }', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/#startscreen\s+#startBtn\s*{[^}]*position:\s*sticky/m.test(css),
+            'manca position:sticky su startBtn per garantire reach in landscape');
+        });
+        test('CSS contiene body.start-active #touch-controls { display: none }', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(css.includes('body.start-active #touch-controls { display: none'),
+            'manca regola CSS che nasconde touch controls mentre start screen e\' visibile');
+        });
+        test('click startBtn rimuove body.start-active', () => {
+          // Reset classe (altri test potrebbero averla modificata)
+          const body = doc.body;
+          if (!body.classList.contains('start-active')) {
+            body.classList.add('start-active');
+          }
+          const btn = doc.getElementById('startBtn');
+          assert(btn, '#startBtn non trovato');
+          try { btn.click(); } catch (e) { /* side-effects collaterali ignorati */ }
+          assert(!body.classList.contains('start-active'),
+            'click startBtn deve rimuovere body.start-active');
         });
       });
 

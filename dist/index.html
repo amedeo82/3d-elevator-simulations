@@ -800,6 +800,59 @@
     }
   }
 
+  /* FIX mobile bug: start screen + startBtn irraggiungibile su iPhone
+     landscape. Su iPhone 15 Pro landscape il viewport CSS e' ~852x393.
+     Il contenuto start screen (h1 + descrizione + .keys 15 righe +
+     .slides + startBtn) totalizza ~670px e con justify-content:center
+     + body{overflow:hidden} il pulsante "Entra nell'ascensore" finisce
+     sotto il fold e l'utente non puo' avviare il gioco.
+     Trigger: (max-width:768px) OR (max-height:500px) — quest'ultimo
+     cattura i telefoni landscape la cui larghezza supera 768px. */
+  @media (max-width: 768px), (max-height: 500px) {
+    #startscreen {
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 16px 32px;
+    }
+    #startscreen h1 { font-size: 22px; margin-bottom: 4px; }
+    #startscreen > p { font-size: 12px; line-height: 1.4; max-width: 95vw; }
+    #startscreen .keys {
+      font-size: 11px;
+      padding: 8px 12px;
+      gap: 3px 14px;
+      margin-top: 12px;
+    }
+    #startscreen .slides-wrap { margin-top: 12px; gap: 6px; }
+    #startscreen .slides { gap: 8px; }
+    #startscreen .slide {
+      width: 76px; height: 76px;
+      font-size: 10px;
+      padding: 6px 4px;
+    }
+    #startscreen .slide .emoji { font-size: 22px; margin-bottom: 3px; }
+    /* startBtn sticky: sempre ancorato al fondo del viewport durante lo
+       scroll, cosi' l'utente lo trova e lo puo' tappare su qualunque
+       altezza di schermo (anche iPhone landscape 393px). */
+    #startscreen #startBtn {
+      position: sticky;
+      bottom: 12px;
+      margin-top: 18px;
+      z-index: 2;
+      font-size: 15px;
+      padding: 12px 28px;
+    }
+  }
+
+  /* FIX mobile bug: touch controls (joystick + call buttons ▲▼) hanno
+     z-index 5000, superiore allo start screen (z-index 100), e occupano
+     i bottom-left e bottom-right. Quando lo start screen e' visibile
+     (body.start-active) nascondiamo i touch controls per evitare che
+     (a) competano visivamente col startBtn sticky e (b) blocchino il
+     tap sullo startBtn anche se fosse sopra di loro. La classe
+     body.start-active viene rimossa al click del startBtn. */
+  body.start-active #touch-controls { display: none !important; }
+
   #mode-badge {
     position: absolute;
     top: 50px;
@@ -825,7 +878,7 @@
   #mode-badge.corridor .dot { background: #ffd66b; }
 </style>
 </head>
-<body>
+<body class="start-active">
 <div id="app"></div>
 
 <div id="hud" style="display:none;">
@@ -7953,11 +8006,15 @@ function initReducedMotion() {
 // Polish Pack V3 Step 9 (Q9.4): detection dispositivo mobile/touch.
 // Usa matchMedia (pointer: coarse) + (max-width: 768px) per essere robusto
 // su laptop con touch screen. Riascolta cambiamenti runtime (es. resize finestra).
+// FIX mobile bug (iPhone landscape): includiamo anche (max-height: 500px) per
+// catturare telefoni landscape la cui larghezza supera 768px ma l'altezza
+// resta tipicamente <500px. Senza questa OR il joystick/touch controls non
+// si attivano in landscape su iPhone 15 Pro e simili.
 // Polish Pack V3 Step 9 (Q9.4): isMobileDevice() helper.
 // Riascolta cambi runtime (es. resize finestra, tablet ruotato).
 function isMobileDevice() {
   if (typeof window === 'undefined' || !window.matchMedia) return false;
-  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
   return !!mql.matches;
 }
 function initMobileDetection() {
@@ -7967,7 +8024,7 @@ function initMobileDetection() {
   }
   state.isMobile = isMobileDevice();
   // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
-  const mql = window.matchMedia('(pointer: coarse) and (max-width: 768px)');
+  const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
   const handler = (e) => {
     const wasMobile = state.isMobile;
     state.isMobile = !!e.matches;
@@ -10437,6 +10494,10 @@ document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
+  // FIX mobile bug: rimuovi body.start-active per riattivare touch
+  // controls (joystick + ▲▼) che CSS nascondeva mentre start screen era
+  // visibile (evita sovrapposizione col startBtn sticky su iPhone landscape).
+  document.body.classList.remove('start-active');
   // ferma il carosello
   if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
   // FIX mobile (iOS Safari bug): audio context potrebbe lanciare unhandled
