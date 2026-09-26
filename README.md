@@ -2,7 +2,13 @@
 
 Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, in prima persona, costruita interamente con Three.js in un singolo file HTML.
 
-![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js) ![Status](https://img.shields.io/badge/Status-Stable-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen) ![Single--file](https://img.shields.io/badge/Single--file-HTML-orange) ![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green) ![Release](https://img.shields.io/badge/Release-v7.0-green) ![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Release](https://img.shields.io/badge/Release-v7.0-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
+
+## 🚀 [Gioca subito · Live Preview](https://amedeo82.github.io/3d-elevator-simulations/)
+
+**[https://amedeo82.github.io/3d-elevator-simulations/](https://amedeo82.github.io/3d-elevator-simulations/)**
+
+Clicca il link per provare la simulazione direttamente nel browser (Chrome/Edge/Firefox aggiornati, supporto Pointer Lock + WebGL richiesto). Nessuna installazione, nessuna registrazione — l'app si carica da GitHub Pages e usa Three.js via CDN.
 
 > **🎉 Polish Pack V4 COMPLETO (2026-09-25)** — 6/6 step (100%). D-key contracts
 > aggiunti: D22 (routing look algorithm asimmetrico), D23 (a11y ARIA + i18n),
