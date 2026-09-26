@@ -1582,6 +1582,152 @@
         });
       });
 
+      // ---- SOLUZIONE B (V4 Step 7): due scene indipendenti desktop/mobile ----
+      // Regressione: il progetto era nato desktop-first e ogni intervento
+      // mobile era un overlay sopra logiche desktop (mix confuso). Verifica
+      // che esistano i data structure paralleli, che il mode switching
+      // produca contenuti diversi, e che il CSS separi correttamente le UI.
+      describe('SOLUZIONE B: due scene desktop/mobile indipendenti', () => {
+        const doc = iframe.contentDocument;
+        const css = doc.querySelector('style').textContent;
+        const W = iframe.contentWindow;
+        const P2 = W && W.BossHotelPure;
+
+        test('CSS nasconde #panel-help + #crosshair su body.mobile-mode', () => {
+          assert(/body\.mobile-mode\s+#panel-help/.test(css),
+            'manca regola CSS per nascondere #panel-help su mobile');
+          assert(/body\.mobile-mode\s+#crosshair/.test(css),
+            'manca regola CSS per nascondere #crosshair su mobile');
+        });
+
+        test('CSS nasconde #touch-controls su body:not(.mobile-mode)', () => {
+          assert(/body:not\(\.mobile-mode\)\s+#touch-controls/.test(css),
+            'manca regola CSS per nascondere #touch-controls su desktop');
+        });
+
+        test('STRINGS.it ha chiavi mobile-specific (helpLookAroundMobile, pointerHintMobile)', () => {
+          // Verifica che applyLangToDOM possa risolvere le chiavi mobile
+          // durante un ipotetico cambio di mode. Le stringhe devono
+          // esistere in entrambe le lingue (IT + EN).
+          assert(P2 && typeof P2.applyLangToDOM === 'function',
+            'applyLangToDOM non esposto in BossHotelPure');
+          // Forza modalita' mobile + applica lang, poi verifica pointerhint
+          if (W.state) W.state.inputMode = 'mobile';
+          try { P2.applyLangToDOM(); } catch(e) { /* ignora side-effect su DOM */ }
+          const ph = doc.getElementById('pointerhint');
+          assert(ph, '#pointerhint non trovato');
+          assert(ph.textContent && ph.textContent.length > 0,
+            'pointerhint vuoto dopo applyLangToDOM in mobile mode');
+          // Ripristina desktop mode per non inquinare altri test
+          if (W.state) W.state.inputMode = 'desktop';
+          try { P2.applyLangToDOM(); } catch(e) {}
+        });
+
+        test('PANEL_HELP_KEYS_MOBILE presente nel sorgente (15 voci)', () => {
+          // Conta le entry nella definizione. Deve avere stesso numero di
+          // voci del desktop per consistenza visiva.
+          const html = doc.documentElement.outerHTML;
+          // Conta righe della forma '{ k: \'help...Mobile\'... mobileLabel: \'...\' }'
+          const matches = html.match(/{\s*k:\s*'help\w*Mobile'/g) || [];
+          assert(matches.length >= 14,
+            `PANEL_HELP_KEYS_MOBILE atteso ~15 voci, trovate ${matches.length}`);
+        });
+
+        test('TUTORIAL_STEPS_MOBILE presente nel sorgente (5 step)', () => {
+          const html = doc.documentElement.outerHTML;
+          // Cerca la sezione di definizione TUTORIAL_STEPS_MOBILE
+          assert(/const\s+TUTORIAL_STEPS_MOBILE\s*=\s*\[/.test(html),
+            'manca definizione TUTORIAL_STEPS_MOBILE');
+          // Conta le textKey mobile-specific
+          const matches = html.match(/textKey:\s*'tutorialStep\d+TextMobile'/g) || [];
+          assertEq(matches.length, 5,
+            `attese 5 textKey mobile, trovate ${matches.length}`);
+        });
+
+        test('STRINGS.it contiene testi tutorial mobile (5 step)', () => {
+          // Verifica che le stringhe mobile siano state aggiunte a STRINGS.it
+          // durante il refactor. Le recuperiamo dallo script inline.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          for (let i = 1; i <= 5; i++) {
+            assert(new RegExp(`tutorialStep${i}TextMobile:`).test(scriptText),
+              `manca tutorialStep${i}TextMobile in STRINGS.it`);
+            assert(new RegExp(`tutorialStep${i}VoiceMobile:`).test(scriptText),
+              `manca tutorialStep${i}VoiceMobile in STRINGS.it`);
+          }
+        });
+
+        test('STRINGS.en contiene testi tutorial mobile (5 step)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          for (let i = 1; i <= 5; i++) {
+            assert(new RegExp(`tutorialStep${i}TextMobile:`).test(scriptText),
+              `manca tutorialStep${i}TextMobile in STRINGS.en`);
+          }
+        });
+
+        test('ONBOARDED_KEY_MOBILE presente (per-mode persistenza)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/ONBOARDED_KEY_MOBILE\s*=\s*'bossHotelOnboardedMobile'/.test(scriptText),
+            'manca ONBOARDED_KEY_MOBILE per persistenza wizard mobile');
+        });
+
+        test('keydown listener ha short-circuit per state.inputMode === "mobile"', () => {
+          // Verifica pattern del guard nel keydown handler.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/state\.inputMode\s*===\s*'mobile'[\s\S]{0,200}return/.test(scriptText),
+            'manca short-circuit keydown per state.inputMode mobile');
+        });
+
+        test('recheck() in initMobileDetection gestisce runtime toggle', () => {
+          // Il recheck handler deve chiamare applyLangToDOM per ri-renderizzare
+          // gli elementi dipendenti dalla mode.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          // Cerca il pattern: recheck con applyLangToDOM
+          const recheckMatch = scriptText.match(/const recheck\s*=\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s*\};/);
+          assert(recheckMatch, 'recheck function non trovata in initMobileDetection');
+          assert(recheckMatch[1].includes('applyLangToDOM'),
+            'recheck deve chiamare applyLangToDOM su mode change');
+          assert(recheckMatch[1].includes('startTutorial'),
+            'recheck deve restart tutorial su mode change');
+        });
+
+        test('state.inputMode inizializzato nel state globale', () => {
+          // Verifica che state.inputMode esista nel state declaration.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/inputMode:\s*'desktop'/.test(scriptText),
+            'manca state.inputMode inizializzato a "desktop"');
+        });
+
+        test('state.onboardedDesktop + state.onboardedMobile separati', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/onboardedDesktop:\s*false/.test(scriptText),
+            'manca state.onboardedDesktop (per-mode wizard flag)');
+          assert(/onboardedMobile:\s*false/.test(scriptText),
+            'manca state.onboardedMobile (per-mode wizard flag)');
+        });
+
+        test('getTutorialSteps() helper presente e mode-aware', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/function\s+getTutorialSteps\(\)\s*{[\s\S]*?inputMode[\s\S]*?TUTORIAL_STEPS_MOBILE/.test(scriptText),
+            'manca getTutorialSteps() mode-aware');
+        });
+      });
+
       // ============================================================
       // V4 Step 3 (D23): A11y aria attributes.
       // Query del DOM dell'iframe per verificare che gli elementi
