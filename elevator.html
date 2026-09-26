@@ -8004,40 +8004,78 @@ function initReducedMotion() {
 }
 
 // Polish Pack V3 Step 9 (Q9.4): detection dispositivo mobile/touch.
-// Usa matchMedia (pointer: coarse) + (max-width: 768px) per essere robusto
-// su laptop con touch screen. Riascolta cambiamenti runtime (es. resize finestra).
-// FIX mobile bug (iPhone landscape): includiamo anche (max-height: 500px) per
-// catturare telefoni landscape la cui larghezza supera 768px ma l'altezza
-// resta tipicamente <500px. Senza questa OR il joystick/touch controls non
-// si attivano in landscape su iPhone 15 Pro e simili.
+// FIX mobile bug (iPhone landscape persistente): dopo il primo fix,
+// iPhone 15 Pro Safari in landscape entrava in modalita' desktop
+// (mouse-look "Clicca per attivare il puntatore", niente joystick).
+// Causa: iOS Safari in landscape ha un quirk "viewport pinning" dove
+// `window.innerHeight` puo' riportare la dimensione MAGGIORE (es. 852)
+// invece di quella corta (393). Quindi la matchMedia `(max-height:
+// 500px)` ritornava false anche se la dimensione corta era 393. Stesso
+// problema per `(max-width: 768px)` in landscape (innerWidth=852).
+// Soluzione: detection diretta via `window.innerWidth/innerHeight` con
+// `w <= 768 || h <= 500` per coprire tutti i casi:
+//   - iPhone portrait: 393x852 → 393 <= 768 → mobile
+//   - iPhone landscape: 852x393 → 393 <= 500 → mobile (anche se iOS
+//     riportasse height=852, width=852>768b ma screen.width=393<=500)
+//   - iPad portrait: 768x1024 → 768 <= 768 → mobile
+//   - iPad/desktop: nessuna dimensione <= 500/768 → desktop
+// Aggiunto listener `resize` + `orientationchange` per catturare i
+// cambi viewport di iOS Safari che matchMedia non sempre triggera.
 // Polish Pack V3 Step 9 (Q9.4): isMobileDevice() helper.
 // Riascolta cambi runtime (es. resize finestra, tablet ruotato).
 function isMobileDevice() {
   if (typeof window === 'undefined' || !window.matchMedia) return false;
-  const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
-  return !!mql.matches;
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  if (!isTouch) return false;
+  // Phone-sized viewport: almeno una dimensione corta.
+  // Usa window.innerWidth/innerHeight come fonte primaria, con fallback
+  // a document.documentElement.clientWidth/Height (piu' affidabile in
+  // alcuni casi iOS Safari). Aggiungiamo anche screen.width/height
+  // come ulteriore fallback (non cambia con orientamento/URL bar).
+  const dims = [
+    window.innerWidth,
+    window.innerHeight,
+    document.documentElement && document.documentElement.clientWidth,
+    document.documentElement && document.documentElement.clientHeight,
+    window.screen && window.screen.width,
+    window.screen && window.screen.height,
+  ].filter(v => typeof v === 'number' && v > 0);
+  // Mobile se: width <= 768 OPPURE height <= 500 OPPURE screen.width <= 500
+  for (const v of dims) {
+    if (v <= 500) return true;  // copre iPhone in entrambe le orientazioni
+  }
+  // Altrimenti check sulla larghezza (cattura iPad portrait 768)
+  return Math.min(...dims) <= 768;
 }
 function initMobileDetection() {
   if (typeof window === 'undefined' || !window.matchMedia) {
     state.isMobile = false;
     return;
   }
-  state.isMobile = isMobileDevice();
-  // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
-  const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
-  const handler = (e) => {
+  const recheck = () => {
     const wasMobile = state.isMobile;
-    state.isMobile = !!e.matches;
+    state.isMobile = isMobileDevice();
     // Se cambia mode, refresh HUD visibility (touch controls vs pointer lock).
     if (wasMobile !== state.isMobile && typeof refreshMobileControls === 'function') {
       refreshMobileControls();
     }
   };
+  state.isMobile = isMobileDevice();
+  // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
+  // matchMedia change: cattura il cambio di (pointer: coarse) o viewport.
+  const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
+  const mqlHandler = () => recheck();
   if (typeof mql.addEventListener === 'function') {
-    mql.addEventListener('change', handler);
+    mql.addEventListener('change', mqlHandler);
   } else if (typeof mql.addListener === 'function') {
-    mql.addListener(handler);
+    mql.addListener(mqlHandler);
   }
+  // FIX mobile bug (iPhone landscape): matchMedia non triggera sempre su
+  // iOS Safari durante rotazione o URL bar collapse. Aggiungiamo listener
+  // su `resize` + `orientationchange` come fallback robusto per catturare
+  // ogni cambio viewport, anche quelli invisibili a matchMedia.
+  window.addEventListener('resize', recheck, { passive: true });
+  window.addEventListener('orientationchange', recheck, { passive: true });
 }
 
 // Polish Pack V3 Step 9 (Q9.2): init touch controls (mobile only).
