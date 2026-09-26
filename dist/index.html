@@ -2037,7 +2037,15 @@ const camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.05, 200
 camera.position.set(0, 0, 0); // verrà riposizionata dentro la cabina
 camera.rotation.order = 'YXZ';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+// FIX mobile (iOS Safari bug): preserveDrawingBuffer:true evita frame
+// neri quando l'utente ruota portrait→landscape. Senza questo flag, WebGL
+// su iOS Safari può droppare il primo frame post-rotazione a causa del
+// resize asincrono del backing store, lasciando il canvas con il colore
+// di clear (0x111114 = quasi nero). Cost in performance: trasferimento
+// extra CPU↔GPU a ogni swap. Mitigato dal fatto che il canvas è l'unico
+// grande schermo 3D e il delta è trascurabile su iPhone 12+ (A14 GPU).
+// Su desktop il costo è impercettibile.
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -2051,6 +2059,20 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+});
+// FIX mobile (iOS Safari bug): orientationchange deve essere ascoltato
+// separatamente da resize. iOS Safari emette l'evento orientationchange
+// PRIMA del resize e con innerWidth/innerHeight ancora al valore vecchio
+// (portrait). Senza questo hook, il canvas rimane a dimensioni portrait
+// per 1-3 frame dopo la rotazione → cabin compresso, render quasi nero.
+// Forziamo un resize sincrono con setTimeout(0) per ritardare l'esecuzione
+// fino a quando innerWidth/innerHeight sono aggiornati al nuovo orientamento.
+addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  }, 50);
 });
 
 // ============================================================
@@ -10378,7 +10400,16 @@ document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
-  renderer.domElement.requestPointerLock();
+  // FIX mobile (iOS Safari bug): requestPointerLock non è supportato su
+  // iOS Safari (l'API esiste ma fallisce con NotSupportedError). Il
+  // Promise rigettato, se lasciato unhandled, può innescare unhandled
+  // rejection su WebKit (più aggressivo di Chromium). Catturiamo
+  // esplicitamente per silenziare l'errore. Su desktop invece il lock
+  // funziona normalmente (modalità immersive mouse-look).
+  try {
+    const p = renderer.domElement.requestPointerLock();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (_) { /* sync throw su browser legacy, ignorato */ }
   // Polish Pack V2 Step 2b: tutorial contestuale prima volta
   // (caricato da localStorage; mostrato solo se l'utente non l'ha ancora visto)
   state.onboarded = loadOnboarded();
