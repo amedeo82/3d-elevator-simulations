@@ -82,3 +82,4 @@ bun.lockb
 
 # ---- Scratch dir per smoke test locali (Playwright/headless) ----
 browser-test/
+.audit/
