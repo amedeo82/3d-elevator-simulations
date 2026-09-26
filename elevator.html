@@ -726,6 +726,27 @@
     display: none !important;
   }
 
+  /* FIX UX mobile (iPhone/iPad): fallback CSS basato su viewport per garantire
+     che touch controls + hamburger siano visibili ANCHE se state.isMobile
+     fallisce per qualche edge case (es. (pointer: coarse) ritorna false su
+     iPad con Magic Keyboard collegato, ma il viewport e' chiaramente mobile).
+     Coerente con `isMobileDevice()` Math.min(dims) <= 768. Combinato con
+     `(pointer: coarse)` per NON attivare il fallback su desktop con finestra
+     ridimensionata piccola (mouse + tastiera sono ancora il primary input). */
+  @media (pointer: coarse) and (max-width: 900px), (pointer: coarse) and (max-height: 500px) {
+    #touch-controls { display: block !important; pointer-events: none !important; }
+    .hamburger-btn { display: block !important; }
+    /* Su viewport mobile ma body senza mobile-mode (edge case iPad+keyboard),
+       nascondi il cheatsheet WASD comunque per evitare il mix desktop. */
+    #panel-help { display: none !important; }
+    /* FIX UX mobile (iPhone/iPad): pointer hint desktop sostituito con testo
+       touch-friendly anche in edge case dove body.mobile-mode non e' applicato
+       ma il viewport e' chiaramente mobile. Mostra un fallback leggibile. */
+    #pointerhint::after {
+      content: 'Trascina il dito per guardare. Usa il joystick per muoverti.';
+    }
+  }
+
   /* Polish Pack V4 Step 8 (mobile menu): bottone hamburger + overlay menu.
      Visibili SOLO su body.mobile-mode. Su desktop nessun hamburger. */
   /* Bottone hamburger: fisso top-left (16px dall'edge), 44x44 px (touch target).
@@ -8506,6 +8527,21 @@ function isMobileDevice() {
   // Altrimenti check sulla larghezza (cattura iPad portrait 768)
   return Math.min(...dims) <= 768;
 }
+// FIX UX mobile: forzatura mobile mode basata SOLO su viewport.
+// Su alcuni iPad con Magic Keyboard + trackpad, (pointer: coarse) ritorna
+// false (perche' il primary pointer e' il trackpad, non il dito). In quel
+// caso isMobileDevice ritorna false e l'utente vede un layout desktop su
+// un dispositivo chiaramente touch-first. Questo helper di sicurezza
+// confronta solo il viewport: se width <= 900 o height <= 500, forza
+// mobile mode (anche senza touch). Coerente con il fallback CSS aggiunto.
+// Restituisce true se il viewport e' chiaramente da telefono anche senza
+// pointer:coarse (es. iPad con trackpad + finestra ridimensionata).
+function isViewportMobile() {
+  if (typeof window === 'undefined') return false;
+  const w = window.innerWidth || 0;
+  const h = window.innerHeight || 0;
+  return w > 0 && h > 0 && (w <= 900 || h <= 500);
+}
 function initMobileDetection() {
   if (typeof window === 'undefined' || !window.matchMedia) {
     state.isMobile = false;
@@ -8514,7 +8550,7 @@ function initMobileDetection() {
   }
   const recheck = () => {
     const wasMode = state.inputMode;
-    state.isMobile = isMobileDevice();
+    state.isMobile = isMobileDevice() || isViewportMobile();
     state.inputMode = state.isMobile ? 'mobile' : 'desktop';
     // Se cambia mode, refresh HUD visibility (touch controls vs pointer lock).
     if (wasMode !== state.inputMode && typeof refreshMobileControls === 'function') {
@@ -8540,7 +8576,7 @@ function initMobileDetection() {
       }
     }
   };
-  state.isMobile = isMobileDevice();
+  state.isMobile = isMobileDevice() || isViewportMobile();
   state.inputMode = state.isMobile ? 'mobile' : 'desktop';
   // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
   // matchMedia change: cattura il cambio di (pointer: coarse) o viewport.
