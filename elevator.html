@@ -1210,7 +1210,7 @@ const STRINGS = {
     startHint: 'Stai per entrare nella cabina di un ascensore di lusso a 5 stelle.',
     startHint2: 'Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina.',
     // tutorial
-    tutorialStep1Text: 'Benvenuto al <strong></strong>. Sei nella cabina al piano Terra.',
+    tutorialStep1Text: 'Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra.',
     tutorialStep1Voice: 'Benvenuto a {}. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano.',
     tutorialStep2Text: 'Premi <kbd>E</kbd> per <strong>uscire</strong> dalla cabina ed esplorare il corridoio.',
     tutorialStep2Voice: 'Premi E per uscire dalla cabina.',
@@ -1488,7 +1488,7 @@ const STRINGS = {
     featureThemes: '4 corridor themes (lobby, offices, hotel, attic)',
     startHint: 'You are about to enter a luxury 5-star elevator cabin.',
     startHint2: 'Select a floor from the touch panel, or exit into the corridor to re-enter the cabin.',
-    tutorialStep1Text: 'Welcome to <strong></strong>. You are in the cabin at the ground floor.',
+    tutorialStep1Text: 'Welcome to <strong>{}</strong>. You are in the cabin at the ground floor.',
     tutorialStep1Voice: 'Welcome to {}. Press one, two, three, four, five, six, seven, eight or nine to call a floor.',
     tutorialStep2Text: 'Press <kbd>E</kbd> to <strong>exit</strong> the cabin and explore the corridor.',
     tutorialStep2Voice: 'Press E to exit the cabin.',
@@ -6517,7 +6517,7 @@ function renderDisplayDynamicLayer(ctx, animT) {
     } else if (state.doorsOpen) {
       arrowLabel = state.lang === 'en' ? 'DOORS OPEN' : 'PORTE APERTE';
     } else {
-      arrowLabel = 'IN ATTESA';
+      arrowLabel = state.lang === 'en' ? 'WAITING' : 'IN ATTESA';
     }
     ctx.font = 'bold 36px Arial';
     ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
@@ -9729,6 +9729,15 @@ cabin.rotation.z = state.vibrationRoll;
 
   updateHover();
   renderer.render(scene, camera);
+  // FIX: re-schedule loop RAF. Senza questa riga, il game loop si ferma
+  // dopo UNA sola frame (l'unica richiamata dal requestAnimationFrame esterno
+  // al module scope) e tutta la scena resta congelata al primo paint: porte
+  // bloccate al primo frame di animazione (~3% aperte dopo 1.2s di durata),
+  // display touch non aggiornato, tickDoors/tickMove/tickPlayer morti.
+  // Sintomo utente: "scena rimane nera, il gioco non si avvia".
+  // Introdotto per refattorizzazione in Polish Pack V3 Step 3 (ef6b0c0),
+  // riscoperto dopo pubblicazione GitHub Pages.
+  requestAnimationFrame(loop);
 }
 
 // ============================================================
