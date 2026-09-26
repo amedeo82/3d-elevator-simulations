@@ -2670,3 +2670,178 @@ Polish Pack V4 ha aggiunto al simulatore V3:
 
 Il progetto e ora pronto per V5+ (WebXR, Multiplayer, PWA, Localizzazione).
 Vedi `PIANO_V4.md` sezione "Roadmap possibile post-V4" per idee.
+
+---
+
+### Fase 28 — Polish Pack V4 Step 7: Mobile scene separation D26est ✅ (2026-09-26, branch `kilo/playful-null-mhs`)
+
+Step T2c (manutenibilità architetturale, impatto medio). Refactor
+strutturale per separare le scene desktop e mobile dopo che l'utente
+aveva segnalato il "mix confuso" su iPhone.
+
+**Decisione** (via `question` tool): **B. Due scene + runtime toggle**.
+L'utente ha confermato la necessita' di separare architetturalmente le
+scene (vs un semplice patch CSS che avrebbe mantenuto il "mix"
+sottostante). Pattern simile a runtime game mode switch.
+
+**Modifiche al codice** (elevator.html, ~270 righe):
+- `state.inputMode = 'desktop' | 'mobile'` dichiarato nel state object
+  in CONFIGURATION (top of file per evitare TDZ).
+- `state.onboardedDesktop` + `state.onboardedMobile` come state fields
+  (persistenza in `localStorage[bossHotelOnboarded@v1]` vs
+  `localStorage[bossHotelOnboardedMobile@v1]`).
+- `PANEL_HELP_KEYS_MOBILE` (13 voci) parallelo a `PANEL_HELP_KEYS`
+  (15 voci). Helper `getPanelHelpKeys()` mode-aware.
+- `START_SCREEN_KEYS_MOBILE` parallelo a `START_SCREEN_KEYS`.
+- `TUTORIAL_STEPS_MOBILE` (5 step) parallelo a `TUTORIAL_STEPS`.
+  Helper `getTutorialSteps()` mode-aware.
+- 13 nuove stringhe `help*Mobile` IT/EN + 5 coppie
+  `tutorialStep*TextMobile/VoiceMobile` + `pointerHintMobile`.
+- `applyLangToDOM()` mode-aware per pointerhint + cheatsheet.
+- `loadOnboarded()` + `saveOnboarded()` per-mode (chiave localStorage
+  selezionata in base a `state.inputMode`).
+- `endTutorial()` aggiorna `state.onboardedDesktop` OR `state.onboardedMobile`
+  in base a `state.inputMode`.
+- Keydown short-circuit su mobile: ritorna subito tranne tasti tutorial.
+- CSS `body.mobile-mode #panel-help/#crosshair { display: none }` +
+  `body:not(.mobile-mode) #touch-controls { display: none }`.
+- `initMobileDetection` ha `recheck()` su matchMedia + resize +
+  orientationchange: su mode change chiama `applyLangToDOM()` e
+  riavvia il tutorial con i nuovi step.
+
+**Test** (tests.html, +12 test / +24 assert):
+- Nuovo `describe` block "SOLUZIONE B: due scene desktop/mobile
+  indipendenti" con 12 assert che verificano: CSS hide/show, presenza
+  data structures paralleli, keydown short-circuit, runtime toggle
+  chiama `applyLangToDOM` + `startTutorial`, `state.inputMode`
+  dichiarato in CONFIGURATION.
+- Totale suite: 232 → **244 test / 396 → 420 assert**, tutti pass.
+
+**Contratto D26est** introdotto in AGENTS.md.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- 11/11 check strutturali jsdom PASS (`/tmp/.../mobiletest/run3.js`).
+- 3 CI checks su PR #10 verdi (Sintassi+balance, Test framework,
+  GitGuardian Security).
+
+**Branch**: `kilo/playful-null-mhs` (con Step 8 nello stesso branch).
+
+---
+
+### Fase 29 — Polish Pack V4 Step 8: Mobile hamburger menu D27 ✅ (2026-09-26, branch `kilo/playful-null-mhs`)
+
+Step T2d (UX mobile). Aggiunto menu hamburger top-left per rendere
+accessibili via touch le 9 azioni keyboard-only del desktop.
+
+**Modifiche al codice** (elevator.html, ~480 righe):
+- HTML: bottone `#hamburger-btn` (☰ 44×44 px glassmorphism, fisso top-left)
+  + overlay `#mobile-menu` (320px, slide-in da destra via transform
+  translateX 100%→0 con transition 250ms) con 9 voci in 2 sezioni.
+- 5 toggle rapidi (`mm-item mm-toggle` con badge ON/OFF via
+  `aria-checked`): audio, annunci vocali, modalita' notte, fuori
+  servizio, comando vocale. Stato sincronizzato in real-time con
+  `state.muted/ttsEnabled/nightMode/outOfOrder/voiceEnabled`.
+- 4 link ad altri overlay (`mm-item mm-action` con chevron `›`):
+  tutorial, customizer, manutenzione, lingua. Chiudono il menu
+  prima di aprire l'overlay target.
+- 25 nuove stringhe IT/EN × 2 lingue = **50 stringhe**:
+  - `mmTitle`, `mmSectionToggles`, `mmSectionActions` (3 header)
+  - `mmAudio/Voice/Night/OOO/VoiceCmd/Tutorial/Customize/Maint/Lang` (9 label)
+  - `mmStateOn`, `mmStateOff` (2 badge)
+  - `ariaHamburger`, `ariaMmClose`, `ariaMmToggleAudio/.../ToggleLang` (15 ARIA)
+- 7 nuove funzioni JS:
+  - `openMobileMenu()` — rilascia `pointer-lock` + chiude tutorial attivo
+    (sicurezza UX anti overlay-stacking)
+  - `closeMobileMenu()` — rimuove `.mobile-menu-shown`
+  - `toggleMobileMenu()` — switch
+  - `isMobileMenuOpen()` — getter (anche come `window.__mobileMenuOpen`
+    per test/debug)
+  - `handleMobileMenuAction(action)` — 9 switch case (5 toggle inline
+    + 4 link che chiudono menu + aprono overlay)
+  - `refreshMobileMenuStates()` — sync UI con state corrente (label,
+    aria-label, ON/OFF badge)
+  - `initMobileMenu()` — bind click handler (idempotente via
+    `initMobileMenu._bound`)
+- Esposti in `BossHotelPure.openMobileMenu/closeMobileMenu/toggleMobileMenu/
+  isMobileMenuOpen/handleMobileMenuAction`.
+- `initMobileMenu()` chiamato dopo `initTouchControls()` nel boot sequence.
+
+**Test** (tests.html, +18 test / +36 assert):
+- Nuovo `describe` block "V4 Step 8: hamburger menu mobile (azioni
+  touch)" con 18 assert che verificano:
+  - DOM: hamburger btn + mobile menu + 5 toggle + 4 action items
+  - CSS: display:none/block su mobile-mode, transform translateX slide-in
+  - STRINGS: 25 nuove chiavi IT + EN
+  - JS: 7 funzioni definite, 9 action handlers,
+    `openMobileMenu` rilascia pointer-lock + chiude tutorial,
+    `refreshMobileMenuStates` aggiorna badge
+- Totale suite: 244 → **262 test / 420 → 456 assert**, tutti pass.
+
+**Contratto D27** introdotto in AGENTS.md.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- 37/37 check strutturali jsdom PASS (`/tmp/.../mobiletest/run4.js`).
+- 3 CI checks su PR #10 verdi (Sintassi+balance, Test framework,
+  GitGuardian Security).
+
+**Branch**: `kilo/playful-null-mhs`.
+
+---
+
+### Fase 30 — Post-V4 fix: cabin nera su iOS Safari ✅ (2026-09-26, branch `kilo/playful-null-mhs`)
+
+Bug scoperto subito dopo il merge di PR #10 (V4 Step 7+8): la cabina
+tornava nera su iPhone Safari dopo aver visto i nuovi elementi mobile
+(hamburger, joystick, call buttons).
+
+**Root cause**:
+1. `#mobile-menu` overlay (320×100vh, `position: fixed`, `z-index: 5800`)
+   con `pointer-events: none` + `transform: translateX(100%)` sul panel
+   + `opacity: 0` sul backdrop interferiva col rendering WebGL su iOS
+   Safari a causa del bug `preserveDrawingBuffer: true` (introdotto
+   proprio in PR #7 per fixare un altro scenario).
+2. `requestAnimationFrame(loop)` duplicato a fine script (commit storico
+   `380c41d7` del 2026-09-11): lanciava un secondo loop parallelo,
+   causando 2 render/frame + `dt=0` drift.
+
+**Modifiche** (elevator.html):
+- Aggiunto `visibility: hidden` a `#mobile-menu` di default +
+  `visibility: visible` su `.mobile-menu-shown`. Fix canonico per
+  elementi fixed che interferiscono col canvas WebGL iOS.
+- Rimosso il secondo `requestAnimationFrame(loop)` ridondante.
+- Commento esplicativo per evitare regressioni future.
+
+**Verifica**:
+- `node scripts/check-balance.js elevator.html` → passa.
+- 3 CI checks su PR #11 verdi (Sintassi+balance, Test framework,
+  GitGuardian Security).
+
+**Branch**: `kilo/playful-null-mhs`.
+
+---
+
+## 🎉 Polish Pack V4 COMPLETO (post-fix)
+
+**Risultato finale V4**:
+- **8/8 step** (100%): T1 (3) + T2 (4: Step 4-5 + 7-8) + T3 (1)
+- **27 contratti D-key** totali (D1-D27, inclusi D26est e D27)
+- **262 test** passing (100% verde)
+- **~456 assert** totali
+- **~1 giorno** di lavoro (8 sessioni su 1 settimana)
+
+Polish Pack V4 ha aggiunto al simulatore V3:
+1. **Correttezza routing** (Step 2 D22): look algorithm asimmetrico.
+2. **Accessibilità standard** (Step 3 D23): ARIA + i18n label.
+3. **Manutenibilità** (Step 4-5 D24-D25): funzioni <150 + DRY helper.
+4. **Community ready** (Step 6 D26): LICENSE + CHANGELOG + CONTRIBUTING.
+5. **Mobile scene separation** (Step 7 D26est): state.inputMode + data
+   structures paralleli + keydown short-circuit + runtime toggle.
+6. **Mobile hamburger menu** (Step 8 D27): 9 voci (5 toggle + 4 link) +
+   50 stringhe i18n + 7 funzioni pure esposte in BossHotelPure.
+7. **Post-merge fix** (Fase 30): cabin nera iOS Safari risolta con
+   `visibility: hidden` su `#mobile-menu` + rimozione RAF duplicato.
+
+Il progetto e ora pronto per V5+ (WebXR, Multiplayer, PWA, Localizzazione).
+Vedi `PIANO_V4.md` sezione "Roadmap possibile post-V4" per idee.

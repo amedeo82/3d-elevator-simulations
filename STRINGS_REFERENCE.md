@@ -259,13 +259,47 @@
 | `systemFooter` | ELEVATOR SYSTEM · | ELEVATOR SYSTEM · |
 | `helpTitle` | Comandi | Controls |
 | `helpLookAround` / `helpPressButton` / `helpReleaseMouse` / `helpExit` / `helpWASD` / `helpCall` / `helpAudio` / `helpVoice` / `helpNight` / `helpOOO` / `helpVoiceCmd` / `helpTutorial` / `helpCustomize` / `helpLang` / `helpMaint` / `helpPlaceholder` | guarda intorno / premi un pulsante / rilascia il mouse / esci / rientra cabina / movimento nel corridoio / chiama un piano / toggle suono / toggle annunci vocali / toggle modalità notte / fuori servizio / comando vocale / apri / rivedi tutorial / personalizza hotel / lingua IT / EN / manutentore / (azione) | look around / press a button / release the mouse / exit / re-enter cabin / corridor movement / call a floor / toggle audio / toggle voice / toggle night mode / out of order / voice command / open / review tutorial / customize hotel / language IT / EN / maintenance / (action) |
+| `helpLookAroundMobile` / `helpPressButtonMobile` / `helpExitMobile` / `helpWASDMobile` / `helpCallMobile` / `helpAudioMobile` / `helpVoiceMobile` / `helpNightMobile` / `helpOOOMobile` / `helpTutorialMobile` / `helpCustomizeMobile` / `helpLangMobile` / `helpMaintMobile` | guarda intorno / tocca un pulsante / esci / rientra cabina / movimento nel corridoio / chiama un piano / toggle suono / toggle annunci vocali / toggle modalità notte / fuori servizio / apri / rivedi tutorial / personalizza hotel / lingua IT / EN / manutentore | look around / tap a button / exit / re-enter cabin / corridor movement / call a floor / toggle audio / toggle voice / toggle night mode / out of order / open / review tutorial / customize hotel / language IT / EN / maintenance |
+| `pointerHintMobile` | Trascina il dito per guardare. Usa il joystick per muoverti. | Drag to look around. Use the joystick to move. |
+
+### Mobile hamburger menu (D27, V4 Step 8)
+
+| Chiave | IT | EN |
+|---|---|---|
+| `mmTitle` | Menu | Menu |
+| `mmSectionToggles` | Impostazioni rapide | Quick toggles |
+| `mmSectionActions` | Altro | More |
+| `mmAudio` | Audio | Audio |
+| `mmVoice` | Annunci vocali | Voice announcements |
+| `mmNight` | Modalità notte | Night mode |
+| `mmOOO` | Fuori servizio | Out of service |
+| `mmVoiceCmd` | Comando vocale | Voice command |
+| `mmTutorial` | Rivedi tutorial | Review tutorial |
+| `mmCustomize` | Personalizza hotel | Customize hotel |
+| `mmMaint` | Manutentore | Maintenance |
+| `mmLang` | Lingua IT / EN | Language IT / EN |
+| `mmStateOn` / `mmStateOff` | ON / OFF | ON / OFF |
+| `ariaHamburger` | Apri menu impostazioni | Open settings menu |
+| `ariaMmClose` | Chiudi menu | Close menu |
+| `ariaMmToggleAudio` / `ariaMmToggleVoice` / `ariaMmToggleNight` / `ariaMmToggleOOO` / `ariaMmToggleVoiceCmd` | Attiva/disattiva audio (tasto M) / Attiva/disattiva annunci vocali (tasto V) / Attiva/disattiva modalità notte (tasto N) / Attiva/disattiva fuori servizio (tasto O) / Attiva/disattiva comando vocale (tasto K) | Toggle audio (key M) / Toggle voice announcements (key V) / Toggle night mode (key N) / Toggle out of service (key O) / Toggle voice command (key K) |
+| `ariaMmOpenTutorial` / `ariaMmOpenCustomize` / `ariaMmOpenMaint` / `ariaMmToggleLang` | Apri tutorial contestuale / Apri personalizzazione hotel / Apri pannello manutentore / Cambia lingua IT/EN | Open context tutorial / Open hotel customization / Open maintenance panel / Switch language IT/EN |
+
+### Mobile tutorial (D26est, V4 Step 7)
+
+| Chiave | IT | EN |
+|---|---|---|
+| `tutorialStep1TextMobile` / `tutorialStep1VoiceMobile` | Benvenuto al {}. Sei nella cabina al piano Terra. / Benvenuto a {}. Tocca le frecce su o giu per chiamare un piano. | Welcome to {}. You are in the cabin at the ground floor. / Welcome to {}. Tap the up or down arrows to call a floor. |
+| `tutorialStep2TextMobile` / `tutorialStep2VoiceMobile` | Tocca ▲ o ▼ in basso a destra per chiamare un piano. / Tocca le frecce per chiamare un piano. | Tap ▲ or ▼ at the bottom right to call a floor. / Tap the arrows to call a floor. |
+| `tutorialStep3TextMobile` / `tutorialStep3VoiceMobile` | Quando le porte sono aperte tocca il bottone Esci dalla cabina in alto per esplorare il corridoio. / Tocca Esci dalla cabina per esplorare il corridoio. | When the doors open tap the Exit cabin button at the top to explore the corridor. / Tap Exit cabin to explore the corridor. |
+| `tutorialStep4TextMobile` / `tutorialStep4VoiceMobile` | Nel corridoio: trascina il dito sullo schermo per guardarti intorno, e usa il joystick in basso a sinistra per muoverti. / Trascina il dito per guardare. Usa il joystick per muoverti. | In the corridor: drag your finger on the screen to look around, and use the joystick at the bottom left to move. / Drag your finger to look around. Use the joystick to move. |
+| `tutorialStep5TextMobile` / `tutorialStep5VoiceMobile` | Tocca il bottone Rientra per tornare in cabina. Tocca il menu IT/EN in alto a destra per cambiare lingua. / Tocca Rientra per tornare in cabina. Cambia lingua dal menu in alto. | Tap the Re-enter button to return to the cabin. Tap the IT/EN menu at the top right to change language. / Tap Re-enter to return to the cabin. Change language from the menu at the top. |
 
 ---
 
 ## 3. Tabella completa auto-generata
 
 Vedi `STRINGS_TABLE.md` (rigenerato automaticamente da `scripts/extract-strings.js`):
-225 chiavi uniche totali (1 IT-only, 1 EN-only). Lo script parsa `elevator.html`,
+**275 chiavi uniche totali** (1 IT-only, 1 EN-only). Lo script parsa `elevator.html`,
 estrae i blocchi STRINGS.it e STRINGS.en con gestione di escape single-quote,
 e produce una tabella markdown ordinata alfabeticamente.
 

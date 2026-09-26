@@ -347,10 +347,167 @@ three.js + addons da CDN unpkg).
 | `bossHotelAudio@v1` | `v: 1` | `{effects, music, tts}` (0..1) | **V3 Step 3** (D14) |
 | `bossHotelDisplay@v1` | `v: 1` | `{brightness}` (0.5..1.5) | **V3 Step 3** (D14) |
 | `bossHotelHistory@v1` | `v: 1` | `{alarmHistory, alarmCount, interphoneHistory, interphoneCount}` | **V3 Step 6** (D17) |
+| `bossHotelOnboarded@v1` | `v: 1` | `{onboarded: true}` (desktop wizard completed) | **V2 Step 2b** |
+| `bossHotelOnboardedMobile@v1` | `v: 1` | `{onboarded: true}` (mobile wizard completed) | **V4 Step 7** (D26est) |
 
 **Pattern**: ogni dominio ha la sua chiave separata + `v: 1` esplicito per
 migrazione forward-compatible. Nuovi campi futuri si aggiungono senza
-rompere consumers esistenti.
+rompere consumers esistenti. **Per `onboarded*`** le chiavi sono separate
+per mode (desktop vs mobile) perche' il wizard ha testi diversi (touch vs
+keyboard shortcuts) e l'utente che ha completato quello desktop deve poter
+vedere quello mobile la prima volta che usa un touch device.
+
+---
+
+## 9. Mode-aware rendering pattern (V4 Step 7+8, D26est + D27)
+
+Il progetto era nato **desktop-first** (mouse + tastiera + pointer lock).
+Nel tempo sono stati aggiunti elementi mobile (joystick virtuale,
+pulsanti call ▲▼, hint "Tap + drag") come OVERLAY sopra la logica
+desktop. Risultato su iPhone: cheatsheet WASD desktop + joystick mobile
++ ▲▼ mobile + pointer hint desktop tutti visibili insieme ("mix confuso").
+
+V4 Step 7+8 ha introdotto il pattern **mode-aware rendering** con `state.inputMode`
+come single source of truth.
+
+### 9.1 `state.inputMode` derivation
+
+```
+boot
+  ↓
+isMobileDevice() = touch + (smallestViewportDim <= 500 || Math.min(dims) <= 768)
+  ↓
+state.isMobile = boolean
+state.inputMode = state.isMobile ? 'mobile' : 'desktop'  // single source of truth
+  ↓
+document.body.classList.toggle('mobile-mode', state.isMobile)
+```
+
+Runtime re-evaluation su `matchMedia` change + `resize` + `orientationchange`
+(gestisce rotazione tablet/iPad):
+```
+recheck():
+  wasMode = state.inputMode
+  state.inputMode = isMobileDevice() ? 'mobile' : 'desktop'
+  if (wasMode !== state.inputMode) {
+    refreshMobileControls()    // add/remove body.mobile-mode
+    applyLangToDOM()           // re-render cheatsheet + pointer hint
+    if (state.tutorialActive) startTutorial(true)  // restart con nuovi step
+  }
+```
+
+### 9.2 Data structures paralleli
+
+```
+desktop mode:                          mobile mode:
+─────────────────                      ──────────────
+PANEL_HELP_KEYS (15)                   PANEL_HELP_KEYS_MOBILE (13)
+  WASD, E, M, V, N, O, K, ?, H, L        Drag dito, Tap, Tap HUD, Joystick,
+  + Mouse, Clic, ESC                     ▲▼, Menu, IT/EN
+                                        (no ESC: nessun mouse da rilasciare)
+
+TUTORIAL_STEPS (5)                     TUTORIAL_STEPS_MOBILE (5)
+  Step 1-5 con WASD/E/H/M/V/N/O/K        Step 1-5 con tap/drag/joystick/▲▼
+                                        + menu impostazioni
+
+START_SCREEN_KEYS (15)                 START_SCREEN_KEYS_MOBILE (13)
+  Mouse/Click/ESC/E/WASD/...             Drag/Tap/Tap HUD/Joystick/▲▼
+```
+
+### 9.3 Helper mode-aware
+
+```js
+function getPanelHelpKeys() {
+  return state.inputMode === 'mobile' ? PANEL_HELP_KEYS_MOBILE : PANEL_HELP_KEYS;
+}
+function getStartScreenKeys() {
+  return state.inputMode === 'mobile' ? START_SCREEN_KEYS_MOBILE : START_SCREEN_KEYS;
+}
+function getTutorialSteps() {
+  return state.inputMode === 'mobile' ? TUTORIAL_STEPS_MOBILE : TUTORIAL_STEPS;
+}
+```
+
+Tutti i callsites che usano questi data structures passano per gli helper.
+Mai controlli sparsi su `state.isMobile`.
+
+### 9.4 CSS split (mutualmente esclusivo)
+
+```css
+body.mobile-mode #panel-help,
+body.mobile-mode #crosshair { display: none !important; }
+body:not(.mobile-mode) #touch-controls { display: none !important; }
+```
+
+Risultato: su desktop vedi cheatsheet + crosshair + (no touch controls).
+Su mobile vedi joystick + ▲▼ + hamburger (no cheatsheet, no crosshair).
+
+### 9.5 Keydown short-circuit
+
+```js
+addEventListener('keydown', e => {
+  // FIX mobile bug: short-circuit su mobile.
+  if (state.inputMode === 'mobile') {
+    const isTutorialKey = state.tutorialActive && (Enter/Space/ArrowRight/Escape);
+    const isTutorialHelp = (Shift+/);
+    if (!isTutorialKey && !isTutorialHelp) return;
+  }
+  // ... gestione normale WASD/M/V/N/O/K/H/L/E
+});
+```
+
+### 9.6 Hamburger menu (V4 Step 8, D27)
+
+Su mobile, dopo D26est, le 9 azioni keyboard-only (M/V/N/O/K/?/H/L/Shift+M)
+restavano inaccessibili via touch. D27 aggiunge un menu hamburger:
+
+```
+[☰ top-left 44×44px]  → tap
+                              ↓
+[slide-in overlay 320px da destra]
+  Header: "Menu" + [×]
+  ─────────────
+  IMPOSTAZIONI RAPIDE
+    🔊 Audio              [ON/OFF]   ← aria-checked
+    🎵 Annunci vocali      [ON/OFF]
+    ☼ Modalità notte      [ON/OFF]
+    ⚠ Fuori servizio      [ON/OFF]
+    🎤 Comando vocale      [ON/OFF]
+  ─────────────
+  ALTRO
+    ❓ Rivedi tutorial        ›   ← openTutorial()
+    ✏ Personalizza hotel     ›   ← openHotelCustomizer()
+    🛠 Manutentore            ›   ← toggleMaintenance()
+    🌐 Lingua IT/EN           ›   ← setLang()
+```
+
+**Architettura**:
+- `handleMobileMenuAction(action)` switch su 9 casi (5 toggle inline +
+  4 link che chiudono menu + aprono overlay)
+- `refreshMobileMenuStates()` legge `state.muted/ttsEnabled/nightMode/...`
+  e aggiorna `aria-checked` + badge ON/OFF
+- `initMobileMenu()` bind click handler (idempotente: `initMobileMenu._bound`)
+- Event delegation su `.mm-item` (un listener × 9 voci)
+- Esposto in `BossHotelPure`: `openMobileMenu/closeMobileMenu/toggleMobileMenu/
+  isMobileMenuOpen/handleMobileMenuAction`
+
+**Sicurezza UX** (D27):
+- `openMobileMenu()` rilascia `pointer-lock` (evita mouse-look su tap)
+- `openMobileMenu()` chiude tutorial attivo (evita overlay stacking)
+- 4 azioni link chiudono il menu prima di aprire l'overlay target
+
+**i18n**: 25 nuove chiavi × IT + EN = **50 stringhe** (`mmTitle`,
+`mmSectionToggles/Actions`, `mmAudio/Voice/Night/OOO/VoiceCmd/Tutorial/
+Customize/Maint/Lang`, `mmStateOn/Off`, `ariaHamburger/MmClose/MmToggleAudio/...`).
+
+**FIX cabin nera iOS (post-merge)**: `#mobile-menu` ha `visibility: hidden`
+di default + `visibility: visible` su `.mobile-menu-shown`. Su iOS Safari un
+elemento `position: fixed` con `z-index` > canvas anche con
+`pointer-events: none` + `opacity: 0` + `transform: translateX(100%)`
+può causare "cabina nera" (bug `preserveDrawingBuffer: true` introdotto in
+PR #7). `visibility: hidden` è il fix canonico perché rimuove l'elemento
+dal compositor. `display: none` sarebbe troppo aggressivo (romperebbe la
+transition CSS del panel).
 
 ---
 
@@ -377,12 +534,23 @@ Vedi `AGENTS.md` §Contratti D-key per i dettagli completi. Riassunto:
 | D15 | Micro-animazioni reducedMotion | V3 Step 4 |
 | D16 | Performance pattern (LRU + merge) | V3 Step 5 |
 | D17 | Log strutturato + history persist | V3 Step 6 |
+| D18 | (riservato, non introdotto) | — |
+| D19 | (riservato, non introdotto) | — |
+| D20 | (riservato, non introdotto) | — |
+| D21 | Test exposure completa | V4 Step 1 |
+| D22 | Routing inversione asimmetrico | V4 Step 2 |
+| D23 | A11y ARIA standard | V4 Step 3 |
+| D24 | Funzioni core <150 righe | V4 Step 4 |
+| D25 | mergePlanes DRY | V4 Step 5 |
+| D26 | Open source boilerplate | V4 Step 6 |
+| **D26est** | **state.inputMode single source of truth** | **V4 Step 7** |
+| **D27** | **Mobile hamburger menu (☰)** | **V4 Step 8** |
 
 ---
 
 Vedi anche:
-- `AGENTS.md` — regole progetto + convenzioni codice
-- `PIANO_V3.md` — roadmap Polish Pack V3 (piano attuale)
+- `AGENTS.md` — regole progetto + convenzioni codice + 27 contratti D-key completi
+- `PIANO_V4.md` — roadmap Polish Pack V4 (piano attuale, 8/8 step chiuso)
 - `PIANO_MIGLIORAMENTI.md` — log implementativo di tutte le fasi
 - `README.md` — overview user-facing del progetto
-- `tests.html` — test suite vanilla JS (183+ assert)
+- `tests.html` — test suite vanilla JS (262+ assert)
