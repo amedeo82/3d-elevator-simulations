@@ -710,6 +710,205 @@
   body.mobile-mode #touch-controls {
     display: block;
   }
+  /* SOLUZIONE B: nascondi elementi desktop-only quando siamo in mobile.
+     La cheatsheet (#panel-help) elenca WASD/E/M/V/N/O/K/?/H/L/Shift+M
+     che su mobile non esistono. Il crosshair (#crosshair) e' il mirino
+     del pointer-lock mouse-look che su mobile non viene mai attivato.
+     Nascosti qui per la prima volta: la regola 'panel-help collassato'
+     menzionata nel commento V3 Step 9 esisteva solo sulla carta. */
+  body.mobile-mode #panel-help,
+  body.mobile-mode #crosshair {
+    display: none !important;
+  }
+  /* Su desktop (no .mobile-mode) i touch controls non devono apparire MAI
+     (anche se per qualche motivo il body ereditasse la classe). */
+  body:not(.mobile-mode) #touch-controls {
+    display: none !important;
+  }
+
+  /* Polish Pack V4 Step 8 (mobile menu): bottone hamburger + overlay menu.
+     Visibili SOLO su body.mobile-mode. Su desktop nessun hamburger. */
+  /* Bottone hamburger: fisso top-left (16px dall'edge), 44x44 px (touch target).
+     Background scuro glassmorphism coerente col resto HUD. z-index sopra HUD
+     ma sotto overlay aperti (customizer/maintenance/tutorial). */
+  .hamburger-btn {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(20, 20, 28, 0.85);
+    border: 1px solid rgba(201, 165, 90, 0.4);
+    color: #c9a55a;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 5500;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: background 0.15s, transform 0.1s;
+  }
+  .hamburger-btn:active {
+    background: rgba(60, 50, 30, 0.95);
+    transform: scale(0.95);
+  }
+  .hamburger-btn .hamburger-icon {
+    display: block;
+    line-height: 1;
+    font-family: Arial, sans-serif;
+  }
+  body.mobile-mode .hamburger-btn {
+    display: block;
+  }
+
+  /* Overlay menu mobile: slide-in dal lato destro, full-height. z-index alto
+     (sopra joystick/call buttons). Backdrop scuro semi-trasparente. */
+  #mobile-menu {
+    position: fixed;
+    top: 0; right: 0;
+    width: 320px;
+    max-width: 90vw;
+    height: 100vh;
+    z-index: 5800;
+    pointer-events: none;  /* abilitato solo quando .mobile-menu-shown */
+  }
+  #mobile-menu .mm-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+  }
+  #mobile-menu .mm-panel {
+    position: absolute;
+    top: 0; right: 0;
+    width: 320px;
+    max-width: 90vw;
+    height: 100vh;
+    background: linear-gradient(180deg, #1a1a24, #0a0a12);
+    border-left: 1px solid rgba(201, 165, 90, 0.3);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.6);
+    transform: translateX(100%);
+    transition: transform 0.25s ease-out;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  #mobile-menu.mobile-menu-shown {
+    pointer-events: auto;
+  }
+  #mobile-menu.mobile-menu-shown .mm-backdrop {
+    opacity: 1;
+  }
+  #mobile-menu.mobile-menu-shown .mm-panel {
+    transform: translateX(0);
+  }
+  /* Header del menu: titolo + bottone X. */
+  #mobile-menu .mm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(201, 165, 90, 0.25);
+    background: rgba(20, 20, 28, 0.7);
+    flex-shrink: 0;
+  }
+  #mobile-menu .mm-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #c9a55a;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  #mobile-menu .mm-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid rgba(201, 165, 90, 0.3);
+    color: #c9a55a;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #mobile-menu .mm-close:active {
+    background: rgba(201, 165, 90, 0.2);
+  }
+  /* Section grouping. */
+  #mobile-menu .mm-section {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  #mobile-menu .mm-section:last-child {
+    border-bottom: none;
+  }
+  #mobile-menu .mm-section-label {
+    padding: 4px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(201, 165, 90, 0.6);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  /* Voci menu: bottone full-width 44px+ altezza, allineamento icona+label+chevron/state. */
+  #mobile-menu .mm-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: #e8e0d0;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+    gap: 14px;
+  }
+  #mobile-menu .mm-item:active {
+    background: rgba(201, 165, 90, 0.15);
+  }
+  #mobile-menu .mm-icon {
+    font-size: 18px;
+    color: #c9a55a;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  #mobile-menu .mm-label {
+    flex: 1;
+    font-weight: 500;
+  }
+  #mobile-menu .mm-state {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #888;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  #mobile-menu .mm-item[aria-checked="true"] .mm-state {
+    background: rgba(109, 255, 124, 0.18);
+    color: #6dff7c;
+  }
+  #mobile-menu .mm-item[aria-checked="false"] .mm-state {
+    background: rgba(255, 80, 80, 0.12);
+    color: #ff8888;
+  }
+  #mobile-menu .mm-chevron {
+    font-size: 22px;
+    color: #c9a55a;
+    opacity: 0.5;
+    font-family: Arial, sans-serif;
+  }
   /* Joystick virtuale a sinistra in basso (analogico WASD). */
   #virtual-joystick {
     position: absolute;
@@ -957,6 +1156,73 @@
   </div>
 </div>
 
+<!-- Polish Pack V4 Step 8 (mobile menu): bottone hamburger top-left + overlay
+     menu slide-in per azioni keyboard-only (M/V/N/O/K/?/H/L/Shift+M) rese
+     accessibili via touch. Visibili SOLO su body.mobile-mode (vedi CSS). -->
+<button id="hamburger-btn" class="hamburger-btn" aria-label="Apri menu impostazioni" aria-haspopup="menu" aria-expanded="false">
+  <span class="hamburger-icon" aria-hidden="true">&#9776;</span>
+</button>
+<div id="mobile-menu" class="mobile-menu-hidden" role="menu" aria-labelledby="mobile-menu-title">
+  <div class="mm-backdrop" aria-hidden="true"></div>
+  <div class="mm-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title">
+    <div class="mm-header">
+      <div class="mm-title" id="mobile-menu-title"></div>
+      <button id="mm-close" class="mm-close" aria-label="Chiudi menu">&times;</button>
+    </div>
+    <div class="mm-section">
+      <div class="mm-section-label" data-mm-section="toggles"></div>
+      <button class="mm-item mm-toggle" data-action="toggle-audio" role="menuitemcheckbox" aria-checked="false">
+        <span class="mm-icon" aria-hidden="true">&#9834;</span>
+        <span class="mm-label" data-mm-key="audio"></span>
+        <span class="mm-state"></span>
+      </button>
+      <button class="mm-item mm-toggle" data-action="toggle-voice" role="menuitemcheckbox" aria-checked="false">
+        <span class="mm-icon" aria-hidden="true">&#9835;</span>
+        <span class="mm-label" data-mm-key="voice"></span>
+        <span class="mm-state"></span>
+      </button>
+      <button class="mm-item mm-toggle" data-action="toggle-night" role="menuitemcheckbox" aria-checked="false">
+        <span class="mm-icon" aria-hidden="true">&#9728;</span>
+        <span class="mm-label" data-mm-key="night"></span>
+        <span class="mm-state"></span>
+      </button>
+      <button class="mm-item mm-toggle" data-action="toggle-ooo" role="menuitemcheckbox" aria-checked="false">
+        <span class="mm-icon" aria-hidden="true">&#9888;</span>
+        <span class="mm-label" data-mm-key="ooo"></span>
+        <span class="mm-state"></span>
+      </button>
+      <button class="mm-item mm-toggle" data-action="toggle-voicecmd" role="menuitemcheckbox" aria-checked="false">
+        <span class="mm-icon" aria-hidden="true">&#127908;</span>
+        <span class="mm-label" data-mm-key="voicecmd"></span>
+        <span class="mm-state"></span>
+      </button>
+    </div>
+    <div class="mm-section">
+      <div class="mm-section-label" data-mm-section="actions"></div>
+      <button class="mm-item mm-action" data-action="open-tutorial" role="menuitem">
+        <span class="mm-icon" aria-hidden="true">&#10067;</span>
+        <span class="mm-label" data-mm-key="tutorial"></span>
+        <span class="mm-chevron" aria-hidden="true">&#8250;</span>
+      </button>
+      <button class="mm-item mm-action" data-action="open-customize" role="menuitem">
+        <span class="mm-icon" aria-hidden="true">&#9998;</span>
+        <span class="mm-label" data-mm-key="customize"></span>
+        <span class="mm-chevron" aria-hidden="true">&#8250;</span>
+      </button>
+      <button class="mm-item mm-action" data-action="open-maintenance" role="menuitem">
+        <span class="mm-icon" aria-hidden="true">&#128295;</span>
+        <span class="mm-label" data-mm-key="maint"></span>
+        <span class="mm-chevron" aria-hidden="true">&#8250;</span>
+      </button>
+      <button class="mm-item mm-action" data-action="toggle-lang" role="menuitem">
+        <span class="mm-icon" aria-hidden="true">&#127760;</span>
+        <span class="mm-label" data-mm-key="lang"></span>
+        <span class="mm-chevron" aria-hidden="true">&#8250;</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Polish Pack V2 Step 2b: overlay tooltip contestuale per il tutorial prima volta -->
 <div id="tutorial-tooltip" class="tutorial-hidden">
   <div class="tt-bubble">
@@ -1110,6 +1376,38 @@ const STRINGS = {
     helpCustomize: 'personalizza hotel',
     helpLang: 'lingua IT / EN',
     helpMaint: 'manutentore',
+    // Polish Pack V4 Step 7 (mobile wizard): varianti MOBILE dei comandi
+    // per la cheatsheet su device touch. Su mobile non esiste tastiera
+    // fisica, quindi tutti i tasti (WASD, E, M, V, N, O, K, ?, H, L,
+    // Shift+M) sono sostituiti da azioni touch (drag, tap, joystick, ▲▼).
+    // Ogni *_Mobile ha lo stesso scopo del corrispettivo desktop, ma il
+    // testo descrive l'interazione touch equivalente.
+    helpLookAroundMobile: 'guarda intorno',
+    helpPressButtonMobile: 'tocca un pulsante',
+    helpExitMobile: 'esci / rientra cabina',
+    helpWASDMobile: 'movimento nel corridoio',
+    helpCallMobile: 'chiama un piano',
+    helpAudioMobile: 'toggle suono',
+    helpVoiceMobile: 'toggle annunci vocali',
+    helpNightMobile: 'toggle modalit\u00e0 notte',
+    helpOOOMobile: 'fuori servizio',
+    helpTutorialMobile: 'apri / rivedi tutorial',
+    helpCustomizeMobile: 'personalizza hotel',
+    helpLangMobile: 'lingua IT / EN',
+    helpMaintMobile: 'manutentore',
+    // Polish Pack V4 Step 7 (mobile wizard): tutorial MOBILE 5 step parallelo.
+    // Sostituisce WASD/E/H/M/V/N/O/K con tap su HUD/joystick/▲▼/menu impostazioni.
+    tutorialStep1TextMobile: 'Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra.',
+    tutorialStep1VoiceMobile: 'Benvenuto a {}. Tocca le frecce su o giu per chiamare un piano.',
+    tutorialStep2TextMobile: 'Tocca <strong>\u25b2</strong> o <strong>\u25bc</strong> in basso a destra per <strong>chiamare un piano</strong>.',
+    tutorialStep2VoiceMobile: 'Tocca le frecce per chiamare un piano.',
+    tutorialStep3TextMobile: 'Quando le porte sono aperte tocca il bottone <strong>Esci dalla cabina</strong> in alto per esplorare il corridoio.',
+    tutorialStep3VoiceMobile: 'Tocca Esci dalla cabina per esplorare il corridoio.',
+    tutorialStep4TextMobile: 'Nel corridoio: <strong>trascina il dito</strong> sullo schermo per guardarti intorno, e usa il <strong>joystick</strong> in basso a sinistra per muoverti.',
+    tutorialStep4VoiceMobile: 'Trascina il dito per guardare. Usa il joystick per muoverti.',
+    tutorialStep5TextMobile: 'Tocca il bottone <strong>Rientra</strong> per tornare in cabina. Tocca il menu <strong>IT/EN</strong> in alto a destra per cambiare lingua.',
+    tutorialStep5VoiceMobile: 'Tocca Rientra per tornare in cabina. Cambia lingua dal menu in alto.',
+    pointerHintMobile: 'Trascina il dito per guardare. Usa il joystick per muoverti.',
     helpPlaceholder: '(azione)',
     // start screen intro paragraph
     startIntro: 'Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch, apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessit\u00e0, attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.',
@@ -1370,6 +1668,33 @@ const STRINGS = {
     ariaCustomizeApply: 'Applica e salva la personalizzazione hotel',
     ariaCustomizeReset: 'Ripristina i valori predefiniti',
     ariaCustomizeClose: 'Chiudi il pannello personalizzazione',
+    // Polish Pack V4 Step 8 (mobile menu): etichette del menu hamburger.
+    // Sezione toggle rapidi + sezione azioni (apertura altri overlay).
+    mmTitle: 'Menu',
+    mmSectionToggles: 'Impostazioni rapide',
+    mmSectionActions: 'Altro',
+    mmAudio: 'Audio',
+    mmVoice: 'Annunci vocali',
+    mmNight: 'Modalit\u00e0 notte',
+    mmOOO: 'Fuori servizio',
+    mmVoiceCmd: 'Comando vocale',
+    mmTutorial: 'Rivedi tutorial',
+    mmCustomize: 'Personalizza hotel',
+    mmMaint: 'Manutentore',
+    mmLang: 'Lingua IT / EN',
+    mmStateOn: 'ON',
+    mmStateOff: 'OFF',
+    ariaHamburger: 'Apri menu impostazioni',
+    ariaMmClose: 'Chiudi menu',
+    ariaMmToggleAudio: 'Attiva/disattiva audio (tasto M)',
+    ariaMmToggleVoice: 'Attiva/disattiva annunci vocali (tasto V)',
+    ariaMmToggleNight: 'Attiva/disattiva modalit\u00e0 notte (tasto N)',
+    ariaMmToggleOOO: 'Attiva/disattiva fuori servizio (tasto O)',
+    ariaMmToggleVoiceCmd: 'Attiva/disattiva comando vocale (tasto K)',
+    ariaMmOpenTutorial: 'Apri tutorial contestuale',
+    ariaMmOpenCustomize: 'Apri personalizzazione hotel',
+    ariaMmOpenMaint: 'Apri pannello manutentore',
+    ariaMmToggleLang: 'Cambia lingua IT/EN',
   },
   en: {
     cabinIdle: 'Cabin idle',
@@ -1390,6 +1715,33 @@ const STRINGS = {
     helpCustomize: 'customize hotel',
     helpLang: 'language IT / EN',
     helpMaint: 'maintenance',
+    // Polish Pack V4 Step 7 (mobile wizard): varianti MOBILE dei comandi
+    // per la cheatsheet su device touch (parallelo a helpLookAround, ecc.).
+    helpLookAroundMobile: 'look around',
+    helpPressButtonMobile: 'tap a button',
+    helpExitMobile: 'exit / re-enter cabin',
+    helpWASDMobile: 'corridor movement',
+    helpCallMobile: 'call a floor',
+    helpAudioMobile: 'toggle audio',
+    helpVoiceMobile: 'toggle voice',
+    helpNightMobile: 'toggle night mode',
+    helpOOOMobile: 'out of order',
+    helpTutorialMobile: 'open / review tutorial',
+    helpCustomizeMobile: 'customize hotel',
+    helpLangMobile: 'language IT / EN',
+    helpMaintMobile: 'maintenance',
+    // Polish Pack V4 Step 7 (mobile wizard): tutorial MOBILE 5 step parallelo.
+    tutorialStep1TextMobile: 'Welcome to <strong>{}</strong>. You are in the cabin at the ground floor.',
+    tutorialStep1VoiceMobile: 'Welcome to {}. Tap the up or down arrows to call a floor.',
+    tutorialStep2TextMobile: 'Tap <strong>\u25b2</strong> or <strong>\u25bc</strong> at the bottom right to <strong>call a floor</strong>.',
+    tutorialStep2VoiceMobile: 'Tap the arrows to call a floor.',
+    tutorialStep3TextMobile: 'When the doors open tap the <strong>Exit cabin</strong> button at the top to explore the corridor.',
+    tutorialStep3VoiceMobile: 'Tap Exit cabin to explore the corridor.',
+    tutorialStep4TextMobile: 'In the corridor: <strong>drag your finger</strong> on the screen to look around, and use the <strong>joystick</strong> at the bottom left to move.',
+    tutorialStep4VoiceMobile: 'Drag your finger to look around. Use the joystick to move.',
+    tutorialStep5TextMobile: 'Tap the <strong>Re-enter</strong> button to return to the cabin. Tap the <strong>IT/EN</strong> menu at the top right to change language.',
+    tutorialStep5VoiceMobile: 'Tap Re-enter to return to the cabin. Change language from the menu at the top.',
+    pointerHintMobile: 'Drag to look around. Use the joystick to move.',
     helpPlaceholder: '(action)',
     // start screen intro
     startIntro: 'You are about to enter a luxury 5-star elevator cabin. Select a floor from the touch panel, open/close the doors, explore the corridor of the floor reached and, in case of need, activate the emergency call. Move the view with the mouse as in a first-person game.',
@@ -1636,6 +1988,32 @@ const STRINGS = {
     ariaCustomizeApply: 'Apply and save hotel customization',
     ariaCustomizeReset: 'Restore default values',
     ariaCustomizeClose: 'Close customization panel',
+    // Polish Pack V4 Step 8 (mobile menu): hamburger menu labels (EN).
+    mmTitle: 'Menu',
+    mmSectionToggles: 'Quick toggles',
+    mmSectionActions: 'More',
+    mmAudio: 'Audio',
+    mmVoice: 'Voice announcements',
+    mmNight: 'Night mode',
+    mmOOO: 'Out of service',
+    mmVoiceCmd: 'Voice command',
+    mmTutorial: 'Review tutorial',
+    mmCustomize: 'Customize hotel',
+    mmMaint: 'Maintenance',
+    mmLang: 'Language IT / EN',
+    mmStateOn: 'ON',
+    mmStateOff: 'OFF',
+    ariaHamburger: 'Open settings menu',
+    ariaMmClose: 'Close menu',
+    ariaMmToggleAudio: 'Toggle audio (key M)',
+    ariaMmToggleVoice: 'Toggle voice announcements (key V)',
+    ariaMmToggleNight: 'Toggle night mode (key N)',
+    ariaMmToggleOOO: 'Toggle out of service (key O)',
+    ariaMmToggleVoiceCmd: 'Toggle voice command (key K)',
+    ariaMmOpenTutorial: 'Open context tutorial',
+    ariaMmOpenCustomize: 'Open hotel customization',
+    ariaMmOpenMaint: 'Open maintenance panel',
+    ariaMmToggleLang: 'Switch language IT/EN',
   }
 };
 
@@ -2030,6 +2408,17 @@ const state = {
   // all'init via isMobileDevice(). Cambia il flow di input (no pointerLock,
   // si attivano touch listeners + HUD virtuale joystick/pulsanti ▲▼).
   isMobile: false,
+  // SOLUZIONE B (refactor desktop/mobile separation): single source of truth
+  // per il 'mode' corrente. Derivato da isMobile() al boot e ricalcolato
+  // su resize/orientationchange. Tutti i branch UI/handler/tutorial/
+  // cheatsheet leggono SOLO questo flag (non piu' controlli sparsi su
+  // state.isMobile). Valori: 'desktop' | 'mobile'.
+  inputMode: 'desktop',
+  // Per-mode onboarded flag: l'utente puo' aver completato il wizard
+  // desktop e non quello mobile (o viceversa). Salvati in localStorage
+  // con chiavi separate.
+  onboardedDesktop: false,
+  onboardedMobile: false,
   // Joystick virtuale state (Q9.2): posizione drag attiva (touch drag).
   _joystick: { active: false, dx: 0, dz: 0 }
 };
@@ -5684,6 +6073,12 @@ const DOOR_COUNTDOWN_DURATION = 3.0;
 // ============================================================
 const ONBOARDED_KEY = 'bossHotelOnboarded';
 const ONBOARDED_VERSION = 1;
+// Polish Pack V4 Step 7 (mobile wizard): per-mode onboarded flag.
+// Su mobile il tutoriale usa testi diversi (touch-based), quindi l'utente
+// che ha completato il wizard desktop deve poter rivedere quello mobile
+// (e viceversa). Chiave localStorage dedicata bossHotelOnboarded@v1_Mobile.
+const ONBOARDED_KEY_MOBILE = 'bossHotelOnboardedMobile';
+const ONBOARDED_VERSION_MOBILE = 1;
 // Polish Pack V2 Step 8: TUTORIAL_STEPS usa chiavi STRINGS invece di stringhe hardcoded.
 // textKey/voiceKey vengono risolte a runtime in renderTutorialStep() per supporto IT/EN.
 const TUTORIAL_STEPS = [
@@ -5715,6 +6110,46 @@ const TUTORIAL_STEPS = [
     voiceKey: 'tutorialStep5Voice'
   }
 ];
+// Polish Pack V4 Step 7 (mobile wizard): wizard MOBILE parallelo a quello
+// desktop. Stessi 5 step, testi diversi che descrivono le azioni touch
+// (tap, drag, joystick, ▲▼, menu impostazioni). Risolto runtime via
+// getTutorialSteps() in base a state.inputMode.
+const TUTORIAL_STEPS_MOBILE = [
+  {
+    textKey: 'tutorialStep1TextMobile',
+    textHtml: true,
+    textExtra: () => HOTEL_CONFIG.shortName,
+    voiceKey: 'tutorialStep1VoiceMobile',
+    voiceExtra: () => HOTEL_CONFIG.shortName
+  },
+  {
+    textKey: 'tutorialStep2TextMobile',
+    textHtml: true,
+    voiceKey: 'tutorialStep2VoiceMobile'
+  },
+  {
+    textKey: 'tutorialStep3TextMobile',
+    textHtml: true,
+    voiceKey: 'tutorialStep3VoiceMobile'
+  },
+  {
+    textKey: 'tutorialStep4TextMobile',
+    textHtml: true,
+    voiceKey: 'tutorialStep4VoiceMobile'
+  },
+  {
+    textKey: 'tutorialStep5TextMobile',
+    textHtml: true,
+    voiceKey: 'tutorialStep5VoiceMobile'
+  }
+];
+// Polish Pack V4 Step 7 (mobile wizard): selettore mode-aware.
+// Stato corrente = state.inputMode ('desktop'|'mobile'). Tutti i callsites
+// che usano TUTORIAL_STEPS devono passare per questo helper per supportare
+// il runtime toggle (V4 Step 7 B).
+function getTutorialSteps() {
+  return state.inputMode === 'mobile' ? TUTORIAL_STEPS_MOBILE : TUTORIAL_STEPS;
+}
 function getTutorialText(step) {
   const s = STRINGS[state.lang];
   let txt = s[step.textKey];
@@ -5730,17 +6165,25 @@ function getTutorialVoice(step) {
 let tutorialTimeout = null;
 
 function loadOnboarded() {
+  // Polish Pack V4 Step 7 (mobile wizard): carica il flag per-mode. Su mobile
+  // usa chiave separata (bossHotelOnboardedMobile@v1) cosi' l'utente che ha
+  // completato il wizard desktop deve poter rivedere quello mobile.
+  const key = state.inputMode === 'mobile' ? ONBOARDED_KEY_MOBILE : ONBOARDED_KEY;
+  const version = state.inputMode === 'mobile' ? ONBOARDED_VERSION_MOBILE : ONBOARDED_VERSION;
   try {
-    const raw = localStorage.getItem(ONBOARDED_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return false;
     const p = JSON.parse(raw);
-    return !!(p && p.v === ONBOARDED_VERSION && p.onboarded === true);
+    return !!(p && p.v === version && p.onboarded === true);
   } catch(e) { return false; }
 }
 function saveOnboarded(val) {
+  // Polish Pack V4 Step 7 (mobile wizard): salva il flag per-mode.
+  const key = state.inputMode === 'mobile' ? ONBOARDED_KEY_MOBILE : ONBOARDED_KEY;
+  const version = state.inputMode === 'mobile' ? ONBOARDED_VERSION_MOBILE : ONBOARDED_VERSION;
   try {
-    localStorage.setItem(ONBOARDED_KEY, JSON.stringify({
-      v: ONBOARDED_VERSION,
+    localStorage.setItem(key, JSON.stringify({
+      v: version,
       onboarded: val
     }));
   } catch(e) { /* storage non disponibile: ignora */ }
@@ -5759,8 +6202,9 @@ function startTutorial(force) {
   }
 }
 function nextTip() {
+  const steps = getTutorialSteps();
   state.tutorialStep++;
-  if (state.tutorialStep >= TUTORIAL_STEPS.length) {
+  if (state.tutorialStep >= steps.length) {
     endTutorial();
     return;
   }
@@ -5771,15 +6215,19 @@ function endTutorial() {
   state.tutorialStep = 0;
   const tt = document.getElementById('tutorial-tooltip');
   if (tt) tt.className = 'tutorial-hidden';
+  // Polish Pack V4 Step 7 (mobile wizard): aggiorna il flag per-mode.
+  if (state.inputMode === 'mobile') state.onboardedMobile = true;
+  else state.onboardedDesktop = true;
   state.onboarded = true;
   saveOnboarded(true);
 }
 function renderTutorialStep() {
-  const step = TUTORIAL_STEPS[state.tutorialStep];
+  const steps = getTutorialSteps();
+  const step = steps[state.tutorialStep];
   if (!step) return;
   const stepEl = document.getElementById('tt-step');
   const textEl = document.getElementById('tt-text');
-  if (stepEl) stepEl.textContent = (state.tutorialStep + 1) + '/' + TUTORIAL_STEPS.length;
+  if (stepEl) stepEl.textContent = (state.tutorialStep + 1) + '/' + steps.length;
   // Step 8: usa getTutorialText() che risolve la key da STRINGS[state.lang]
   if (textEl) textEl.innerHTML = getTutorialText(step);
   // Voice: pronuncia solo se TTS attivo, con rate leggermente ridotto
@@ -8050,17 +8498,39 @@ function isMobileDevice() {
 function initMobileDetection() {
   if (typeof window === 'undefined' || !window.matchMedia) {
     state.isMobile = false;
+    state.inputMode = 'desktop';
     return;
   }
   const recheck = () => {
-    const wasMobile = state.isMobile;
+    const wasMode = state.inputMode;
     state.isMobile = isMobileDevice();
+    state.inputMode = state.isMobile ? 'mobile' : 'desktop';
     // Se cambia mode, refresh HUD visibility (touch controls vs pointer lock).
-    if (wasMobile !== state.isMobile && typeof refreshMobileControls === 'function') {
+    if (wasMode !== state.inputMode && typeof refreshMobileControls === 'function') {
       refreshMobileControls();
+    }
+    // Polish Pack V4 Step 7 (mobile wizard): runtime toggle mode-aware.
+    // Quando l'utente ruota il device o ridimensiona la finestra, la mode
+    // corrente puo' cambiare (es. da portrait a landscape su iPad Pro).
+    // Dobbiamo ri-renderizzare TUTTI gli elementi dipendenti dalla mode:
+    //   - panel-help innerHTML (cheatsheet desktop vs mobile)
+    //   - start screen .keys (startup prima del game start)
+    //   - pointer hint text (Click vs Tap+drag)
+    //   - tutorial step corrente (se attivo)
+    // applyLangToDOM() fa il grosso del lavoro (rigenera panel-help,
+    // pointer hint, ecc.). Per il tutorial attivo, se era a meta' di
+    // uno step desktop e la mode diventa mobile, ricominciamo da capo
+    // con gli step mobile (piu' chiaro che mischiare).
+    if (wasMode !== state.inputMode) {
+      if (typeof applyLangToDOM === 'function') applyLangToDOM();
+      // Se tutorial attivo durante cambio mode, restart con step corretti
+      if (state.tutorialActive && typeof startTutorial === 'function') {
+        startTutorial(true);
+      }
     }
   };
   state.isMobile = isMobileDevice();
+  state.inputMode = state.isMobile ? 'mobile' : 'desktop';
   // Riascolta cambiamenti (es. ruotando tablet, ridimensionando finestra).
   // matchMedia change: cattura il cambio di (pointer: coarse) o viewport.
   const mql = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
@@ -8226,6 +8696,248 @@ function refreshMobileControls() {
         || 'Click to activate the pointer';
     }
   }
+}
+
+// ============================================================
+// POLISH PACK V4 STEP 8 (mobile menu): menu hamburger per azioni
+// keyboard-only rese accessibili via touch. Visibile solo su body.mobile-mode.
+// ============================================================
+// Stato del menu: aperto/chiuso. Esposto come window.__mobileMenuOpen per test/debug.
+function isMobileMenuOpen() {
+  return !!document.getElementById('mobile-menu')
+      && document.getElementById('mobile-menu').classList.contains('mobile-menu-shown');
+}
+function openMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const btn = document.getElementById('hamburger-btn');
+  if (!menu) return;
+  // Se customizer/maintenance sono aperti, chiudili prima per evitare
+  // overlay stacking. Se tutorial attivo, chiudilo.
+  if (state.tutorialActive && typeof endTutorial === 'function') endTutorial();
+  menu.classList.remove('mobile-menu-hidden');
+  menu.classList.add('mobile-menu-shown');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  refreshMobileMenuStates();
+  // su mobile rilascia pointer-lock se attivo (sicurezza: tap su hamburger
+  // non dovrebbe triggerare mouse-look).
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closeMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const btn = document.getElementById('hamburger-btn');
+  if (!menu) return;
+  menu.classList.remove('mobile-menu-shown');
+  menu.classList.add('mobile-menu-hidden');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+function toggleMobileMenu() {
+  if (isMobileMenuOpen()) closeMobileMenu();
+  else openMobileMenu();
+}
+// Aggiorna lo stato ON/OFF delle voci toggle leggendo lo state corrente.
+// Chiamato all'apertura del menu e dopo ogni toggle (per riflettere immediatamente).
+function refreshMobileMenuStates() {
+  const s = STRINGS[state.lang] || STRINGS.it;
+  const titleEl = document.getElementById('mobile-menu-title');
+  if (titleEl) titleEl.textContent = s.mmTitle || 'Menu';
+  // section labels
+  const secLabels = document.querySelectorAll('.mm-section-label[data-mm-section]');
+  secLabels.forEach((el) => {
+    const k = el.getAttribute('data-mm-section');
+    el.textContent = k === 'toggles' ? (s.mmSectionToggles || 'Toggles') : (s.mmSectionActions || 'Actions');
+  });
+  // aria-label del close button
+  const closeBtn = document.getElementById('mm-close');
+  if (closeBtn) closeBtn.setAttribute('aria-label', s.ariaMmClose || 'Close menu');
+  // hamburger btn aria-label
+  const hamBtn = document.getElementById('hamburger-btn');
+  if (hamBtn) hamBtn.setAttribute('aria-label', s.ariaHamburger || 'Open menu');
+  // 5 toggle items: audio, voice, night, ooo, voicecmd
+  const toggleMap = {
+    'toggle-audio':    { state: !state.muted,     label: s.mmAudio || 'Audio',   aria: s.ariaMmToggleAudio },
+    'toggle-voice':    { state: !!ttsEnabled,     label: s.mmVoice || 'Voice',   aria: s.ariaMmToggleVoice },
+    'toggle-night':    { state: !!state.nightMode, label: s.mmNight || 'Night',  aria: s.ariaMmToggleNight },
+    'toggle-ooo':      { state: !!state.outOfOrder, label: s.mmOOO || 'OOO',     aria: s.ariaMmToggleOOO },
+    'toggle-voicecmd': { state: !!state.voiceEnabled, label: s.mmVoiceCmd || 'Voice cmd', aria: s.ariaMmToggleVoiceCmd }
+  };
+  Object.entries(toggleMap).forEach(([action, info]) => {
+    const btn = document.querySelector(`[data-action="${action}"]`);
+    if (!btn) return;
+    const lbl = btn.querySelector('.mm-label');
+    const state = btn.querySelector('.mm-state');
+    if (lbl) lbl.textContent = info.label;
+    if (state) state.textContent = info.state ? (s.mmStateOn || 'ON') : (s.mmStateOff || 'OFF');
+    btn.setAttribute('aria-checked', info.state ? 'true' : 'false');
+    btn.setAttribute('aria-label', info.aria || info.label);
+  });
+  // 4 action items
+  const actionMap = {
+    'open-tutorial':   { label: s.mmTutorial || 'Tutorial',   aria: s.ariaMmOpenTutorial },
+    'open-customize':  { label: s.mmCustomize || 'Customize', aria: s.ariaMmOpenCustomize },
+    'open-maintenance':{ label: s.mmMaint || 'Maintenance',   aria: s.ariaMmOpenMaint },
+    'toggle-lang':     { label: s.mmLang || 'Language',       aria: s.ariaMmToggleLang }
+  };
+  Object.entries(actionMap).forEach(([action, info]) => {
+    const btn = document.querySelector(`[data-action="${action}"]`);
+    if (!btn) return;
+    const lbl = btn.querySelector('.mm-label');
+    if (lbl) lbl.textContent = info.label;
+    btn.setAttribute('aria-label', info.aria || info.label);
+  });
+}
+// Handler per le voci del menu. Le toggle chiamano direttamente la funzione
+// di stato; le action chiudono il menu e aprono l'overlay target.
+function handleMobileMenuAction(action) {
+  // Audio toggle (M su desktop)
+  if (action === 'toggle-audio') {
+    state.muted = !state.muted;
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = state.muted ? STRINGS[state.lang].audioOff : STRINGS[state.lang].audioOn;
+    setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
+    refreshMobileMenuStates();
+    return;
+  }
+  // Voice announcements toggle (V su desktop)
+  if (action === 'toggle-voice') {
+    ttsEnabled = !ttsEnabled;
+    if (ttsEnabled && typeof speak === 'function') {
+      speak(state.lang === 'en' ? 'Voice announcements enabled' : 'Annunci vocali attivati');
+    }
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = ttsEnabled ? STRINGS[state.lang].voiceOn : STRINGS[state.lang].voiceOff;
+    setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
+    refreshMobileMenuStates();
+    return;
+  }
+  // Night mode toggle (N su desktop)
+  if (action === 'toggle-night') {
+    state.nightMode = !state.nightMode;
+    const status = document.getElementById('statusText');
+    if (status) status.textContent = state.nightMode
+      ? (state.lang === 'en' ? 'Night mode: ON' : 'Modalita\' notte: ON')
+      : (state.lang === 'en' ? 'Night mode: OFF' : 'Modalita\' notte: OFF');
+    setTimeout(() => updateFloorDisplay(), 1500);
+    savePrefs();
+    refreshMobileMenuStates();
+    return;
+  }
+  // Out of order toggle (O su desktop) — logica identica al keydown handler.
+  if (action === 'toggle-ooo') {
+    state.outOfOrder = !state.outOfOrder;
+    if (state.outOfOrder) {
+      state.isMoving = false;
+      movePaused = true;
+      queueClear();
+      state.prenotationActive = false;
+      setDoors(false);
+      if (typeof speak === 'function') {
+        speak(state.lang === 'en' ? 'Elevator out of service.' : 'Ascensore fuori servizio.');
+      }
+      if (typeof playBeep === 'function') {
+        playBeep(440, 0.15, 'square', 0.1);
+        setTimeout(() => playBeep(220, 0.2, 'square', 0.1), 180);
+      }
+    } else {
+      movePaused = false;
+      if (!state.alarmOn && state.playerInCabin && !state.isMoving) setDoors(true);
+      if (typeof speak === 'function') speak(STRINGS[state.lang].elevatorRestored + '.');
+      if (typeof playBeep === 'function') playBeep(660, 0.12, 'sine', 0.1);
+    }
+    if (typeof drawFloorSign === 'function') drawFloorSign(state.currentFloor);
+    if (typeof bus !== 'undefined' && bus) bus.emit(state.outOfOrder ? 'ooo:on' : 'ooo:off');
+    if (typeof markDisplayDirty === 'function') markDisplayDirty();
+    const status = document.getElementById('statusText');
+    if (status) {
+      status.textContent = state.outOfOrder ? STRINGS[state.lang].oooOn : STRINGS[state.lang].elevatorRestored;
+      setTimeout(() => updateFloorDisplay(), 1500);
+    }
+    refreshMobileMenuStates();
+    return;
+  }
+  // Voice command toggle (K su desktop)
+  if (action === 'toggle-voicecmd') {
+    state.voiceEnabled = !state.voiceEnabled;
+    if (typeof startVoice === 'function' && state.voiceEnabled) startVoice();
+    if (typeof stopVoice === 'function' && !state.voiceEnabled) stopVoice();
+    refreshMobileMenuStates();
+    return;
+  }
+  // Tutorial replay (? su desktop)
+  if (action === 'open-tutorial') {
+    closeMobileMenu();
+    if (typeof startTutorial === 'function') startTutorial(true);
+    return;
+  }
+  // Hotel customizer (H su desktop)
+  if (action === 'open-customize') {
+    closeMobileMenu();
+    if (typeof openHotelCustomizer === 'function') openHotelCustomizer();
+    return;
+  }
+  // Maintenance (Shift+M su desktop)
+  if (action === 'open-maintenance') {
+    closeMobileMenu();
+    if (typeof toggleMaintenance === 'function') toggleMaintenance();
+    return;
+  }
+  // Language toggle (L su desktop)
+  if (action === 'toggle-lang') {
+    closeMobileMenu();
+    const prev = state.lang;
+    if (typeof setLang === 'function') {
+      setLang(prev === 'it' ? 'en' : 'it');
+      if (typeof showSubtitle === 'function') {
+        showSubtitle(state.lang === 'en' ? 'Language: English' : 'Lingua: Italiano', 1500);
+      }
+      if (typeof playBeep === 'function') playBeep(440, 0.1, 'sine', 0.08);
+    }
+    return;
+  }
+}
+// Polish Pack V4 Step 8 (mobile menu): initMobileMenu — bind listeners per
+// hamburger button + close + backdrop + tap-outside. Idempotente (ri-bind safe).
+function initMobileMenu() {
+  if (initMobileMenu._bound) return;
+  const hamBtn = document.getElementById('hamburger-btn');
+  const closeBtn = document.getElementById('mm-close');
+  const menu = document.getElementById('mobile-menu');
+  const backdrop = menu && menu.querySelector('.mm-backdrop');
+  if (hamBtn) {
+    hamBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMobileMenu();
+    });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileMenu();
+    });
+  }
+  if (backdrop) {
+    backdrop.addEventListener('click', () => closeMobileMenu());
+  }
+  if (menu) {
+    // Event delegation sul panel per evitare 9 listener separati.
+    menu.querySelectorAll('.mm-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = item.getAttribute('data-action');
+        if (action) handleMobileMenuAction(action);
+      });
+    });
+  }
+  initMobileMenu._bound = true;
+}
+// Esposizione in BossHotelPure per test cross-iframe.
+if (typeof window !== 'undefined') {
+  window.openMobileMenu = openMobileMenu;
+  window.closeMobileMenu = closeMobileMenu;
+  window.toggleMobileMenu = toggleMobileMenu;
+  window.isMobileMenuOpen = isMobileMenuOpen;
+  window.handleMobileMenuAction = handleMobileMenuAction;
 }
 
 // Polish Pack V3 Step 1d: helper per il calcolo del contrast ratio WCAG.
@@ -9427,6 +10139,22 @@ document.addEventListener('pointerlockchange', () => {
 // MOVIMENTO FPS (corridoio) e LISTENERS TASTIERA
 // ============================================================
 addEventListener('keydown', e => {
+  // Polish Pack V4 Step 7 (mobile wizard): short-circuit su mobile.
+  // Su device touch non c'e' tastiera fisica. Il browser genera keydown
+  // solo per tastiere esterne (Bluetooth/USB) o emulatori di tastiera
+  // software, che non mappano su alcuna azione di gioco. Ignorare tutto
+  // tranne '?' (riapertura tutorial) e Enter/Space/Esc (controlli
+  // tutorial attivo) mantiene il comportamento consistente tra
+  // tastiera-virtuale-su-mobile e nessuna-tastiera-su-mobile.
+  // Eccezione: tutorial attivo (Enter/Space/Esc/?) viene comunque
+  // processato per consentire all'utente di skippare se usa una
+  // tastiera Bluetooth connessa.
+  if (state.inputMode === 'mobile') {
+    const isTutorialKey = state.tutorialActive
+      && (e.code === 'Enter' || e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'Escape');
+    const isTutorialHelp = e.code === 'Slash' && e.shiftKey;
+    if (!isTutorialKey && !isTutorialHelp) return;
+  }
   // Polish Pack V2 Step 2b: tasto ? apre/riapre il tutorial contestuale
   if (e.code === 'Slash' && e.shiftKey) {
     e.preventDefault();
@@ -10225,9 +10953,10 @@ loadHistory();
 // Polish Pack V3 Step 3: init sliders QoL DOPO il caricamento da localStorage
 // (cosi' gli slider riflettono le preferenze salvate dell'utente).
 initSettingsQoL();
-// Polish Pack V3 Step 9 (Q9.4): init mobile detection + touch controls.
+// Polish Pack V3 Step 9 (Q9.4): init mobile detection + touch controls + menu.
 initMobileDetection();
 initTouchControls();
+initMobileMenu();  // Polish Pack V4 Step 8: hamburger menu (mobile-only UI)
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
 // Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
@@ -10289,6 +11018,10 @@ function t(key) {
 }
 
 // Dati tabellari per le tabelle HTML statiche (rigenerate come innerHTML)
+// Polish Pack V4 Step 7 (mobile wizard): parallelo PANEL_HELP_KEYS_MOBILE per
+// device touch. Su mobile non esiste tastiera fisica, quindi tutte le voci
+// usano azioni touch (drag, tap, joystick, ▲▼, menu impostazioni).
+// Manteniamo stesso numero di voci per consistenza visiva (15 entries).
 const PANEL_HELP_KEYS = [
   null,                                            // Mouse / look (no key, il primo span è testo libero)
   { k: 'helpLookAround',   noKbd: true  },       // Mouse: 'guarda intorno'
@@ -10307,14 +11040,41 @@ const PANEL_HELP_KEYS = [
   { k: 'helpLang',          kbd: 'L' },
   { k: 'helpMaint',         kbd: 'Shift+M' }
 ];
+const PANEL_HELP_KEYS_MOBILE = [
+  null,                                            // placeholder per allineamento
+  { k: 'helpLookAroundMobile', noKbd: true, mobileLabel: 'Drag dito' },
+  { k: 'helpPressButtonMobile', noKbd: true, mobileLabel: 'Tap' },
+  { k: 'helpExitMobile', noKbd: true, mobileLabel: 'Tap HUD' },
+  { k: 'helpWASDMobile', noKbd: true, mobileLabel: 'Joystick' },
+  { k: 'helpCallMobile', noKbd: true, mobileLabel: '\u25b2\u25bc' },
+  { k: 'helpAudioMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpVoiceMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpNightMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpOOOMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpTutorialMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpCustomizeMobile', noKbd: true, mobileLabel: 'Menu' },
+  { k: 'helpLangMobile', noKbd: true, mobileLabel: 'IT/EN' },
+  { k: 'helpMaintMobile', noKbd: true, mobileLabel: 'Menu' }
+];
+// helper: seleziona il set di chiavi in base a state.inputMode.
+function getPanelHelpKeys() {
+  return state.inputMode === 'mobile' ? PANEL_HELP_KEYS_MOBILE : PANEL_HELP_KEYS;
+}
 function buildPanelHelpRows() {
-  return PANEL_HELP_KEYS.slice(1).map(({ k, kbd, noKbd }) => {
-    const lbl = t(k);
-    if (noKbd) {
-      // Mouse / Click — span senza <kbd>
-      return `<div class="row"><span>${k === 'helpLookAround' ? 'Movimento mouse' : 'Clic'}</span><span>${lbl}</span></div>`;
+  const keys = getPanelHelpKeys();
+  return keys.slice(1).map((entry) => {
+    const lbl = t(entry.k);
+    if (state.inputMode === 'mobile') {
+      // Su mobile niente <kbd>: mostriamo l'azione touch (mobileLabel)
+      // nel primo span, la descrizione localizzata nel secondo.
+      return `<div class="row"><span>${entry.mobileLabel}</span><span>${lbl}</span></div>`;
     }
-    return `<div class="row"><span><kbd>${kbd}</kbd></span><span>${lbl}</span></div>`;
+    if (entry.noKbd) {
+      // Mouse / Click — span senza <kbd>. 'Movimento mouse' / 'Clic'
+      // sono hardcoded IT storici ma visibili anche su EN desktop.
+      return `<div class="row"><span>${entry.k === 'helpLookAround' ? 'Movimento mouse' : 'Clic'}</span><span>${lbl}</span></div>`;
+    }
+    return `<div class="row"><span><kbd>${entry.kbd}</kbd></span><span>${lbl}</span></div>`;
   }).join('');
 }
 
@@ -10327,8 +11087,15 @@ const START_SCREEN_KEYS = PANEL_HELP_KEYS.slice(1).map(({ k, kbd }) => {
   else firstSpan = kbd;
   return { firstSpan, lbl };
 });
+const START_SCREEN_KEYS_MOBILE = PANEL_HELP_KEYS_MOBILE.slice(1).map(({ k, mobileLabel }) => {
+  return { firstSpan: mobileLabel, lbl: t(k) };
+});
+function getStartScreenKeys() {
+  return state.inputMode === 'mobile' ? START_SCREEN_KEYS_MOBILE : START_SCREEN_KEYS;
+}
 function buildStartScreenKeys() {
-  return START_SCREEN_KEYS.map(({ firstSpan, lbl }) =>
+  const keys = getStartScreenKeys();
+  return keys.map(({ firstSpan, lbl }) =>
     `<div>${firstSpan}</div><div>${lbl}</div>`
   ).join('');
 }
@@ -10382,7 +11149,12 @@ function applyLangToDOM() {
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.textContent = s.startBtn;
   const ph = document.getElementById('pointerhint');
-  if (ph) ph.textContent = s.pointerHint;
+  // Polish Pack V4 Step 7 (mobile wizard): pointer hint mode-aware.
+  // Su mobile il desktop "Click per attivare il puntatore" non ha senso
+  // (no pointer-lock). Mostriamo invece "Trascina il dito + joystick".
+  if (ph) ph.textContent = state.inputMode === 'mobile'
+    ? (s.pointerHintMobile || s.pointerHint)
+    : s.pointerHint;
   const mt = document.getElementById('modeText');
   if (mt) mt.textContent = s.inCabinBadge;
   const exitBtn = document.getElementById('hud-exit-btn');

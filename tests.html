@@ -1582,6 +1582,344 @@
         });
       });
 
+      // ---- SOLUZIONE B (V4 Step 7): due scene indipendenti desktop/mobile ----
+      // Regressione: il progetto era nato desktop-first e ogni intervento
+      // mobile era un overlay sopra logiche desktop (mix confuso). Verifica
+      // che esistano i data structure paralleli, che il mode switching
+      // produca contenuti diversi, e che il CSS separi correttamente le UI.
+      describe('SOLUZIONE B: due scene desktop/mobile indipendenti', () => {
+        const doc = iframe.contentDocument;
+        const css = doc.querySelector('style').textContent;
+        const W = iframe.contentWindow;
+        const P2 = W && W.BossHotelPure;
+
+        test('CSS nasconde #panel-help + #crosshair su body.mobile-mode', () => {
+          assert(/body\.mobile-mode\s+#panel-help/.test(css),
+            'manca regola CSS per nascondere #panel-help su mobile');
+          assert(/body\.mobile-mode\s+#crosshair/.test(css),
+            'manca regola CSS per nascondere #crosshair su mobile');
+        });
+
+        test('CSS nasconde #touch-controls su body:not(.mobile-mode)', () => {
+          assert(/body:not\(\.mobile-mode\)\s+#touch-controls/.test(css),
+            'manca regola CSS per nascondere #touch-controls su desktop');
+        });
+
+        test('STRINGS.it ha chiavi mobile-specific (helpLookAroundMobile, pointerHintMobile)', () => {
+          // Verifica che applyLangToDOM possa risolvere le chiavi mobile
+          // durante un ipotetico cambio di mode. Le stringhe devono
+          // esistere in entrambe le lingue (IT + EN).
+          assert(P2 && typeof P2.applyLangToDOM === 'function',
+            'applyLangToDOM non esposto in BossHotelPure');
+          // Forza modalita' mobile + applica lang, poi verifica pointerhint
+          if (W.state) W.state.inputMode = 'mobile';
+          try { P2.applyLangToDOM(); } catch(e) { /* ignora side-effect su DOM */ }
+          const ph = doc.getElementById('pointerhint');
+          assert(ph, '#pointerhint non trovato');
+          assert(ph.textContent && ph.textContent.length > 0,
+            'pointerhint vuoto dopo applyLangToDOM in mobile mode');
+          // Ripristina desktop mode per non inquinare altri test
+          if (W.state) W.state.inputMode = 'desktop';
+          try { P2.applyLangToDOM(); } catch(e) {}
+        });
+
+        test('PANEL_HELP_KEYS_MOBILE presente nel sorgente (15 voci)', () => {
+          // Conta le entry nella definizione. Deve avere stesso numero di
+          // voci del desktop per consistenza visiva.
+          const html = doc.documentElement.outerHTML;
+          // Conta righe della forma '{ k: \'help...Mobile\'... mobileLabel: \'...\' }'
+          const matches = html.match(/{\s*k:\s*'help\w*Mobile'/g) || [];
+          assert(matches.length >= 14,
+            `PANEL_HELP_KEYS_MOBILE atteso ~15 voci, trovate ${matches.length}`);
+        });
+
+        test('TUTORIAL_STEPS_MOBILE presente nel sorgente (5 step)', () => {
+          const html = doc.documentElement.outerHTML;
+          // Cerca la sezione di definizione TUTORIAL_STEPS_MOBILE
+          assert(/const\s+TUTORIAL_STEPS_MOBILE\s*=\s*\[/.test(html),
+            'manca definizione TUTORIAL_STEPS_MOBILE');
+          // Conta le textKey mobile-specific
+          const matches = html.match(/textKey:\s*'tutorialStep\d+TextMobile'/g) || [];
+          assertEq(matches.length, 5,
+            `attese 5 textKey mobile, trovate ${matches.length}`);
+        });
+
+        test('STRINGS.it contiene testi tutorial mobile (5 step)', () => {
+          // Verifica che le stringhe mobile siano state aggiunte a STRINGS.it
+          // durante il refactor. Le recuperiamo dallo script inline.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          for (let i = 1; i <= 5; i++) {
+            assert(new RegExp(`tutorialStep${i}TextMobile:`).test(scriptText),
+              `manca tutorialStep${i}TextMobile in STRINGS.it`);
+            assert(new RegExp(`tutorialStep${i}VoiceMobile:`).test(scriptText),
+              `manca tutorialStep${i}VoiceMobile in STRINGS.it`);
+          }
+        });
+
+        test('STRINGS.en contiene testi tutorial mobile (5 step)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          for (let i = 1; i <= 5; i++) {
+            assert(new RegExp(`tutorialStep${i}TextMobile:`).test(scriptText),
+              `manca tutorialStep${i}TextMobile in STRINGS.en`);
+          }
+        });
+
+        test('ONBOARDED_KEY_MOBILE presente (per-mode persistenza)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/ONBOARDED_KEY_MOBILE\s*=\s*'bossHotelOnboardedMobile'/.test(scriptText),
+            'manca ONBOARDED_KEY_MOBILE per persistenza wizard mobile');
+        });
+
+        test('keydown listener ha short-circuit per state.inputMode === "mobile"', () => {
+          // Verifica pattern del guard nel keydown handler.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/state\.inputMode\s*===\s*'mobile'[\s\S]{0,200}return/.test(scriptText),
+            'manca short-circuit keydown per state.inputMode mobile');
+        });
+
+        test('recheck() in initMobileDetection gestisce runtime toggle', () => {
+          // Il recheck handler deve chiamare applyLangToDOM per ri-renderizzare
+          // gli elementi dipendenti dalla mode.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          // Cerca il pattern: recheck con applyLangToDOM
+          const recheckMatch = scriptText.match(/const recheck\s*=\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s*\};/);
+          assert(recheckMatch, 'recheck function non trovata in initMobileDetection');
+          assert(recheckMatch[1].includes('applyLangToDOM'),
+            'recheck deve chiamare applyLangToDOM su mode change');
+          assert(recheckMatch[1].includes('startTutorial'),
+            'recheck deve restart tutorial su mode change');
+        });
+
+        test('state.inputMode inizializzato nel state globale', () => {
+          // Verifica che state.inputMode esista nel state declaration.
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/inputMode:\s*'desktop'/.test(scriptText),
+            'manca state.inputMode inizializzato a "desktop"');
+        });
+
+        test('state.onboardedDesktop + state.onboardedMobile separati', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/onboardedDesktop:\s*false/.test(scriptText),
+            'manca state.onboardedDesktop (per-mode wizard flag)');
+          assert(/onboardedMobile:\s*false/.test(scriptText),
+            'manca state.onboardedMobile (per-mode wizard flag)');
+        });
+
+        test('getTutorialSteps() helper presente e mode-aware', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/function\s+getTutorialSteps\(\)\s*{[\s\S]*?inputMode[\s\S]*?TUTORIAL_STEPS_MOBILE/.test(scriptText),
+            'manca getTutorialSteps() mode-aware');
+        });
+      });
+
+      // ============================================================
+      // V4 Step 8: Mobile hamburger menu.
+      // Verifica struttura DOM + CSS + logica di open/close + state
+      // dei toggle. Il menu e' visibile SOLO su body.mobile-mode e
+      // permette all'utente touch di accedere alle azioni che su
+      // desktop richiedono la tastiera (M, V, N, O, K, ?, H, L, Shift+M).
+      // ============================================================
+      describe('V4 Step 8: hamburger menu mobile (azioni touch)', () => {
+        const doc = iframe.contentDocument;
+        const css = doc.querySelector('style').textContent;
+        const W = iframe.contentWindow;
+
+        test('DOM: #hamburger-btn presente', () => {
+          const btn = doc.getElementById('hamburger-btn');
+          assert(btn, '#hamburger-btn non trovato nel DOM');
+          assertEq(btn.getAttribute('aria-haspopup'), 'menu', 'aria-haspopup atteso "menu"');
+          assert(btn.getAttribute('aria-label') && btn.getAttribute('aria-label').length > 0,
+            'hamburger-btn senza aria-label');
+        });
+
+        test('DOM: #mobile-menu presente con role=menu', () => {
+          const menu = doc.getElementById('mobile-menu');
+          assert(menu, '#mobile-menu non trovato');
+          assertEq(menu.getAttribute('role'), 'menu', 'role menu atteso "menu"');
+        });
+
+        test('DOM: 5 toggle items (audio, voice, night, ooo, voicecmd)', () => {
+          const items = doc.querySelectorAll('.mm-item.mm-toggle');
+          assertEq(items.length, 5, `trovati ${items.length} toggle items, attesi 5`);
+          const actions = Array.from(items).map(el => el.getAttribute('data-action'));
+          assert(actions.includes('toggle-audio'), 'manca toggle-audio');
+          assert(actions.includes('toggle-voice'), 'manca toggle-voice');
+          assert(actions.includes('toggle-night'), 'manca toggle-night');
+          assert(actions.includes('toggle-ooo'), 'manca toggle-ooo');
+          assert(actions.includes('toggle-voicecmd'), 'manca toggle-voicecmd');
+        });
+
+        test('DOM: 4 action items (tutorial, customize, maintenance, lang)', () => {
+          const items = doc.querySelectorAll('.mm-item.mm-action');
+          assertEq(items.length, 4, `trovati ${items.length} action items, attesi 4`);
+          const actions = Array.from(items).map(el => el.getAttribute('data-action'));
+          assert(actions.includes('open-tutorial'), 'manca open-tutorial');
+          assert(actions.includes('open-customize'), 'manca open-customize');
+          assert(actions.includes('open-maintenance'), 'manca open-maintenance');
+          assert(actions.includes('toggle-lang'), 'manca toggle-lang');
+        });
+
+        test('CSS: .hamburger-btn display:none di default, visibile su body.mobile-mode', () => {
+          assert(/\.hamburger-btn\s*{[^}]*display:\s*none/.test(css),
+            'manca display:none di default su .hamburger-btn');
+          assert(/body\.mobile-mode\s+\.hamburger-btn\s*{[^}]*display:\s*block/.test(css),
+            'manca display:block su body.mobile-mode .hamburger-btn');
+        });
+
+        test('CSS: #mobile-menu slide-in transform translateX', () => {
+          assert(/#mobile-menu\s+\.mm-panel\s*{[^}]*transform:\s*translateX\(100%\)/.test(css),
+            'manca transform:translateX(100%) sul panel per slide-in');
+          assert(/#mobile-menu\.mobile-menu-shown\s+\.mm-panel\s*{[^}]*transform:\s*translateX\(0\)/.test(css),
+            'manca transform:translateX(0) sul panel quando menu aperto');
+        });
+
+        test('STRINGS: 20 nuove chiavi mm* + ariaMm* (IT + EN)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          // Chiavi attese: mmTitle, mmAudio, mmVoice, mmNight, mmOOO, mmVoiceCmd,
+          // mmTutorial, mmCustomize, mmMaint, mmLang, mmSectionToggles,
+          // mmSectionActions, mmStateOn, mmStateOff, ariaHamburger, ariaMmClose,
+          // ariaMmToggleAudio, ariaMmToggleVoice, ariaMmToggleNight,
+          // ariaMmToggleOOO, ariaMmToggleVoiceCmd, ariaMmOpenTutorial,
+          // ariaMmOpenCustomize, ariaMmOpenMaint, ariaMmToggleLang
+          const keys = ['mmTitle', 'mmAudio', 'mmVoice', 'mmNight', 'mmOOO',
+            'mmVoiceCmd', 'mmTutorial', 'mmCustomize', 'mmMaint', 'mmLang',
+            'mmSectionToggles', 'mmSectionActions', 'mmStateOn', 'mmStateOff',
+            'ariaHamburger', 'ariaMmClose', 'ariaMmToggleAudio',
+            'ariaMmToggleVoice', 'ariaMmToggleNight', 'ariaMmToggleOOO',
+            'ariaMmToggleVoiceCmd', 'ariaMmOpenTutorial', 'ariaMmOpenCustomize',
+            'ariaMmOpenMaint', 'ariaMmToggleLang'];
+          for (const lang of ['it', 'en']) {
+            for (const k of keys) {
+              const re = new RegExp(`\\b${k}:`);
+              // le chiavi it+en sono nello stesso script: cerchiamo entrambe
+              const hasIt = new RegExp(`it:\\s*\\{[\\s\\S]*?${k}:`).test(scriptText);
+              const hasEn = new RegExp(`en:\\s*\\{[\\s\\S]*?${k}:`).test(scriptText);
+              assert(hasIt, `STRINGS.it manca ${k}`);
+              assert(hasEn, `STRINGS.en manca ${k}`);
+            }
+          }
+        });
+
+        test('JS: openMobileMenu/closeMobileMenu/toggleMobileMenu/isMobileMenuOpen definite', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/function\s+openMobileMenu\s*\(/.test(scriptText),
+            'manca function openMobileMenu');
+          assert(/function\s+closeMobileMenu\s*\(/.test(scriptText),
+            'manca function closeMobileMenu');
+          assert(/function\s+toggleMobileMenu\s*\(/.test(scriptText),
+            'manca function toggleMobileMenu');
+          assert(/function\s+isMobileMenuOpen\s*\(/.test(scriptText),
+            'manca function isMobileMenuOpen');
+        });
+
+        test('JS: handleMobileMenuAction gestisce 9 azioni (5 toggle + 4 action)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          const actions = ['toggle-audio', 'toggle-voice', 'toggle-night',
+            'toggle-ooo', 'toggle-voicecmd', 'open-tutorial', 'open-customize',
+            'open-maintenance', 'toggle-lang'];
+          for (const a of actions) {
+            const re = new RegExp(`action === '${a}'`);
+            assert(re.test(scriptText),
+              `handleMobileMenuAction non gestisce '${a}'`);
+          }
+        });
+
+        test('JS: handleMobileMenuAction toggle-audio inverte state.muted', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          // Verifica che l'azione toggle-audio modifichi state.muted.
+          assert(/action === 'toggle-audio'[\s\S]{0,300}state\.muted\s*=\s*!state\.muted/.test(scriptText),
+            'toggle-audio deve invertire state.muted');
+        });
+
+        test('JS: handleMobileMenuAction toggle-night modifica state.nightMode', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/action === 'toggle-night'[\s\S]{0,300}state\.nightMode\s*=\s*!state\.nightMode/.test(scriptText),
+            'toggle-night deve invertire state.nightMode');
+        });
+
+        test('JS: handleMobileMenuAction toggle-ooo gestisce queueClear + setDoors', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/action === 'toggle-ooo'[\s\S]{0,500}queueClear/.test(scriptText),
+            'toggle-ooo deve chiamare queueClear per coerenza con keydown O');
+          assert(/action === 'toggle-ooo'[\s\S]{0,500}setDoors\(false\)/.test(scriptText),
+            'toggle-ooo deve chiamare setDoors(false) per coerenza con keydown O');
+        });
+
+        test('JS: openMobileMenu chiude tutorial se attivo (evita overlay stacking)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/openMobileMenu[\s\S]{0,300}endTutorial/.test(scriptText),
+            'openMobileMenu deve chiudere tutorial se attivo');
+        });
+
+        test('JS: openMobileMenu rilascia pointer-lock (sicurezza su mobile)', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/openMobileMenu[\s\S]{0,300}exitPointerLock/.test(scriptText),
+            'openMobileMenu deve rilasciare pointer-lock per evitare mouse-look accidentale');
+        });
+
+        test('JS: refreshMobileMenuStates aggiorna label + state + aria-checked per toggle', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/function\s+refreshMobileMenuStates\s*\(/.test(scriptText),
+            'manca function refreshMobileMenuStates');
+          assert(/refreshMobileMenuStates[\s\S]{0,500}aria-checked/.test(scriptText),
+            'refreshMobileMenuStates deve settare aria-checked');
+          assert(/refreshMobileMenuStates[\s\S]{0,500}mmStateOn/.test(scriptText),
+            'refreshMobileMenuStates deve usare mmStateOn/mmStateOff');
+        });
+
+        test('JS: initMobileMenu chiamato nel boot dopo initTouchControls', () => {
+          const scripts = doc.querySelectorAll('script');
+          let scriptText = '';
+          for (const s of scripts) scriptText += s.textContent;
+          assert(/initTouchControls\(\);\s*\n\s*initMobileMenu\(\)/.test(scriptText),
+            'initMobileMenu deve essere chiamato subito dopo initTouchControls');
+        });
+
+        test('BossHotelPure: openMobileMenu/closeMobileMenu/toggleMobileMenu esposti', () => {
+          const P2 = W && W.BossHotelPure;
+          assert(P2, 'BossHotelPure non esposto');
+          assertEq(typeof P2.openMobileMenu, 'function', 'openMobileMenu non esposto');
+          assertEq(typeof P2.closeMobileMenu, 'function', 'closeMobileMenu non esposto');
+          assertEq(typeof P2.toggleMobileMenu, 'function', 'toggleMobileMenu non esposto');
+          assertEq(typeof P2.isMobileMenuOpen, 'function', 'isMobileMenuOpen non esposto');
+          assertEq(typeof P2.handleMobileMenuAction, 'function', 'handleMobileMenuAction non esposto');
+        });
+      });
+
       // ============================================================
       // V4 Step 3 (D23): A11y aria attributes.
       // Query del DOM dell'iframe per verificare che gli elementi
