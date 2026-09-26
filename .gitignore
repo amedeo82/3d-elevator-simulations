@@ -79,3 +79,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
+
+# ---- Scratch dir per smoke test locali (Playwright/headless) ----
+browser-test/
