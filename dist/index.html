@@ -2196,26 +2196,45 @@ const texCeiling = makeCeilingTexture();
 
 // env map sintetica per riflessi
 function makeEnvMap() {
+  // FIX mobile (iOS Safari bug): texture PMREM piu' piccola per ridurre il
+  // rischio di WebGL2 render-target failure su iPhone Safari. 256x128 invece
+  // di 512x256 dimezza la memoria richiesta e accelera la generazione
+  // PMREM (6+ pass di rendering). Visivamente identico a 512x256 a distanze
+  // di visualizzazione reali (riflessi su pareti a 1m dal camera).
   const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
+  c.width = 256; c.height = 128;
   const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 0, 256);
+  const grad = g.createLinearGradient(0, 0, 0, 128);
   grad.addColorStop(0, '#bcd0e8');
   grad.addColorStop(0.5, '#5a6678');
   grad.addColorStop(1, '#1a1a20');
   g.fillStyle = grad;
-  g.fillRect(0, 0, 512, 256);
+  g.fillRect(0, 0, 256, 128);
   // "finestre" luminose
   for (let i = 0; i < 6; i++) {
-    const x = (i + 0.5) * (512 / 6);
+    const x = (i + 0.5) * (256 / 6);
     g.fillStyle = 'rgba(255,235,180,0.6)';
-    g.fillRect(x - 20, 30, 40, 70);
+    g.fillRect(x - 10, 15, 20, 35);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.mapping = THREE.EquirectangularReflectionMapping;
-  return pmrem.fromEquirectangular(tex).texture;
+  // FIX mobile (iOS Safari bug): wrap PMREM in try/catch. Se fallisce
+  // (es. shader compile error, render target out of memory), scene.environment
+  // resta null. Le MeshStandardMaterial con metalness alta cadrebbero
+  // al fallback diffuse = base color. Per evitare CABINA NERA su iOS,
+  // riduciamo metalness nelle prossime init (vedi makeWall + doorMat sotto).
+  let envTex = null;
+  try {
+    envTex = pmrem.fromEquirectangular(tex).texture;
+  } catch (e) {
+    console.warn('[env-map] PMREMGenerator failed on this device, cabin will use base color only');
+  }
+  if (envTex) tex.dispose();
+  return envTex;
 }
-scene.environment = makeEnvMap();
+let __envMap = null;
+try { __envMap = makeEnvMap(); } catch (e) { console.warn('[env-map] init failed:', e); }
+scene.environment = __envMap;
 
 // ============================================================
 // CABINA — gruppo radice che si sposta verticalmente
@@ -2274,7 +2293,7 @@ cabin.add(alarmLight);
 }
 
 // Pareti (back, left, right, front-sopra-porte)
-function makeWall(w, h, color = 0xd0d3d7, metalness = 0.85, roughness = 0.35) {
+function makeWall(w, h, color = 0xd0d3d7, metalness = 0.4, roughness = 0.45) {
   return new THREE.MeshStandardMaterial({
     color, map: texMetal.clone(), roughness, metalness, envMapIntensity: 0.7
   });
@@ -3207,7 +3226,7 @@ cabin.add(doorLeft);
 cabin.add(doorRight);
 
 const doorMat = new THREE.MeshStandardMaterial({
-  color: 0xb0b4ba, roughness: 0.25, metalness: 0.95, envMapIntensity: 1.1,
+  color: 0xb0b4ba, roughness: 0.45, metalness: 0.55, envMapIntensity: 1.1,
   side: THREE.DoubleSide // Fix v1.5 #21b audit: visibili anche dall'esterno (corridoio)
 });
 const doorGeo = new THREE.PlaneGeometry(CABIN.w/2 - 0.05, 2.1);
@@ -9282,6 +9301,23 @@ function onClick(e) {
   const btn = getButtonAtPointer();
   if (btn) pressButton(btn);
 }
+// FIX mobile (iOS Safari bug): webglcontextlost/restored handlers. Su iOS
+// Safari il context può essere perso durante rotazione portrait→landscape
+// (resize asincrono del backing store). Senza handler esplicito, three.js
+// smette di renderizzare e la cabina diventa nera. preventDefault() sul
+// 'webglcontextlost' permette al browser di emettere 'webglcontextrestored'
+// dopo il resize; a quel punto re-rendiamo forzatamente per recuperare.
+renderer.domElement.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  console.warn('[webgl] context lost, will restore...');
+  state._ctxLost = true;
+}, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+  console.log('[webgl] context restored');
+  state._ctxLost = false;
+  // force re-render subito
+  renderer.render(scene, camera);
+}, false);
 renderer.domElement.addEventListener('click', onClick);
 document.addEventListener('pointerlockchange', () => {
   const hint = document.getElementById('pointerhint');
@@ -10393,13 +10429,23 @@ setLang = function(newLang) {
 };
 
 document.getElementById('startBtn').addEventListener('click', () => {
-  // ferma il carosello
-  if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
-  ensureAudio();
-  audioReady = true; // sblocca AudioContext dopo il primo gesto utente
+  // FIX mobile (iOS Safari bug): nascondi startscreen SUBITO prima di qualsiasi
+  // altra operazione. Anche se ensureAudio() o altre chiamate successive
+  // lanciano eccezioni o bloccano, l'utente vede la cabina invece del
+  // overlay start screen con gradient scuro. Pattern "fail-safe UI": prima
+  // l'azione UI visibile, poi side-effect.
   document.getElementById('startscreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
   document.getElementById('pointerhint').classList.add('show');
+  // ferma il carosello
+  if (startSlidesTimer) { clearInterval(startSlidesTimer); startSlidesTimer = null; }
+  // FIX mobile (iOS Safari bug): audio context potrebbe lanciare unhandled
+  // promise rejection su audioCtx.resume() se Safari rifiuta l'attivazione.
+  // Wrappiamo in try/catch + .catch() per non bloccare il resto della
+  // catena di click handler (incluso l'avvio del tutorial).
+  try { ensureAudio(); }
+  catch (e) { console.warn('[startBtn] ensureAudio failed:', e); }
+  audioReady = true; // sblocca AudioContext dopo il primo gesto utente
   // FIX mobile (iOS Safari bug): requestPointerLock non è supportato su
   // iOS Safari (l'API esiste ma fallisce con NotSupportedError). Il
   // Promise rigettato, se lasciato unhandled, può innescare unhandled
