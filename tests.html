@@ -1512,13 +1512,24 @@
           const r = P.isMobileDevice();
           assertEq(typeof r, 'boolean');
         });
-        test('matchMedia API presente nel browser corrente', () => {
-          // Se matchMedia funziona (come nel test runner), isMobileDevice
-          // ritorna un valore coerente con la viewport (desktop Chromium
-          // headless → false).
+        // FIX mobile bug (iPhone landscape): dopo il fix iniziale il
+        // matchMedia-based detection falliva su iPhone 15 Pro landscape
+        // per il quirk viewport pinning di iOS Safari. La nuova detection
+        // usa window.innerWidth/Height direttamente con fallback a screen.
+        test('ritorna boolean coerente con lo stato di mobile della viewport', () => {
           assertEq(typeof window.matchMedia, 'function');
-          const mq = window.matchMedia('(pointer: coarse) and ((max-width: 768px), (max-height: 500px))');
-          assertEq(P.isMobileDevice(), !!mq.matches);
+          const mq = window.matchMedia('(pointer: coarse)');
+          // Se non touch → false. Se touch → true solo se almeno una
+          // dimensione del viewport/screen <= 500px.
+          const dims = [
+            window.innerWidth, window.innerHeight,
+            document.documentElement.clientWidth,
+            document.documentElement.clientHeight,
+            window.screen && window.screen.width,
+            window.screen && window.screen.height,
+          ].filter(v => typeof v === 'number' && v > 0);
+          const expected = mq.matches && (dims.some(v => v <= 500) || Math.min(...dims) <= 768);
+          assertEq(P.isMobileDevice(), expected);
         });
       });
 
