@@ -766,7 +766,13 @@
   }
 
   /* Overlay menu mobile: slide-in dal lato destro, full-height. z-index alto
-     (sopra joystick/call buttons). Backdrop scuro semi-trasparente. */
+     (sopra joystick/call buttons). Backdrop scuro semi-trasparente.
+     FIX mobile bug (cabina nera su iOS): usa visibility:hidden invece del solo
+     pointer-events:none per GARANTIRE che l'elemento non interferisca con
+     rendering/eventi del canvas quando il menu non e' mostrato. Su iOS Safari
+     un elemento fixed con z-index > canvas anche con opacity:0 e pointer-
+     events:none puo' causare "cabina nera" in alcuni scenari di rendering
+     (preserveDrawingBuffer bug). visibility:hidden e' la fix canonica. */
   #mobile-menu {
     position: fixed;
     top: 0; right: 0;
@@ -775,6 +781,11 @@
     height: 100vh;
     z-index: 5800;
     pointer-events: none;  /* abilitato solo quando .mobile-menu-shown */
+    visibility: hidden;
+  }
+  #mobile-menu.mobile-menu-shown {
+    pointer-events: auto;
+    visibility: visible;
   }
   #mobile-menu .mm-backdrop {
     position: absolute;
@@ -11435,7 +11446,11 @@ if (langSwitchBtn) {
   refreshLangSwitch();
 }
 
-requestAnimationFrame(loop);
+// requestAnimationFrame(loop) viene lanciato UNA SOLTA VOLTA sopra (riga ~10757).
+// La seconda chiamata in fondo al file era un duplicato storico (commit
+// 380c41d7 del 2026-09-11) che schedulava un SECONDO loop parallelo, causando
+// 2 render per frame (spreco) + dt=0 sul secondo loop (drift timer).
+// Polish Pack V4 cleanup: rimosso.
 
 // ============================================================
 // Polish Pack V2 Step 12: Esposizione funzioni pure per test.

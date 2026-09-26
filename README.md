@@ -2,7 +2,7 @@
 
 Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, in prima persona, costruita interamente con Three.js in un singolo file HTML.
 
-[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-232%2F232-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Release](https://img.shields.io/badge/Release-v7.0-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-302%2F302-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Mobile](https://img.shields.io/badge/Mobile-iOS%20%2B%20Android-blue)]() [![Release](https://img.shields.io/badge/Release-v7.1-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
 
 ## 🚀 [Gioca subito · Live Preview](https://amedeo82.github.io/3d-elevator-simulations/)
 
@@ -10,11 +10,19 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 
 Clicca il link per provare la simulazione direttamente nel browser (Chrome/Edge/Firefox aggiornati, supporto Pointer Lock + WebGL richiesto). Nessuna installazione, nessuna registrazione — l'app si carica da GitHub Pages e usa Three.js via CDN.
 
-> **🎉 Polish Pack V4 COMPLETO (2026-09-25)** — 6/6 step (100%). D-key contracts
-> aggiunti: D22 (routing look algorithm asimmetrico), D23 (a11y ARIA + i18n),
-> D24 (funzioni <150 + commenti narrativi), D25 (helper `mergePlanes` DRY),
-> D26 (open source boilerplate: LICENSE + CHANGELOG + CONTRIBUTING).
-> Totale **232 test / 396 assert / 26 contratti D-key**.
+> **🎉 Polish Pack V4 COMPLETO (2026-09-26)** — **8/8 step (100%)**.
+> Contratti D-key totali: **27**. Totale **302 test vanilla / ~470 assert**.
+> V4 include:
+> - **Step 1-6** (2026-09-25): routing D22, a11y ARIA D23, funzioni <150 righe D24,
+>   helper mergePlanes D25, open-source boilerplate D26.
+> - **Step 7** (2026-09-26) — **Mobile scene separation** (D26 extended):
+>   separazione architetturale desktop/mobile con `state.inputMode` come single source of truth,
+>   data structures paralleli (PANEL_HELP_KEYS_MOBILE, TUTORIAL_STEPS_MOBILE), per-mode
+>   onboarded flag, keydown short-circuit su mobile, runtime toggle su resize/orientationchange.
+> - **Step 8** (2026-09-26) — **Mobile hamburger menu** (D27): bottone ☰ top-left
+>   (visibile solo su mobile) + overlay slide-in con 9 voci (5 toggle rapidi: audio/annunci/
+>   notte/OOO/comando vocale + 4 azioni: tutorial/customizer/manutenzione/lingua). Espone
+>   `openMobileMenu/closeMobileMenu/toggleMobileMenu/handleMobileMenuAction` in `BossHotelPure`.
 >
 > **🎉 Polish Pack V3 COMPLETO (2026-09-23)** — 9/9 step (100%). Accessibility,
 > bug fix UX, settings QoL, micro-animazioni, performance, QoL manutenzione,
@@ -390,6 +398,22 @@ Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticam
 - **Event delegation**: preset buttons configurati via addEventListener sul parent `.hc-presets` (sopravvive ai re-render di applyLangToDOM)
 - **`applyLangToDOM()`** consolidata: chiamata all'init e ad ogni `setLang()` per aggiornare tutti gli elementi dinamici
 - **TTS en-GB prioritaria**: `speak()` usa `lang === 'en' ? englishVoice : italianVoice`, fallback en-US se en-GB non disponibile
+
+### 📱 Mobile support (V3 Step 9 bonus + V4 Step 7+8)
+- **Rilevamento dispositivo robusto** (V4): `isMobileDevice()` valuta `(pointer: coarse)` + dimensioni viewport (`Math.min(innerWidth, innerHeight) <= 500` oppure `screen.width <= 500`) per catturare anche i telefoni landscape con quirk "viewport pinning" di iOS Safari (dove `innerHeight` può essere la dimensione maggiore invece di quella corta). Aggiunti listener `resize` + `orientationchange` come fallback al `matchMedia`.
+- **Single source of truth**: `state.inputMode = 'desktop'|'mobile'` (D26 esteso) calcolato al boot da `isMobileDevice()` e ricalcolato a runtime su rotation/resize. Tutte le UI/handler/tutorial/cheatsheet leggono SOLO questo flag.
+- **Touch controls** (V3): joystick virtuale 140×140 (bottom-left) per movimento nel corridoio + pulsanti call ▲▼ (bottom-right) che chiamano `requestFloor(currentFloor ± 1, direction)`. Visibili SOLO su `body.mobile-mode`.
+- **Cheatsheet mobile dedicata** (V4 Step 7): `PANEL_HELP_KEYS_MOBILE` con 13 voci touch-friendly (Drag dito / Tap / Tap HUD / Joystick / ▲▼ / Menu / IT-EN) che sostituisce completamente la cheatsheet WASD/E/M/V/N/O/K/H/L di `PANEL_HELP_KEYS` quando `state.inputMode === 'mobile'`.
+- **Tutorial mobile dedicato** (V4 Step 7): `TUTORIAL_STEPS_MOBILE` con 5 step che descrivono tap su ▲▼, tap Esci dalla cabina, drag dito + joystick, Rientra, IT/EN. Wizard salvato in `bossHotelOnboardedMobile@v1` (separato da `bossHotelOnboarded@v1` desktop).
+- **Pointer hint mobile** (V4 Step 7): "Trascina il dito per guardare. Usa il joystick per muoverti." invece di "Click per attivare il puntatore".
+- **CSS split** (V4 Step 7): `body.mobile-mode #panel-help { display: none }` + `body.mobile-mode #crosshair { display: none }` + `body:not(.mobile-mode) #touch-controls { display: none }`.
+- **Keydown short-circuit** (V4 Step 7): il listener `keydown` ritorna subito su mobile (nessuna tastiera fisica) tranne per tasti tutorial (`?`, Enter, Esc).
+- **Hamburger menu ☰** (V4 Step 8, D27): bottone fisso top-left 44×44 px (visibile solo su mobile). Tap → overlay slide-in da destra con 9 voci in 2 sezioni:
+  - **Impostazioni rapide** (5 toggle con badge ON/OFF colorato): Audio (M), Annunci vocali (V), Modalità notte (N), Fuori servizio (O), Comando vocale (K)
+  - **Altro** (4 link ad altri overlay): Rivedi tutorial (?), Personalizza hotel (H), Manutentore (Shift+M), Lingua IT/EN (L)
+- **Sicurezza UX menu**: `openMobileMenu()` rilascia `pointer-lock` (evita mouse-look accidentale) + chiude il tutorial se attivo (evita overlay stacking). 4 azioni link chiudono il menu prima di aprire l'overlay target.
+- **i18n menu mobile**: 25 nuove chiavi × IT + EN = **50 stringhe** (`mmTitle`, `mmAudio`, `mmVoiceCmd`, `mmTutorial`, `mmCustomize`, `mmMaint`, `mmLang`, `mmStateOn`, `mmStateOff`, `mmSectionToggles`, `mmSectionActions` + 13 `ariaMm*`).
+- **Funzioni pure esposte**: `openMobileMenu`, `closeMobileMenu`, `toggleMobileMenu`, `isMobileMenuOpen`, `handleMobileMenuAction`, `refreshMobileMenuStates` — testate in `tests.html` (describe "V4 Step 8: hamburger menu mobile").
 
 ### 🎚️ Sensazioni realistiche cabina (Step 9)
 - **9a · Vibrazione realistica multi-band**: 4 frequenze sovrapposte (X 7.3+11.1Hz, Z 8.7+13.3Hz, Roll 5.1Hz, Pitch 6.7Hz) con envelope derivato da `12*moveT*(1-moveT)` (derivata di easeInOutCubic). Alta vibrazione in accel/decel, minima in crociera (CRUISE_AMP=0.0006 per "presenza" del motore vuoto).
