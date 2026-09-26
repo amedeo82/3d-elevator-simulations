@@ -6517,7 +6517,7 @@ function renderDisplayDynamicLayer(ctx, animT) {
     } else if (state.doorsOpen) {
       arrowLabel = state.lang === 'en' ? 'DOORS OPEN' : 'PORTE APERTE';
     } else {
-      arrowLabel = 'IN ATTESA';
+      arrowLabel = state.lang === 'en' ? 'WAITING' : 'IN ATTESA';
     }
     ctx.font = 'bold 36px Arial';
     ctx.fillStyle = state.alarmOn ? '#ff3030' : '#6dff7c';
