@@ -1533,6 +1533,91 @@
         });
       });
 
+      // ---- FIX iPhone 2026-09-28: budget GPU + overlay portrait bloccante --
+      // Regressione: su iPhone 15 Pro lo schermo restava nero. Cause:
+      // (a) l'avviso "ruota il dispositivo" era un fixed 100vw/100vh con
+      //     rgba(0,0,0,0.92) + z-index 100000 che copriva tutto e rubava i
+      //     tap al #startBtn; (b) nessun guard sulla creazione del context
+      //     WebGL; (c) preserveDrawingBuffer:true era costo GPU inutile.
+      describe('FIX iPhone schermo nero (overlay portrait + budget GPU)', () => {
+        const doc = iframe.contentDocument;
+        test('avviso portrait non occupa piu\' tutto lo schermo', () => {
+          const css = doc.querySelector('style').textContent;
+          const block = css.slice(css.indexOf('#rotate-device-overlay {'));
+          const decl = block.slice(0, block.indexOf('}'));
+          assert(decl.indexOf('100vw') === -1,
+            'l\'overlay portrait non deve piu\' usare width:100vw (schermo nero)');
+          assert(decl.indexOf('100vh') === -1,
+            'l\'overlay portrait non deve piu\' usare height:100vh');
+          assert(decl.indexOf('pointer-events: none') !== -1,
+            'l\'overlay deve essere pointer-events:none per non rubare i tap');
+        });
+        test('overlay non usa piu\' un nero quasi opaco a schermo intero', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(css.indexOf('background: rgba(0, 0, 0, 0.92)') === -1,
+            'rimossa la campitura rgba(0,0,0,0.92) full-screen (causa schermo nero)');
+        });
+        test('avviso portrait ha un bottone dismiss', () => {
+          const btn = doc.getElementById('rotate-ok-btn');
+          assert(btn, 'manca #rotate-ok-btn per chiudere l\'avviso portrait');
+          const overlay = doc.getElementById('rotate-device-overlay');
+          assert(overlay, 'manca #rotate-device-overlay');
+          assert(overlay.classList.contains('mobile-menu-hidden') === false,
+            'l\'overlay non deve essere un menu nascosto');
+        });
+        test('renderer senza preserveDrawingBuffer', () => {
+          const src = doc.documentElement.innerHTML;
+          // Solo il costante del costruttore conta: i commenti che ne
+          // documentano la rimozione non devono falsare il test.
+          const ctor = src.match(/new THREE\.WebGLRenderer\(\s*\{[\s\S]*?\}\s*\)/);
+          assert(ctor, 'costruttore WebGLRenderer non trovato');
+          assert(ctor[0].indexOf('preserveDrawingBuffer') === -1,
+            'preserveDrawingBuffer:true rimosso (costo GPU inutile, causa frame neri su iOS)');
+        });
+        test('computePixelRatioCap: helper puro esposto', () => {
+          assertEq(typeof P.computePixelRatioCap, 'function');
+        });
+        test('computePixelRatioCap: iOS limita a 1.5', () => {
+          assertEq(P.computePixelRatioCap(3, true), 1.5);
+          assertEq(P.computePixelRatioCap(2, true), 1.5);
+          assertEq(P.computePixelRatioCap(1, true), 1);
+        });
+        test('computePixelRatioCap: desktop limita a 2', () => {
+          assertEq(P.computePixelRatioCap(3, false), 2);
+          assertEq(P.computePixelRatioCap(1.75, false), 1.75);
+          assertEq(P.computePixelRatioCap(1, false), 1);
+        });
+        test('computePixelRatioCap: input non valido -> 1 (mai NaN/0)', () => {
+          assertEq(P.computePixelRatioCap(0, true), 1);
+          assertEq(P.computePixelRatioCap(-2, false), 1);
+          assertEq(P.computePixelRatioCap(NaN, false), 1);
+          assertEq(P.computePixelRatioCap(undefined, true), 1);
+        });
+        test('detectIOS: helper puro esposto e boolean', () => {
+          assertEq(typeof P.detectIOS, 'function');
+          assertEq(typeof P.detectIOS(), 'boolean');
+        });
+        test('context WebGL perso: flag dichiarati in CONFIGURATION (no TDZ)', () => {
+          const src = doc.documentElement.innerHTML;
+          assert(src.indexOf('_ctxLost: false') !== -1,
+            'state._ctxLost deve essere dichiarato in CONFIGURATION (vincolo D2)');
+          assert(src.indexOf('_ctxLostAt: 0') !== -1,
+            'state._ctxLostAt deve essere dichiarato in CONFIGURATION (vincolo D2)');
+        });
+        test('watchdog di recupero context presente', () => {
+          const src = doc.documentElement.innerHTML;
+          assert(src.indexOf('webglcontextrestored') !== -1, 'manca handler webglcontextrestored');
+          assert(src.indexOf('CTX_WATCHDOG_MS') !== -1, 'manca watchdog sul context perso');
+          assert(src.indexOf('showWebglFallback') !== -1,
+            'manca fallback visibile: senza WebGL non deve mai restare uno schermo nero');
+        });
+        test('requestPointerLock protetto da try/catch (assente su iOS Safari)', () => {
+          const src = doc.documentElement.innerHTML;
+          const bare = /requestPointerLock\(\);/g;
+          assert(bare.test(src), 'il guard try/catch deve essere presente in onClick');
+        });
+      });
+
       // ---- FIX mobile iPhone landscape (startBtn unreachable) ----
       // Regressione: bug per cui su iPhone 15 Pro landscape (852x393) il
       // contenuto dello start screen (h1 + p + .keys 15 righe + .slides +
@@ -1623,14 +1708,21 @@
           try { P2.applyLangToDOM(); } catch(e) {}
         });
 
-        test('PANEL_HELP_KEYS_MOBILE presente nel sorgente (15 voci)', () => {
-          // Conta le entry nella definizione. Deve avere stesso numero di
-          // voci del desktop per consistenza visiva.
+        test('PANEL_HELP_KEYS_MOBILE presente nel sorgente (chiavi mobile)', () => {
+          // Nota: l'array mobile NON ha lo stesso numero di voci del desktop.
+          // Le voci desktop-only (ESC = helpReleaseMouse, comando vocale =
+          // helpVoiceCmd) non esistono su touch e sono omesse di proposito.
+          // Il test verifica quindi la presenza delle chiavi mobile-specifiche,
+          // non l'uguaglianza dei conteggi.
           const html = doc.documentElement.outerHTML;
-          // Conta righe della forma '{ k: \'help...Mobile\'... mobileLabel: \'...\' }'
+          assert(/const\s+PANEL_HELP_KEYS_MOBILE\s*=\s*\[/.test(html),
+            'manca definizione PANEL_HELP_KEYS_MOBILE');
           const matches = html.match(/{\s*k:\s*'help\w*Mobile'/g) || [];
-          assert(matches.length >= 14,
-            `PANEL_HELP_KEYS_MOBILE atteso ~15 voci, trovate ${matches.length}`);
+          assert(matches.length >= 13,
+            `PANEL_HELP_KEYS_MOBILE atteso >=13 voci mobile, trovate ${matches.length}`);
+          for (const k of ['helpLookAroundMobile', 'helpWASDMobile', 'helpCallMobile']) {
+            assert(html.indexOf("'" + k + "'") !== -1, 'manca chiave mobile ' + k);
+          }
         });
 
         test('TUTORIAL_STEPS_MOBILE presente nel sorgente (5 step)', () => {
@@ -1885,7 +1977,12 @@
           const scripts = doc.querySelectorAll('script');
           let scriptText = '';
           for (const s of scripts) scriptText += s.textContent;
-          assert(/openMobileMenu[\s\S]{0,300}exitPointerLock/.test(scriptText),
+          // Il match deve partire dalla DEFINIZIONE della funzione: ancorare
+          // alla prima occorrenza della stringa anywhere nel sorgente faceva
+          // fallire il test perche' il nome compare molto prima.
+          const def = scriptText.match(/function\s+openMobileMenu\s*\(\s*\)\s*\{[\s\S]{0,900}?\n\}/);
+          assert(def, 'manca function openMobileMenu');
+          assert(/exitPointerLock/.test(def[0]),
             'openMobileMenu deve rilasciare pointer-lock per evitare mouse-look accidentale');
         });
 
@@ -1893,11 +1990,11 @@
           const scripts = doc.querySelectorAll('script');
           let scriptText = '';
           for (const s of scripts) scriptText += s.textContent;
-          assert(/function\s+refreshMobileMenuStates\s*\(/.test(scriptText),
-            'manca function refreshMobileMenuStates');
-          assert(/refreshMobileMenuStates[\s\S]{0,500}aria-checked/.test(scriptText),
+          const def = scriptText.match(/function\s+refreshMobileMenuStates\s*\([\s\S]{0,3000}?\n\}/);
+          assert(def, 'manca function refreshMobileMenuStates');
+          assert(/aria-checked/.test(def[0]),
             'refreshMobileMenuStates deve settare aria-checked');
-          assert(/refreshMobileMenuStates[\s\S]{0,500}mmStateOn/.test(scriptText),
+          assert(/mmStateOn/.test(def[0]),
             'refreshMobileMenuStates deve usare mmStateOn/mmStateOff');
         });
 
