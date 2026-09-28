@@ -96,9 +96,22 @@ Audit oggetto `state`: `STATE.md`.
 | Copia `elevator.html` → `dist/index.html` | Build per deploy (vedi ultimo commit di ogni Polish Pack) |
 | `git checkout feature/<branch>` | Lavorare su branch dedicato, merge solo dopo validazione |
 
-CI GitHub Actions: `.github/workflows/ci.yml` ha 2 job paralleli:
-1. `check` — `check-balance.js` su ogni push/PR
+CI GitHub Actions: `.github/workflows/ci.yml` ha 3 job paralleli:
+1. `check` — `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe)
 2. `tests` — validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento `elevator.html` in `tests.html`
+3. `tests-run` — **esecuzione reale dei test** in Chromium headless via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). Fallisce se un test non passa. È la job che intercetta i bug bloccanti: le due precedenti sono solo `grep` ed eseguivano zero test.
+
+## Test in locale (runner headless, come la CI)
+
+```bash
+npx playwright@1.56.0 install chromium   # una volta sola
+node scripts/run-tests.js                 # exit 1 se un test fallisce
+```
+
+Scrive `test-output.json` nella root (gitignored) con i risultati completi.
+Usa un server HTTP statico, non `file://`: `tests.html` carica `elevator.html`
+in un `<iframe sandbox>` e `elevator.html` è un ES module con importmap, che su
+`file://` non si carica per CORS.
 
 ## Test in locale (opzionale, manuale)
 
@@ -173,7 +186,8 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
   Contratti D-key totali: **27** (D1-D20 V1+V2+V3 + D21-D27 V4).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
-  Totale test vanilla: **262 test / ~456 assert**.
+  Totale test vanilla: **285 test** (aggiornato 2026-09-28 con i 12 test di
+  regressione iPhone e i 5 sullo startBtn desktop).
 
 - **Polish Pack V3**: 9/9 step (100%) — chiuso il 2026-09-23 (vedi
   `PIANO_V3.md` storico per roadmap completa).

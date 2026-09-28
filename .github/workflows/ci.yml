@@ -97,3 +97,43 @@ jobs:
             exit 1
           fi
           echo "OK: tests.html referenzia elevator.html"
+
+  # ===========================================================================
+  # Esecuzione REALE dei test in browser headless.
+  # ===========================================================================
+  # La job `tests` qui sopra e' solo statica (grep): non esegue un solo test.
+  # E' cosi' che 4 test sono rimasti rossi per mesi senza allarme, e che i bug
+  # bloccanti "overlay portrait iPhone" e "startBtn irraggiungibile su desktop"
+  # sono arrivati in main. Questa job chiude il gap: esegue tests.html in
+  # Chromium headless e fallisce se un test non passa.
+  # ===========================================================================
+  tests-run:
+    name: Esecuzione test in browser (Chromium headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installa Playwright + Chromium
+        run: |
+          # Versione pinnata: i runner Ubuntu GitHub non hanno Playwright
+          # preinstallato e la versione deve essere allineata al build del
+          # browser che viene scaricato, altrimenti si ottiene
+          # "Executable doesn't exist" (esperienza diretta).
+          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Esegui tests.html (server HTTP + Chromium headless)
+        run: |
+          node scripts/run-tests.js
+
+      - name: Upload risultati test (artefatto in caso di fallimento)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.json
+          if-no-files-found: ignore

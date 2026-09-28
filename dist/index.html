@@ -499,7 +499,22 @@
     font-size: 11px;
   }
 
-  /* Start screen */
+  /* Start screen
+     FIX desktop 2026-09-28 — pulsante start irraggiungibile.
+     Il contenuto misura ~772px in verticale. Sotto i ~870px di altezza
+     viewport eccedeva `#startscreen`, che aveva `overflow: visible`, mentre
+     `html, body` hanno `overflow: hidden`: nessuno scroll possibile e il
+     bottone "Entra nell'ascensore" finiva sotto il bordo inferiore, NON
+     cliccabile. Colpiva le risoluzioni laptop piu' comuni (1366x768,
+     1280x720, 1024x768, 1440x810, 1280x800). Il caso mobile era gia'
+     coperto da una media query dedicata; qui la copertura sale a tutte le
+     dimensioni.
+     Nota flexbox: con `justify-content: center` + overflow, il contenuto
+     eccedente in alto diventa irraggiungibile (lo scroll parte da 0 ma il
+     centro viene spostato fuori). Per questo si passa a `flex-start` e si
+     centra con `margin: auto` sui figli estremi: gli auto-margin valgono 0
+     quando lo spazio manca, quindi l'overflow resta per intero
+     raggiungibile. */
   #startscreen {
     position: fixed;
     inset: 0;
@@ -507,15 +522,24 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     z-index: 100;
     color: #fff;
     text-align: center;
     padding: 20px;
   }
+  /* Centraggio verticale che collassa a 0 quando il contenuto non entra.
+     Va DICHIARATO DOPO `#startscreen h1 { margin: 0 0 8px 0 }` e dopo
+     `#startscreen button { margin-top: 28px }`: a parita' di specificita'
+     vince l'ultima regola, quindi qui sopra verrebbero sovrascritte. */
+  #startscreen h1 { margin-top: auto; }
+  #startscreen > #startBtn { margin-bottom: auto; }
   #startscreen h1 {
     font-size: 38px;
-    margin: 0 0 8px 0;
+    margin-bottom: 8px;
     letter-spacing: 1px;
     font-weight: 300;
   }

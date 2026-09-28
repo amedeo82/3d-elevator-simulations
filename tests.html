@@ -1667,6 +1667,86 @@
         });
       });
 
+      // ---- FIX desktop 2026-09-28: startBtn irraggiungibile sui laptop ----
+      // Regressione: il contenuto dello start screen misura ~772px in
+      // verticale. Sotto i ~870px di altezza viewport eccedeva #startscreen,
+      // che aveva `overflow: visible`, mentre `html, body` hanno
+      // `overflow: hidden`: nessuno scroll possibile e il bottone finiva
+      // sotto il bordo inferiore, non cliccabile. Colpiva le risoluzioni
+      // piu' comuni (1366x768, 1280x720, 1024x768, 1440x810, 1280x800).
+      // Il caso mobile era gia' coperto da una media query; la copertura
+      // sale ora alla regola base.
+      describe('FIX desktop: startBtn irraggiungibile sotto i ~870px di altezza', () => {
+        const doc = iframe.contentDocument;
+
+        test('#startscreen e\' scrollabile (overflow-y: auto) nella regola base', () => {
+          const css = doc.querySelector('style').textContent;
+          const block = css.slice(css.indexOf('#startscreen {'));
+          const decl = block.slice(0, block.indexOf('}'));
+          assert(/overflow-y:\s*auto/.test(decl),
+            '#startscreen deve avere overflow-y:auto nella regola base, '
+            + 'altrimenti il contenuto eccedente e\' irraggiungibile');
+        });
+
+        test('#startscreen non usa justify-content: center con overflow', () => {
+          // Con justify-content:center + overflow, l'eccedenza in alto
+          // diventa irraggiungibile (lo scroll parte da 0 ma il centro
+          // viene spostato fuori). Il centraggio deve avvenire tramite
+          // auto-margin sui figli estremi, che collassano a 0 se manca
+          // spazio.
+          const css = doc.querySelector('style').textContent;
+          const block = css.slice(css.indexOf('#startscreen {'));
+          const decl = block.slice(0, block.indexOf('}'));
+          assert(!/justify-content:\s*center/.test(decl),
+            '#startscreen non deve usare justify-content:center con overflow-y:auto');
+        });
+
+        test('centraggio verticale via auto-margin su h1 e startBtn', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/#startscreen\s+h1\s*\{[^}]*margin-top:\s*auto/.test(css),
+            'manca margin-top:auto su h1 (centraggio che collassa a 0)');
+          assert(/#startscreen\s*>\s*#startBtn\s*\{[^}]*margin-bottom:\s*auto/.test(css),
+            'manca margin-bottom:auto su #startBtn (centraggio che collassa a 0)');
+        });
+
+        test('nessuno shorthand "margin:" dopo gli auto-margin li azzera', () => {
+          // La regola `#startscreen h1 { margin-top: auto }` verrebbe
+          // annullata da un successivo shorthand `margin: 0 0 8px 0`, che
+          // azzera anche margin-top. Per questo l'h1 usa solo longhand
+          // (`margin-bottom`). Stessa logica per il bottone, che usa
+          // `margin-top` e non uno shorthand.
+          const css = doc.querySelector('style').textContent;
+          const rules = css.match(/#startscreen\s+h1\s*\{[^}]*\}/g) || [];
+          assert(rules.length >= 2, 'attese almeno 2 regole per #startscreen h1');
+          for (const r of rules) {
+            assert(!/^\s*margin:\s/m.test(r),
+              'nessuna regola #startscreen h1 deve usare lo shorthand "margin:" '
+              + '(azzererebbe margin-top:auto): ' + r.trim());
+          }
+          const btnRules = css.match(/#startscreen\s*(>\s*)?#startBtn\s*\{[^}]*\}/g) || [];
+          for (const r of btnRules) {
+            assert(!/^\s*margin:\s/m.test(r),
+              'nessuna regola su #startBtn deve usare lo shorthand "margin:" '
+              + '(azzererebbe margin-bottom:auto): ' + r.trim());
+          }
+        });
+
+        test('misura reale: il bottone deve stare nel viewport o essere scrollabile', () => {
+          const W = iframe.contentWindow;
+          const ss = doc.getElementById('startscreen');
+          const btn = doc.getElementById('startBtn');
+          assert(ss && btn, '#startscreen / #startBtn non trovati');
+          const cs = W.getComputedStyle(ss);
+          const scrollable = cs.overflowY === 'auto' || cs.overflowY === 'scroll';
+          const rect = btn.getBoundingClientRect();
+          const fits = rect.top >= 0 && rect.bottom <= W.innerHeight;
+          assert(scrollable || fits,
+            'il bottone deve essere gia\' nel viewport oppure lo start screen '
+            + 'deve essere scrollabile (altrimenti e\' irraggiungibile e l\'app '
+            + 'non si avvia)');
+        });
+      });
+
       // ---- SOLUZIONE B (V4 Step 7): due scene indipendenti desktop/mobile ----
       // Regressione: il progetto era nato desktop-first e ogni intervento
       // mobile era un overlay sopra logiche desktop (mix confuso). Verifica
