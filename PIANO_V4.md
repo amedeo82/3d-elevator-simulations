@@ -719,4 +719,91 @@ buttons) ma il canvas WebGL sotto di essi mostrava solo il clear color
 
 **Branch**: `kilo/playful-null-mhs`.
 
+### 2026-09-28 — FIX schermo nero su iPhone 15 Pro (root cause reale)
+
+**Sintomo riportato**: su iPhone 15 Pro con Safari lo schermo resta nero e
+la versione mobile non si avvia. Il tap su "Entra nell'ascensore" non
+produceva nulla.
+
+**Nota importante sul "FIX precedente" (2026-09-26)**: la root cause dichiarata
+era che "un elemento `position: fixed` con `z-index` superiore al canvas
+interferisce col rendering WebGL su iOS Safari a causa del bug
+`preserveDrawingBuffer`". **Questa spiegazione non regge**: nessun browser
+si comporta in questo modo, e `visibility: hidden` non era la causa. Il fix
+precedente era quindi un placebo. Riprodotto il caso reale con Playwright +
+WebKit 26.0 su viewport iPhone 15 Pro.
+
+**Root cause reali (4 difetti distinti)**:
+
+1. **L'avviso "ruota il dispositivo" era un overlay bloccante a schermo
+   intero** (`position: fixed; 100vw x 100vh; background: rgba(0,0,0,0.92);
+   z-index: 100000`). Su iPhone 15 Pro si apre in portrait, quindi l'utente
+   vedeva uno schermo praticamente nero. Inoltre l'overlay **intercettava i
+   tap**: Playwright riporta letteralmente *"rotate-device-overlay intercepts
+   pointer events"* sul `#startBtn`. Il gioco era quindi impossibile da
+   avviare in portrait, e l'avviso non aveva nessun modo per essere chiuso.
+2. **Nessun guard sulla creazione del context WebGL.** Se
+   `new THREE.WebGLRenderer()` falliva (iOS: budget memoria, tropi context
+   WebGL vivi, Modalità a basso consumo), l'intero modulo abortiva e il
+   listener su `#startBtn` non veniva **mai** agganciato → startBtn morto +
+   pagina scura, senza alcun recovery.
+3. **`preserveDrawingBuffer: true`**: copia integrale del buffer a ogni frame
+   e consumo GPU/memoria aggiuntivo. **Nulla nel progetto legge i pixel del
+   canvas** (nessun `toDataURL`/`toBlob`), quindi era costo puro, ed è
+   esattamente la configurazione che su iOS favorisce frame neri/stallati.
+   Rimosso.
+4. **Il context perso non era mai recuperato.** `state._ctxLost` veniva
+   scritto ma **non letto mai**, `webglcontextrestored` faceva un solo
+   `render()`, e non esisteva alcun watchdog. Su iOS il context viene ucciso
+   dal sistema (backgrounding dell'app, pressione di memoria) e Safari non
+   emette sempre l'evento di restore → canvas nero definitivo.
+
+**Fix applicati**:
+- Avviso portrait trasformato in **card compatta in alto, non bloccante**
+  (`pointer-events: none`, niente più `100vw/100vh` né campitura 92% nera)
+  con bottone "Continua" dismissabile (`initRotateNotice()`). Il gioco è
+  ora utilizzabile anche in portrait.
+- Guard sulla creazione del context + `showWebglFallback()`: se WebGL non è
+  disponibile compare un messaggio con bottone "Ricarica" invece di uno
+  schermo nero muto.
+- Rimosso `preserveDrawingBuffer`. `antialias` disabilitato solo su iOS.
+- Budget memoria tarato: `computePixelRatioCap(dpr, isIOS)` limita a **1.5**
+  su iOS (era 2) e a 2 su desktop. Su iPhone 15 Pro landscape il backbuffer
+  passa da 1704x786 a **1278x589**.
+- Recupero context reale: `reviveRendererAfterContextRestore()` (re-applica
+  size/pixelRatio, `resetState()`, forza `needsUpdate` su tutti i materiali e
+  `shadowMap.needsUpdate`) + `CTX_WATCHDOG_MS` (6s) che chiama
+  `WEBGL_lose_context.restoreContext()` e, se il context non torna, mostra
+  la fallback. Il loop salta `renderer.render()` mentre `_ctxLost` è true.
+- `onClick`: `requestPointerLock()` protetto da try/catch e saltato del
+  tutto in mobile mode (l'API non esiste su iOS Safari e lanciava TypeError
+  a ogni tap sul canvas).
+- Helper mobile esposti anche in `BossHotelPure` (erano solo su `window`):
+  violazione del contratto D9/D27.
+
+**Verifica**:
+- Riproduzione in **WebKit 26.0** (Playwright, profilo iPhone 15 Pro):
+  prima il tap su `#startBtn` falliva con *"rotate-device-overlay intercepts
+  pointer events"*; ora va a buon fine e la cabina renderizza in portrait e
+  in landscape (screenshot verificati).
+- Nessuna regressione su desktop (Chromium) rimuovendo
+  `preserveDrawingBuffer`.
+- `node scripts/check-balance.js elevator.html` → passa.
+- `tests.html`: **280/280 verdi** (prima 264/268 con 4 fallimenti).
+  Aggiunti 12 test di regressione sul blocco iPhone. I 4 fallimenti
+  preesistenti erano **bug dei test**, non del codice di prodotto:
+  - `PANEL_HELP_KEYS_MOBILE`: la test pretendeva lo stesso numero di voci
+    del desktop, ma le voci desktop-only (ESC, comando vocale) sono omesse
+    di proposito su touch → asserzione corretta sulla presenza delle chiavi.
+  - 2 test ancoravano la regex alla *prima occorrenza* del nome della
+    funzione invece che alla sua definizione → ancorate alla definizione.
+  - `BossHotelPure: openMobileMenu/...` → gli helper erano esposti solo su
+    `window`; ora sono nel namespace (fix di prodotto, D9/D27).
+
+**Build**: `dist/index.html` rigenerato come copia byte-exact di
+`elevator.html` (convenzione del repo, verificata con hash SHA-256).
+Nota: nella sessione precedente avevo riportato `dist/index.html` come
+"out-of-sync" — era una verifica errata, avevo confrontato `dist/index.html`
+(allora allineato a HEAD) contro `elevator.html` modificato in working tree.
+
 🎉 **Polish Pack V4 COMPLETO (8/8 step, 100%) + fix cabina nera post-merge**.

@@ -668,32 +668,58 @@
   /* Touch controls + landscape enforcement + HUD scaling.        */
   /* ============================================================ */
 
-  /* Landscape enforcement: overlay quando portrait. Niente lock vero
-     (limitato da Web API), ma chiara UX "rotate device". */
+  /* Portrait notice: avviso NON bloccante, non un overlay a schermo intero.
+     BUG iPhone (2026-09-28): la versione precedente era un fixed 100vw/100vh
+     con background rgba(0,0,0,0.92) e z-index 100000 che (a) copriva
+     l'intero schermo rendendolo praticamente nero e (b) intercettava i
+     tap, impedendo di premere "Entra nell'ascensore". L'utente su iPhone 15 Pro
+     vedeva solo uno schermo nero e concludeva che la versione mobile non
+     si avviasse. Ora e' una card compatta in alto, con un bottone dismiss,
+     e il gioco resta utilizzabile anche in portrait. */
   #rotate-device-overlay {
     display: none;
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.92);
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, 92vw);
+    background: rgba(18, 16, 12, 0.94);
+    border: 1px solid rgba(201, 165, 90, 0.55);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
     z-index: 100000;
     color: #ffd66b;
     font-family: 'Courier New', monospace;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     text-align: center;
-    padding: 20px;
+    padding: 14px 16px;
+    pointer-events: none;  /* l'overlay non ruba i tap alla scena */
   }
   #rotate-device-overlay .rotate-icon {
-    font-size: 64px;
-    margin-bottom: 24px;
+    font-size: 34px;
+    margin-bottom: 8px;
     animation: rotatePulse 2s infinite;
   }
   #rotate-device-overlay .rotate-text {
-    font-size: 18px;
-    letter-spacing: 1.5px;
-    max-width: 400px;
-    line-height: 1.6;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    max-width: 100%;
+    line-height: 1.5;
   }
+  #rotate-device-overlay .rotate-ok {
+    margin-top: 12px;
+    pointer-events: auto;  /* solo il bottone e' cliccabile */
+    background: #ffd66b;
+    color: #1a1300;
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 22px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #rotate-device-overlay.rot-dismissed { display: none !important; }
   @keyframes rotatePulse {
     0%, 100% { transform: rotate(0deg); }
     50% { transform: rotate(90deg); }
@@ -1025,9 +1051,9 @@
       padding: 14px 22px;
       max-width: 90vw;
     }
-    /* Landscape enforced */
+    /* Portrait notice (non bloccante): mostrato solo in mobile-mode. */
     @media (orientation: portrait) {
-      #rotate-device-overlay { display: flex; }
+      body.mobile-mode #rotate-device-overlay { display: flex; }
     }
   }
 
@@ -1168,13 +1194,16 @@
   <div id="pointerhint" aria-hidden="true"></div>
 </div>
 
-<!-- Polish Pack V3 Step 9 (Q9.3): landscape enforcement overlay -->
-<div id="rotate-device-overlay" role="alertdialog" aria-labelledby="rotate-text">
+<!-- Polish Pack V3 Step 9 (Q9.3): avviso portrait, non bloccante.
+     FIX iPhone (2026-09-28): era un overlay full-screen nero che impediva
+     l'avvio. Ora e' una card in alto con bottone dismiss. -->
+<div id="rotate-device-overlay" role="status" aria-live="polite" aria-atomic="true">
   <div class="rotate-icon" aria-hidden="true">📱</div>
   <div class="rotate-text" id="rotate-text">
-    Rotate your device to landscape to play.<br>
-    Ruota il dispositivo in orizzontale per giocare.
+    Ruota il dispositivo in orizzontale per un'esperienza migliore.<br>
+    Rotate your device to landscape for a better experience.
   </div>
+  <button type="button" class="rotate-ok" id="rotate-ok-btn">Continua</button>
 </div>
 
 <!-- Polish Pack V3 Step 9 (Q9.2): virtual touch controls (mobile only) -->
@@ -1443,6 +1472,9 @@ const STRINGS = {
     helpPlaceholder: '(azione)',
     // start screen intro paragraph
     startIntro: 'Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch, apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessit\u00e0, attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona.',
+    // FIX iPhone (2026-09-28): avviso portrait non bloccante.
+    rotateNotice: 'Ruota il dispositivo in orizzontale per un\u2019esperienza migliore.<br>Rotate your device to landscape for a better experience.',
+    rotateDismiss: 'Continua',
     startIntro2: 'Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina.',
     // start screen slides features
     slidesLabel: 'Caratteristiche',
@@ -1777,6 +1809,9 @@ const STRINGS = {
     helpPlaceholder: '(action)',
     // start screen intro
     startIntro: 'You are about to enter a luxury 5-star elevator cabin. Select a floor from the touch panel, open/close the doors, explore the corridor of the floor reached and, in case of need, activate the emergency call. Move the view with the mouse as in a first-person game.',
+    // FIX iPhone (2026-09-28): avviso portrait non bloccante.
+    rotateNotice: 'Ruota il dispositivo in orizzontale per un\u2019esperienza migliore.<br>Rotate your device to landscape for a better experience.',
+    rotateDismiss: 'Continue',
     startIntro2: 'Select a floor from the touch panel, or exit into the corridor to re-enter the cabin.',
     // start screen slides
     slidesLabel: 'Features',
@@ -2452,7 +2487,13 @@ const state = {
   onboardedDesktop: false,
   onboardedMobile: false,
   // Joystick virtuale state (Q9.2): posizione drag attiva (touch drag).
-  _joystick: { active: false, dx: 0, dz: 0 }
+  _joystick: { active: false, dx: 0, dz: 0 },
+  // FIX mobile (iPhone) 2026-09-28: tracciamento perdita del context WebGL.
+  // Dichiarato in CONFIGURAZIONE (vincolo D2) perche' letto dai listener
+  // contextlost/restored e dal watchdog, che girano ben prima di qualunque
+  // dichiarazione tardiva nel file.
+  _ctxLost: false,
+  _ctxLostAt: 0
 };
 
 // Polish Pack V3 Step 4 (Q4.2): movePaused dichiarato in CONFIGURATION
@@ -2511,16 +2552,90 @@ const camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.05, 200
 camera.position.set(0, 0, 0); // verrà riposizionata dentro la cabina
 camera.rotation.order = 'YXZ';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
-// FIX mobile (iOS Safari bug): preserveDrawingBuffer:true evita frame
-// neri quando l'utente ruota portrait→landscape. Senza questo flag, WebGL
-// su iOS Safari può droppare il primo frame post-rotazione a causa del
-// resize asincrono del backing store, lasciando il canvas con il colore
-// di clear (0x111114 = quasi nero). Cost in performance: trasferimento
-// extra CPU↔GPU a ogni swap. Mitigato dal fatto che il canvas è l'unico
-// grande schermo 3D e il delta è trascurabile su iPhone 12+ (A14 GPU).
-// Su desktop il costo è impercettibile.
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// FIX mobile (iPhone/Safari) 2026-09-28 — rivista completa della creazione
+// renderer. I precedenti "fix" (preserveDrawingBuffer, visibility:hidden sui
+// fixed overlay) non potevano funzionare: nessuno dei due e' un meccanismo
+// reale del browser. I problemi reali su iOS erano:
+//   1. nessun guard sulla creazione del context: se falliva, tutto il modulo
+//      abortiva e il listener su #startBtn non veniva MAI agganciato
+//      (startBtn "morto" + pagina scura = schermo nero senza recovery);
+//   2. `preserveDrawingBuffer: true`: copia integrale del buffer a ogni frame
+//      e consumo GPU/memoria aggiuntivo. Nulla nel progetto legge i pixel del
+//      canvas (nessun toDataURL/toBlob), quindi era costo puro, ed e' proprio
+//      la configurazione che su iOS favorisce frame neri/stallati;
+//   3. `antialias: true` + devicePixelRatio 3 => backbuffer MSAA da ~1.3M px:
+//      sul tetto di memoria GPU di iOS Safari;
+//   4. il context perso non veniva MAI recuperato (flag _ctxLost scritto ma
+//      mai letto, nessun watchdog, nessun fallback visibile).
+// Ora: detection iOS locale (niente TDZ su isMobileDevice(), dichiarata piu'
+// avanti nel file), guard con fallback visibile, budget memoria tarato e
+// recupero reale del context.
+
+// Detection iOS/WebKit locale. Deve restare indipendente da isMobileDevice()
+// perche' questa riga esegue PRIMA della dichiarazione di quella funzione
+// (vincolo D2: niente TDZ).
+function detectIOS() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOSLike = /iPad|iPhone|iPod/.test(ua)
+    // iPadOS 13+ si dichiara "Macintosh" con touch
+    || (/Macintosh/.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
+  return iOSLike && !/Android/.test(ua);
+}
+
+// Pixel ratio cap: funzione PURA (esposta in BossHotelPure per i test).
+// iOS Safari ha un tetto di memoria GPU molto piu' basso di desktop: il
+// backbuffer a DPR 3 su un iPhone 15 Pro (1704x786) con MSAA 4x supera
+// facilmente il budget. 1.5 mantiene la resea percepita quasi identica su
+// schermi OLED ad alta densita' e dimezza la memoria del backbuffer.
+function computePixelRatioCap(dpr, isIOSDevice) {
+  const d = (typeof dpr === 'number' && dpr > 0) ? dpr : 1;
+  return isIOSDevice ? Math.min(d, 1.5) : Math.min(d, 2);
+}
+
+const IS_IOS = detectIOS();
+const PIXEL_RATIO_CAP = computePixelRatioCap(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, IS_IOS);
+
+// Fallback visibile: mai uno schermo nero muto. Usato se WebGL non e'
+// disponibile/creabile. Non dipende dal modulo, resta sullo schermo anche se
+// il resto del modulo aborta.
+function showWebglFallback(reason) {
+  if (document.getElementById('webgl-fallback')) return;
+  const msg = (state.lang === 'en')
+    ? 'This device could not start 3D (WebGL unavailable).<br><small>Close other tabs/apps and reload. If you are in Low Power Mode, turn it off.</small>'
+    : 'Questo dispositivo non ha potuto avviare la grafica 3D (WebGL non disponibile).<br><small>Chiudi altre schede/app e ricarica. Se la Modalita\' a basso consumo e\' attiva, disattivala.</small>';
+  const d = document.createElement('div');
+  d.id = 'webgl-fallback';
+  d.setAttribute('role', 'alert');
+  d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#05050a;color:#ffd66b;'
+    + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;'
+    + 'text-align:center;padding:24px;font-family:monospace;font-size:16px;line-height:1.6;';
+  d.innerHTML = '<div style="font-size:52px">&#9888;</div><div>' + msg + '</div>'
+    + (reason ? '<small style="opacity:.55">' + String(reason).slice(0, 180) + '</small>' : '');
+  const btn = document.createElement('button');
+  btn.textContent = state.lang === 'en' ? 'Reload' : 'Ricarica';
+  btn.style.cssText = 'background:#ffd66b;color:#1a1300;border:0;border-radius:999px;'
+    + 'padding:12px 28px;font-family:inherit;font-size:15px;cursor:pointer;';
+  btn.addEventListener('click', () => location.reload());
+  d.appendChild(btn);
+  document.body.appendChild(d);
+}
+
+let renderer;
+try {
+  // preserveDrawingBuffer rimosso (vedi nota sopra). antialias disattivato
+  // solo su iOS, dove il backbuffer MSAA e' il principale costo di memoria.
+  renderer = new THREE.WebGLRenderer({
+    antialias: !IS_IOS,
+    powerPreference: 'high-performance',
+  });
+  if (!renderer.getContext()) throw new Error('WebGL context non disponibile');
+} catch (err) {
+  console.error('[webgl] creazione context fallita:', err);
+  showWebglFallback(err && err.message);
+  throw err;  // aborta il modulo: la fallback resta visibile sullo schermo
+}
+renderer.setPixelRatio(PIXEL_RATIO_CAP);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2530,8 +2645,9 @@ renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+  camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
+  renderer.setPixelRatio(PIXEL_RATIO_CAP);
   renderer.setSize(innerWidth, innerHeight);
 });
 // FIX mobile (iOS Safari bug): orientationchange deve essere ascoltato
@@ -2543,9 +2659,11 @@ addEventListener('resize', () => {
 // fino a quando innerWidth/innerHeight sono aggiornati al nuovo orientamento.
 addEventListener('orientationchange', () => {
   setTimeout(() => {
-    camera.aspect = innerWidth / innerHeight;
+    camera.aspect = innerWidth/innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(PIXEL_RATIO_CAP);
     renderer.setSize(innerWidth, innerHeight);
+    renderer.render(scene, camera);
   }, 50);
 });
 
@@ -8945,6 +9063,20 @@ function handleMobileMenuAction(action) {
 }
 // Polish Pack V4 Step 8 (mobile menu): initMobileMenu — bind listeners per
 // hamburger button + close + backdrop + tap-outside. Idempotente (ri-bind safe).
+// FIX iPhone (2026-09-28): l'avviso portrait non deve mai bloccare l'avvio.
+// Il bottone "Continua" lo nasconde per il resto della sessione. Idempotente.
+function initRotateNotice() {
+  if (initRotateNotice._bound) return;
+  const ok = document.getElementById('rotate-ok-btn');
+  const overlay = document.getElementById('rotate-device-overlay');
+  if (ok && overlay) {
+    ok.addEventListener('click', (e) => {
+      e.stopPropagation();
+      overlay.classList.add('rot-dismissed');
+    });
+  }
+}
+
 function initMobileMenu() {
   if (initMobileMenu._bound) return;
   const hamBtn = document.getElementById('hamburger-btn');
@@ -8978,13 +9110,17 @@ function initMobileMenu() {
   }
   initMobileMenu._bound = true;
 }
-// Esposizione in BossHotelPure per test cross-iframe.
+// Esposizione per test cross-iframe.
+// NOTA: window.BossHotelPure viene creato piu' avanti nel file, quindi qui non
+// e' ancora disponibile. Gli stessi helper sono elencati anche nel literal di
+// window.BossHotelPure (contratto D9/D27). Qui restano per compatibilita'.
 if (typeof window !== 'undefined') {
   window.openMobileMenu = openMobileMenu;
   window.closeMobileMenu = closeMobileMenu;
   window.toggleMobileMenu = toggleMobileMenu;
   window.isMobileMenuOpen = isMobileMenuOpen;
   window.handleMobileMenuAction = handleMobileMenuAction;
+  window.refreshMobileMenuStates = refreshMobileMenuStates;
 }
 
 // Polish Pack V3 Step 1d: helper per il calcolo del contrast ratio WCAG.
@@ -10146,8 +10282,16 @@ document.addEventListener('mousemove', onMouseMove);
 
 function onClick(e) {
   if (document.pointerLockElement !== renderer.domElement) {
-    // richiedi pointer lock
-    renderer.domElement.requestPointerLock();
+    // FIX mobile (iPhone/Safari) 2026-09-28: requestPointerLock NON esiste su
+    // iOS Safari (TypeError: not a function) e dove esiste rigetta con
+    // NotSupportedError. Era una chiamata senza guard: su iPhone ogni tap sul
+    // canvas lanciava un errore non gestito. Su mobile il look e' gia' gestito
+    // dal drag del dito (initTouchControls), quindi non serve chiedere il lock.
+    if (state.inputMode === 'mobile') return;
+    try {
+      const p = renderer.domElement.requestPointerLock();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (_) { /* browser senza Pointer Lock: ignorato */ }
     return;
   }
   // converti coordinate click
@@ -10155,23 +10299,78 @@ function onClick(e) {
   const btn = getButtonAtPointer();
   if (btn) pressButton(btn);
 }
-// FIX mobile (iOS Safari bug): webglcontextlost/restored handlers. Su iOS
-// Safari il context può essere perso durante rotazione portrait→landscape
-// (resize asincrono del backing store). Senza handler esplicito, three.js
-// smette di renderizzare e la cabina diventa nera. preventDefault() sul
-// 'webglcontextlost' permette al browser di emettere 'webglcontextrestored'
-// dopo il resize; a quel punto re-rendiamo forzatamente per recuperare.
+// FIX mobile (iPhone/Safari) 2026-09-28 — recupero REALE del context WebGL.
+// Prima: il flag `state._ctxLost` veniva scritto ma MAI letto, e
+// `webglcontextrestored` faceva un solo render. Su iOS il context viene
+// ucciso dal sistema (backgrounding dell'app, pressione di memoria, cambio
+// scena) e Safari NON emette sempre `webglcontextrestored`: il risultato era
+// un canvas nero definitivo, senza nessun modo per l'utente di recuperare
+// senza ricaricare la pagina.
+// Ora: preventDefault (obbligatorio per ottenere il restore), watchdog che
+// (a) tenta il restore esplicito del context, (b) ri-applica size/pixelRatio,
+// (c) forza il re-upload delle risorse, (d) se il context non torna mostra
+// la fallback con il bottone "Ricarica" invece di lasciare lo schermo nero.
+const CTX_WATCHDOG_MS = 6000;
+
+// Re-applica stato di rendering + forza il re-upload delle texture/materiali
+// dopo un restore. three.js ricostruisce da solo i programmi, ma le texture
+// vanno ri-caricate: senza forceUpdate il primo frame puo' restare nero.
+function reviveRendererAfterContextRestore() {
+  try {
+    renderer.setPixelRatio(PIXEL_RATIO_CAP);
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.resetState();
+    scene.traverse((obj) => {
+      if (!obj.material) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => { if (m && m.needsUpdate !== undefined) m.needsUpdate = true; });
+    });
+    renderer.shadowMap.needsUpdate = true;
+    renderer.render(scene, camera);
+    console.log('[webgl] context ripristinato correttamente');
+  } catch (e) {
+    console.error('[webgl] revive fallita:', e);
+  }
+}
+
 renderer.domElement.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
-  console.warn('[webgl] context lost, will restore...');
+  console.warn('[webgl] context perso, recupero in corso...');
   state._ctxLost = true;
+  state._ctxLostAt = performance.now();
 }, false);
+
 renderer.domElement.addEventListener('webglcontextrestored', () => {
-  console.log('[webgl] context restored');
   state._ctxLost = false;
-  // force re-render subito
-  renderer.render(scene, camera);
+  state._ctxLostAt = 0;
+  reviveRendererAfterContextRestore();
 }, false);
+
+// Watchdog: su iOS puo' non arrivare mai l'evento di restore. Se il context
+// resta perso oltre CTX_WATCHDOG_MS proviamo a ripristinarlo; se fallisce
+// ancora, mostriamo la fallback (meglio un messaggio che uno schermo nero).
+setInterval(() => {
+  if (!state._ctxLost) return;
+  const elapsed = performance.now() - state._ctxLostAt;
+  if (elapsed < CTX_WATCHDOG_MS) return;
+  let restored = false;
+  try {
+    const gl = renderer.getContext();
+    const ext = gl && gl.getExtension && gl.getExtension('WEBGL_lose_context');
+    if (ext && ext.restoreContext) { ext.restoreContext(); restored = true; }
+  } catch (e) { /* ignore */ }
+  if (restored) {
+    // Dai tempo al browser: se il restore fallisce davvero, il prossimo
+    // tick del watchdog (dopo altri CTX_WATCHDOG_MS) mostra la fallback.
+    state._ctxLostAt = performance.now();
+    return;
+  }
+  console.error('[webgl] context non recuperabile');
+  showWebglFallback('WebGL context lost');
+}, CTX_WATCHDOG_MS);
+
 renderer.domElement.addEventListener('click', onClick);
 document.addEventListener('pointerlockchange', () => {
   const hint = document.getElementById('pointerhint');
@@ -10656,7 +10855,10 @@ cabin.rotation.z = state.vibrationRoll;
   // (lo stato è già aggiornato dentro tickPlayer)
 
   updateHover();
-  renderer.render(scene, camera);
+  // FIX mobile (iPhone) 2026-09-28: non chiamare render con il context
+  // perso. three.js su un context perso lancia/spamma errori e su WebKit puo'
+  // peggiorare lo stato. Il ripristino e' gestito dai listener + watchdog.
+  if (!state._ctxLost) renderer.render(scene, camera);
   // FIX: re-schedule loop RAF. Senza questa riga, il game loop si ferma
   // dopo UNA sola frame (l'unica richiamata dal requestAnimationFrame esterno
   // al module scope) e tutta la scena resta congelata al primo paint: porte
@@ -11004,6 +11206,7 @@ initSettingsQoL();
 initMobileDetection();
 initTouchControls();
 initMobileMenu();  // Polish Pack V4 Step 8: hamburger menu (mobile-only UI)
+initRotateNotice();  // FIX iPhone: avviso portrait dismissabile
 // Polish Pack V2 Step 8b: carica lingua salvata (o auto-detect da navigator.language)
 state.lang = loadLang();
 // Polish Pack V2 Step 14c: notifica citofono interrotto dal refresh (se applicabile)
@@ -11221,6 +11424,11 @@ function applyLangToDOM() {
   if (startSlides) startSlides.innerHTML = buildStartSlides();
   const startIntro = document.querySelector('#startscreen p');
   if (startIntro) startIntro.textContent = s.startIntro;
+  // FIX iPhone (2026-09-28): avviso portrait non bloccante + bottone dismiss.
+  const rotText = document.getElementById('rotate-text');
+  if (rotText) rotText.innerHTML = s.rotateNotice;
+  const rotOk = document.getElementById('rotate-ok-btn');
+  if (rotOk) rotOk.textContent = s.rotateDismiss;
   // Tooltip tutorial (renderTutorialStep sovrascrive tt-text al primo step)
   const ttSkip = document.getElementById('tt-skip');
   if (ttSkip) ttSkip.textContent = s.tooltipSkip;
@@ -11523,6 +11731,14 @@ window.BossHotelPure = {
   stateInvariantCheck, interphoneLampAlpha, interphoneShouldTimeout, runStress,
   // Polish Pack V3 Step 9: helper mobile responsive
   isMobileDevice,
+  // FIX mobile (iPhone) 2026-09-28: helper puri per budget GPU/WEBGL mobile.
+  computePixelRatioCap, detectIOS,
+  // FIX 2026-09-28: helper del menu mobile. Erano esposti solo su `window`,
+  // quindi i test cross-iframe (che leggono solo BossHotelPure) non li
+  // trovavano — violazione del contratto D9/D27. Stessa funzione, stesso
+  // riferimento: qui si riusa l'oggetto gia' definito piu' sopra.
+  openMobileMenu, closeMobileMenu, toggleMobileMenu, isMobileMenuOpen,
+  handleMobileMenuAction, refreshMobileMenuStates,
   // Polish Pack V4 Step 3 (D23): helper a11y per i test del cambio lingua
   // (applyLangToDOM e' side-effect ma serve solo ai test cross-iframe)
   applyLangToDOM, setLang, applyAriaLabels,
