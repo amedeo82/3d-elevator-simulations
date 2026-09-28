@@ -212,14 +212,34 @@ tabella layout era fuori di ~2.500 righe.
 
 | Hai cambiato... | Devi aggiornare... |
 |---|---|
-| Le dimensioni / righe / KB di `elevator.html` | `README.md` riga "Panoramica", e la sezione "Struttura del progetto" |
-| Il numero di test in `tests.html` | `AGENTS.md` (conteggio in "Comandi build / verifica" + in "Polish Pack attivi"), `README.md` (riga 14 e le 4 occorrenze nella sezione sviluppo) |
+| Le dimensioni / righe / KB di `elevator.html` | `README.md` § "Panoramica", `docs/DEVELOPMENT.md` § "Struttura del progetto" |
+| Il numero di test in `tests.html` | `AGENTS.md` (conteggio in "Comandi build / verifica" + in "Polish Pack attivi"), `README.md` (badge `Tests-` e le occorrenze in "Funzionalità" / "Comandi" / "Contribuire"), `docs/DEVELOPMENT.md` |
 | Le funzioni in `BossHotelPure` | Conteggio nella tabella layout qui sopra, e `README.md` se menziona il numero |
 | Il numero di contratti D-key | `AGENTS.md` (tabella D-key + "Contratti D-key totali"), `CONTRIBUTING.md`, `ROADMAP_POST_V7.md` — **tutti e tre insieme** |
-| Il workflow di un Polish Pack | `PIANO_VN.md` (step ✅ + log decisioni) e `PIANO_MIGLIORAMENTI.md` (Fase NN) |
+| Il workflow di un Polish Pack | `PIANO_VN.md` (step ✅ + log decisioni), `PIANO_MIGLIORAMENTI.md` (Fase NN) e `docs/ROADMAP.md` |
 | Un contratto D-key nuovo o modificato | `AGENTS.md` (riga della tabella) **e** `CONTRIBUTING.md` (checklist PR, step 6) |
 | Il comportamento di build/CI | `AGENTS.md` sezione "Comandi build / verifica" + descrizione delle job CI |
 | Qualsiasi cosa, al merge | `node scripts/generate-changelog.js` (D26) |
+
+**Mappa della documentazione** (il README è una landing breve, i dettagli
+sono in `docs/` e nei documenti di progetto alla root):
+
+| Doc | Contenuto | Manutenerlo quando... |
+|---|---|---|
+| `README.md` | Landing: hero, quick start, griglia funzioni sintetica, indice | Cambiano utenza, comandi ad alto livello, badge |
+| `docs/FEATURES.md` | Catalogo completo delle 30 aree funzionali | Aggiungi o modifichi una funzionalità |
+| `docs/CONTROLS.md` | Comandi mouse / tastiera / touch | Aggiungi o cambi un tasto, un controllo touch |
+| `docs/DEVELOPMENT.md` | Struttura, sviluppo locale, test, deploy | Cambia il workflow di build/test/deploy |
+| `docs/ROADMAP.md` | Storico release, Polish Pack, backlog | Chiudi un pack o un hotfix |
+| `docs/images/` | Screenshot del README (WebP) | Cambia l'aspetto della UI in modo visibile |
+| `ARCHITECTURE.md` | Diagrammi e flussi dati | Cambia l'architettura |
+| `STATE.md` | Audit campo per campo di `state` | Aggiungi o rimuovi un campo di `state` |
+| `STRINGS_*.md` | Mappatura i18n | Aggiungi o rimuovi una chiave in `STRINGS` |
+
+> **Attenzione**: `STATE.md` e l'elenco delle sezioni in `AGENTS.md` erano
+> entrambi fermi ai campi di `state` della fase V2. Se aggiungi un campo,
+> aggiornali insieme: è esattamente il tipo di drift che ha fatto
+> sbagliare il conteggio dei D-key.
 
 **Regola generale**: se un numero compare in più di un file, aggiornalo in
 tutti nello stesso commit. Un numero stale in un solo file è peggio di
