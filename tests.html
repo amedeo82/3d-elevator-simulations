@@ -2220,22 +2220,30 @@
           assert(P2 && typeof P2.setLang === 'function',
             'BossHotelPure.setLang non esposto');
           const el = doc.getElementById('hud-exit-btn');
-          // Lingua iniziale (state.lang al boot). Salviamo il valore iniziale.
-          const initialLbl = el.getAttribute('aria-label');
-          assert(initialLbl && initialLbl.length > 0,
-            'aria-label iniziale vuoto');
-          // Forza cambio a EN
-          P2.setLang('en');
-          // applyLangToDOM() aggiorna aria-label via applyAriaLabels().
-          const enLbl = el.getAttribute('aria-label');
-          assert(enLbl && enLbl.length > 0,
-            'aria-label EN vuoto dopo setLang');
-          assert(initialLbl !== enLbl,
-            'aria-label IT ed EN dovrebbero differire');
-          // Ripristina IT per non inquinare altri test.
+          // Il test NON deve assumere che la pagina booti in italiano:
+          // loadLang() cade su detectBrowserLang(), quindi su un runner CI con
+          // navigator.language = en-US la pagina parte in inglese. La versione
+          // precedente leggeva l'aria-label iniziale, la chiamava "IT" e
+          // confrontava con setLang('en'): su runner inglesi initialLbl era
+          // gia' EN, il confronto falliva ("IT ed EN dovrebbero differire") e
+          // il ripristino finale non tornava nemmeno. Falliva in CI e passava
+          // solo sui developer con browser italiano.
+          // La lingua attiva si legge da #langSwitch, che refreshLangSwitch()
+          // aggiorna a `state.lang.toUpperCase()`. Va salvata PRIMA dei
+          // setLang per poterla ripristinare.
+          const langBtn = doc.getElementById('langSwitch');
+          const bootLang = langBtn ? langBtn.textContent.trim().toLowerCase() : 'it';
           P2.setLang('it');
-          const itBack = el.getAttribute('aria-label');
-          assertEq(itBack, initialLbl, 'aria-label non ripristinato a IT');
+          const itLbl = el.getAttribute('aria-label');
+          assert(itLbl && itLbl.length > 0, 'aria-label IT vuoto dopo setLang(\'it\')');
+          P2.setLang('en');
+          const enLbl = el.getAttribute('aria-label');
+          assert(enLbl && enLbl.length > 0, 'aria-label EN vuoto dopo setLang(\'en\')');
+          assert(itLbl !== enLbl,
+            `aria-label IT ed EN dovrebbero differire, ma sono entrambi "${enLbl}"`);
+          // Ripristina la lingua effettivamente attiva al boot, qualunque sia.
+          P2.setLang(bootLang === 'en' ? 'en' : 'it');
+          if (langBtn) langBtn.textContent = bootLang.toUpperCase();
         });
       });
     }
