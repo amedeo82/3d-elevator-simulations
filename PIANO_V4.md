@@ -806,4 +806,68 @@ Nota: nella sessione precedente avevo riportato `dist/index.html` come
 "out-of-sync" — era una verifica errata, avevo confrontato `dist/index.html`
 (allora allineato a HEAD) contro `elevator.html` modificato in working tree.
 
+### 2026-09-28 — FIX startBtn irraggiungibile su desktop (PR #15)
+
+**Sintomo**: a viewport con altezza tra ~500px e ~870px il contenuto dello
+start screen (~772px) eccedeva `#startscreen`, che aveva `overflow: visible`,
+mentre `html, body` hanno `overflow: hidden`: nessuno scroll possibile e
+`#startBtn` finiva sotto il bordo inferiore, non cliccabile. Colpiva
+1366x768 (la risoluzione laptop più diffusa), 1280x720, 1600x720, 1024x768,
+1280x800, 1440x810. Lo stesso fix esisteva per mobile ma solo dentro
+`@media (max-width: 768px), (max-height: 500px)`.
+
+**Fix** (contratto D29): `overflow-y: auto` nella regola base;
+`justify-content: center` → `flex-start` (con centering + overflow
+l'eccedenza in alto è irraggiungibile); centraggio tramite `margin-top: auto`
+su `h1` e `margin-bottom: auto` su `#startBtn`. L'`h1` è passato dallo
+shorthand `margin: 0 0 8px 0` a `margin-bottom: 8px`, perché lo shorthand
+dichiarato dopo avrebbe azzerato `margin-top: auto`.
+
+**Verifica**: 13 viewport con scroll e click **reali** (non
+`scrollIntoView` di Playwright, che mascherebbe il problema — il click
+automatico riusciva già prima del fix grazie a `scrollIntoView` forzato).
+Centraggio preservata quando il contenuto entra: 128px sopra = 128px sotto
+a 1920x1080.
+
+### 2026-09-28 — La CI esegue davvero i test (PR #15)
+
+**Problema**: la job `tests` eseguiva solo `grep` (presenza di
+`window.BossHotelPure`, conteggio `test(` >= 30, referenziamento di
+`elevator.html`): **zero test eseguiti**. CI verde non significava test
+verdi. È la ragione per cui 4 test restarono rossi per mesi senza allarme e
+perché i bug bloccanti iPhone e startBtn arrivarono in `main`.
+
+**Fix** (contratto D30): nuova job `tests-run` che esegue `tests.html` in
+Chromium headless via `scripts/run-tests.js` (server HTTP statico su porta
+effimera, argomenti SwiftShader, attesa di `window.__testResults`, exit 1 su
+qualsiasi fallimento, guardia anti-falso-verde se 0 test eseguiti, stampa
+degli errori di pagina per rendere diagnosticabile un modulo non caricato).
+Playwright pinnato a 1.56.0. Le 2 job esistenti restano, ora sono 3.
+
+**Pagato subito**: al primo run la nuova job ha fallito su
+`aria-label di hud-exit-btn cambia al cambio lingua`. Il test leggeva
+l'`aria-label` al boot, la chiamava "IT" e confrontava con `setLang('en')`,
+ma `loadLang()` cade su `detectBrowserLang()`: sui runner GitHub
+`navigator.language` è `en-US`, quindi la label iniziale era **già
+inglese** e il confronto falliva. Il test passava solo sui developer con
+browser italiano. Corretto imponendo esplicitamente entrambe le lingue e
+leggendo la lingua di boot da `#langSwitch` per ripristinarla.
+
+**Verifica finale**: 285/285 verdi in tre locale distinti (en-US, it-IT,
+de-DE) con profilo pulito, per simulare sia il runner CI sia le macchine
+dei contributor.
+
+### 2026-09-28 — Pulizia documentale post-merge
+
+- `CHANGELOG.md` rigenerato da `scripts/generate-changelog.js` (+21 righe,
+  erano fermi a prima delle PR #14/#15)
+- conteggio D-key allineato a **30** in `AGENTS.md`, `CONTRIBUTING.md`,
+  `ROADMAP_POST_V7.md` (era 26/27 disallineati: `AGENTS.md` diceva 27,
+  gli altri due 26)
+- definiti D28 (robustezza WebGL iOS), D29 (raggiungibilità start screen),
+  D30 (la CI deve eseguire i test)
+- la riga D27 riportava ancora come causa dello "schermo nero" su iOS
+  l'interferenza di un fixed con z-index sul rendering WebGL: diagnosi
+  smentita, corretta con rimando a D28
+
 🎉 **Polish Pack V4 COMPLETO (8/8 step, 100%) + fix cabina nera post-merge**.

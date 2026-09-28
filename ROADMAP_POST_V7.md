@@ -45,7 +45,7 @@
 
 1. Fork del repo.
 2. Branch dedicato: `git checkout -b feature/<branch-name>`.
-3. Rispettare i 26 D-key contracts (vedi `AGENTS.md`).
+3. Rispettare i 30 D-key contracts (vedi `AGENTS.md`).
 4. PR con descrizione dettagliata + riferimento a issue (se esiste).
 
 Convenzioni aggiuntive:
