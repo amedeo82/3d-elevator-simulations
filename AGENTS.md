@@ -86,15 +86,117 @@ Audit oggetto `state`: `STATE.md`.
 
 ---
 
+## Workflow operativo (Git + verifica)
+
+Regole emerse dall'esperienza diretta del 2026-09-28. **Valgono per ogni
+sessione** che tocchi codice, test, documenti o workflow.
+
+### `main` è protetta: mai commit diretti
+
+`git push origin main` viene **rifiutato** (`GH006: Protected branch update
+failed`). Il flusso corretto è sempre:
+
+```bash
+git checkout -b fix/<slug>          # oppure docs/<slug>
+# ... modifiche ...
+git add <file>
+git commit -F <file-messaggio>
+git push -u origin <branch>
+```
+
+Poi si resetta `main` per non lasciarla avanti:
+
+```bash
+git checkout main && git reset --hard origin/main
+```
+
+`gh` CLI **non è installato** su questa macchina: la PR va aperta a mano e
+va consegnato all'utente l'URL
+`https://github.com/<owner>/<repo>/compare/main...<branch>?expand=1`.
+Non dire "PR creata" senza averla effettivamente creata.
+
+I doc possono viaggiare **nello stesso commit/PR** del codice: un solo
+merge invece di due, e la coerenza del conteggio D-key resta garantita.
+
+### Sequenza di verifica obbligatoria prima del commit
+
+```bash
+node scripts/check-balance.js elevator.html   # sintassi + brace balance
+node scripts/run-tests.js                      # 285 test in Chromium headless
+cp elevator.html dist/index.html              # build copy
+```
+
+Il terzo passaggio è quello che si dimentica più spesso. La CI verifica la
+**parità SHA-256** tra `elevator.html` e `dist/index.html` e fallisce con
+un messaggio esplicito se divergono. `elevator.html` e `tests.html` non
+hanno bisogno di essere copiati da nessuna parte: sono gli unici sorgenti.
+
+Dopo la copia, `run-tests.js` va **ri-eseguito**? No: la copia non cambia
+`elevator.html`. Basta `check-balance` su `dist/index.html` per sicurezza.
+
+### Prima di dichiarare risolto un bug: verificalo davvero
+
+I due bug bloccanti della sessione del 2026-09-28 (overlay portrait iPhone,
+startBtn irraggiungibile su desktop) erano già "chiusi" da fix precedenti che
+non funzionavano, perché erano basati su diagnosi mai verificate. Metodo che
+ha funzionato:
+
+1. **Riprodurre** il sintomo in un engine reale (Playwright + WebKit per
+   Safari, `page.mouse.wheel` + `page.mouse.click` per l'interattività).
+2. **Far fallire di proposito** la verifica per provarla: un test iniettato
+   che fallisce deve dare exit 1; un modulo rotto deve dare exit 1. Un runner
+   che non si è mai visto fallire non è un runner testato.
+3. **Provare la matrice** (più viewport, più locale), non un caso solo.
+
+Attenzione: `locator.click()` e `scrollIntoView` di Playwright **mascherano**
+i problemi di raggiungibilità. Per verificare che un elemento sia
+raggiungibile serve interagire come un utente (ruota del mouse, click alle
+coordinate reali) e controllare che l'elemento sia dentro il viewport.
+
+### Test indipendenti dal locale del browser
+
+`loadLang()` cade su `detectBrowserLang()`, quindi la lingua al boot è
+`navigator.language`: **en-US sui runner CI**, `it-IT` su molte macchine dev.
+Un test che assume "la pagina parte in italiano" passa in locale e fallisce
+in CI (è successo con un test a11y, agosto 2026-09-28). Quando un test
+riguarda le due lingue, **impostale esplicitamente** con `setLang('it')` /
+`setLang('en')` invece di dedurre la lingua iniziale, e ripristina la lingua
+di boot leggendola da `#langSwitch`.
+
+Verifica multi-locale prima del commit:
+
+```bash
+node scripts/run-tests.js   # eseguito 3 volte con locale en-US, it-IT, de-DE
+```
+
+### Gotcha Windows / PowerShell 5.1
+
+- **Niente heredoc**: `git commit -F - <<'EOF'` non funziona. Scrivere il
+  messaggio in un file e usare `git commit -F <path>`.
+- **Encoding**: PowerShell 5.1 legge i file in **ANSI** per default. Usare
+  `Get-Content <file> -Encoding UTF8` prima di giudicare caratteri
+  accentiati o emoji: senza, `à` ed emoji appaiono come mojibake
+  (`â€`, `ðŸŽ‰`) e si conclude erroneamente che il file sia corrotto.
+- **`-replace` su file grandi** (500 KB) è inaffidabile: se il pattern non
+  corrisponde esattamente（含 fine riga diverse) non modifica nulla e
+  `$new -eq $old` resta vero. Per modifiche puntuali usare l'editor.
+- **`git reset --hard`** sovrascrive il working tree: verificare sempre prima
+  che non ci siano modifiche non committate da salvare.
+- **`Stop-Process -Name chrome`** è vietato (contratto 7 sopra). Vale anche
+  per i processi Playwright/WebKit lanciati per i test.
+
+---
+
 ## Comandi build / verifica
 
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
-| Aprire `tests.html` in browser (via server locale) | Esegue 134 test (~228 assert vanilla) su `window.BossHotelPure` |
+| `node scripts/run-tests.js` | Esegue i 285 test in Chromium headless, exit 1 se uno fallisce |
+| `cp elevator.html dist/index.html` | Build copy obbligatoria: la CI ne verifica la parità SHA-256 |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
-| Copia `elevator.html` → `dist/index.html` | Build per deploy (vedi ultimo commit di ogni Polish Pack) |
-| `git checkout feature/<branch>` | Lavorare su branch dedicato, merge solo dopo validazione |
+| `node scripts/generate-changelog.js` | Rigenera `CHANGELOG.md` dai commit (D26) |
+| `node scripts/find-long-fns.js` | Elenca le funzioni più lunghe (invariante D24) |
 
 CI GitHub Actions: `.github/workflows/ci.yml` ha 3 job paralleli:
 1. `check` — `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe)
@@ -103,10 +205,22 @@ CI GitHub Actions: `.github/workflows/ci.yml` ha 3 job paralleli:
 
 ## Test in locale (runner headless, come la CI)
 
+`scripts/run-tests.js` fa `require('playwright')`, ma il progetto è
+single-file e **non ha `node_modules`** (`node_modules/` è gitignored).
+Servono quindi **due** passi, non uno: `npx playwright install` scarica i
+browser ma NON installa il pacchetto npm che lo script richiede.
+
 ```bash
-npx playwright@1.56.0 install chromium   # una volta sola
-node scripts/run-tests.js                 # exit 1 se un test fallisce
+npm install --no-save --no-audit --no-fund playwright@1.56.0  # una volta sola
+npx playwright install chromium                                # una volta sola
+node scripts/run-tests.js                                      # exit 1 se un test fallisce
 ```
+
+`--no-save` evita di creare `package.json`/`package-lock.json`, che il
+progetto non vuole. La versione **va pinnata**: se non combacia con il
+build del browser, `chromium.launch()` fallisce con
+`Executable doesn't exist at .../chromium_headless_shell-XXXX` e la causa
+appare illeggibile.
 
 Scrive `test-output.json` nella root (gitignored) con i risultati completi.
 Usa un server HTTP statico, non `file://`: `tests.html` carica `elevator.html`
