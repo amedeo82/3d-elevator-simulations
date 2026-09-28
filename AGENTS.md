@@ -2,7 +2,7 @@
 
 ## Cos'è il progetto
 Simulatore 3D prima-persona di una cabina ascensore di hotel di lusso.
-Single-file HTML (~390 KB, ~9250 righe) con JS inline (modulo ES).
+Single-file HTML (~500 KB, ~11.400 righe) con JS inline (modulo ES).
 Three.js r160 via importmap. Nessuna build step, nessuna dipendenza npm.
 
 Stato: **22/22 funzionalità backlog implementate (100%)** — V1 chiuso con v1.8.
@@ -17,44 +17,59 @@ Audit oggetto `state`: `STATE.md`.
 
 ## Layout del file `elevator.html`
 
-| Sezione | Riga ~ | Contenuto |
+Navigazione per **ancora testuale**, non per numero di riga. I numeri
+invecchiano a ogni commit (il file è passato da ~9.250 a ~11.400 righe e la
+tabella basata su righe era già fuori di ~2.500 righe); le ancore restano
+valide e si cercano con `rg`:
+
+```bash
+rg -n "^// CONFIGURAZIONE" elevator.html          # dove inizia una sezione
+rg -n "function showWebglFallback" elevator.html  # dove sta una funzione
+rg -n "id=\"rotate-device-overlay\"" elevator.html
+```
+
+| Sezione | Ancoraggio | Contenuto |
 |---|---|---|
-| Importmap + script module | 459–468 | Bootstrap three.js |
-| CONFIGURAZIONE | 791–1452 | Costanti (CABIN, NUM_FLOORS, FLOOR_HEIGHT, preset hotel, i18n) |
-| STATO GLOBALE (`state` + `hoveredBtn` + `buttonList` + `movePaused`) | 1579–1683 | Dichiarati in cima per evitare TDZ (D2, D15) |
-| Mini event bus | 1693–1724 | `bus.emit/on` homemade (Polish Pack V2 Step 1d) |
-| Scena / Renderer / Camera | 1725–1752 | three.js core |
-| Illuminazione | 1753–1777 | ceilingLight, fillLight, alarmLight |
-| Texture procedurali | 1778–1894 | makeBrushedMetalTexture, makeMarbleTexture, makeCeilingTexture |
-| Cabina (gruppo radice) | 1895–2040 | Pavimento, soffitto, pareti, specchio, maniglione |
-| Pannello pubblicitario laterale | 2041–2461 | Display 5 schermate rotanti (Fase 2) |
-| Dettagli premium cabina | 2462–2868 | Profili alluminio, battiscopa, LED, telecamera, citofono, targhe (Fase 1) |
-| Porte | 2869–3030 | Anta sx/dx + indicatori direzione |
-| Corridoio tematico + arredi + cartello piano | 3031–4331 | Costruzione corridoio per piano, pulsantiera esterna ▲/▼, helper arredi |
-| Pulsantiera moderna digitale | 4332–4529 | Display touch + 4 tasti fisici (◄ \| \| ► STOP !) |
-| Render display touch | 4530–5163 | `drawModernDisplay()` + 3-layer caching (Polish Pack v1.6 #18) |
-| Tutorial contestuale prima volta | 5164–5344 | Polish Pack V2 Step 2b (5 step, tasto `?`) |
-| Helper matematici puri | 5346–5555 | Polish Pack V2 Step 12 (`clamp`, `lerp`, ...) |
-| 3-layer rendering caching | 5557–5948 | Polish Pack v1.6 #18 (statico / semi-statico / dinamico) |
-| Funzioni di stato | 5950–6002 | updateFloorDisplay, refreshHudButtons |
-| Audio (WebAudio sintetizzato) | 6004–6209 | Whoosh, musica contestuale cabin/corridoio/ristorante |
-| Audio contestuale corridoio | 6211–6415 | Polish Pack V2 Step 3a (4 temi corridoio) |
-| Musica ristorante "La Terrazza" | 6417–6972 | Polish Pack V2 Step 3b |
-| Annunci vocali TTS | 6974–7188 | `speak`, `speakWithSubtitle`, `announceArrival`, `announceAlarm`, ecc. |
-| Movimento cabina | 7190–7483 | requestFloor, actuallyStartMove, tickMove (con envelope sin/π) |
-| Animazione porte | 7484–7678 | setDoors, animateDoorsTo, tickDoors, scheduleAutoClose, sensor IR |
-| Allarme | 7603–7678 | toggleAlarm (luci rosse, sirena 660/880Hz) |
-| Citofono interattivo (EN 81-28) | 7680–7812 | Polish Pack V2 Step 14 (lampeggio 4Hz, reception simulata) |
-| Esci / Rientra cabina | 7814–7901 | exitCabin, enterCabin, prenotazione, ADA compliance |
-| Raycasting & click pulsanti | 7903–8049 | Click + hover pulsanti 3D |
-| Pointer lock — mouse look | 8051–8180 | First-person mouse look |
-| Movimento FPS + tastiera | 8182–8443 | tickPlayer, keydown listener, NPC passeggeri |
-| assert runtime contratti state | 8445–8479 | Polish Pack V2 Step 1c (`assertStateInvariants`) |
-| LOOP (RAF + tick*) | 8480–8583 | `loop()`, `tickDisplay`, `tickMove`, `tickDoors`, `tickPlayer`, `tickFadeStates` |
-| Settings QoL UI wiring | 8585–8704 | Polish Pack V3 Step 3 (sliders volume + brightness + export JSON) |
-| AVVIO | 8706–8742 | buildCorridor iniziale, start screen, init eventi |
-| Preferenze persistenti (localStorage) | 8743–9223 | 5 chiavi @v1: prefs, lang, config, audio, display, onboarded |
-| `window.BossHotelPure` namespace | 9229–9253 | 30+ helper puri per `tests.html` |
+| Importmap + script module | `type="importmap"` (three.js 0.160 via unpkg) | Bootstrap three.js |
+| CONFIGURAZIONE | `// CONFIGURAZIONE` | Costanti (CABIN, NUM_FLOORS, FLOOR_HEIGHT, preset hotel, i18n `STRINGS`) |
+| STATO GLOBALE | `// STATO GLOBALE`, `const state = {` | `state` + `hoveredBtn` + `buttonList` + `movePaused`: dichiarati in cima per evitare TDZ (D2, D15) |
+| Mini event bus | `// POLISH PACK V2 STEP 1d — MINI EVENT BUS`, `bus.emit` | Event bus homemade (V2 Step 1d) |
+| Scena / Renderer / Camera | `// SCENA, RENDERER, CAMERA` | three.js core. Qui vivono `detectIOS()`, `computePixelRatioCap()`, `showWebglFallback()` e la creazione del renderer (D28) |
+| Illuminazione | `// ILLUMINAZIONE` | ceilingLight, fillLight, alarmLight |
+| Texture procedurali | `// TEXTURE PROCEDURALI` | makeBrushedMetalTexture, makeMarbleTexture, makeCeilingTexture |
+| Cabina (gruppo radice) | `const cabin = new THREE.Group()` | Pavimento, soffitto, pareti, specchio, maniglione |
+| Pannello pubblicitario laterale | `// PANNELLO PUBBLICITARIO` | Display 5 schermate rotanti (Fase 2) |
+| Dettagli premium cabina | `// DETTAGLI PREMIUM CABINA` | Profili alluminio, battiscopa, LED, telecamera, citofono, targhe (Fase 1) |
+| Porte | `// PORTE` | Anta sx/dx + indicatori direzione |
+| Corridoio tematico + arredi | `// CORRIDOIO, ARREDI` | Costruzione corridoio per piano, pulsantiera esterna ▲/▼, `buildCorridor` + helper `buildCorridorShell`/`buildCorridorLights` |
+| Pulsantiera moderna digitale | `// PULSANTIERA MODERNA` | Display touch + 4 tasti fisici (◄ \| \| ► STOP !) |
+| Render display touch | `// RENDER DEL DISPLAY TOUCH` | `drawModernDisplay()` + 3-layer caching (V1.6 #18) |
+| Tutorial contestuale | `function startTutorial` | V2 Step 2b (5 step, tasto `?`) |
+| Helper matematici puri | `function clamp`, `function lerp` | V2 Step 12 |
+| 3-layer rendering caching | `function renderDisplayDynamicLayer` | V1.6 #18 (statico / semi-statico / dinamico) |
+| Funzioni di stato | `// FUNZIONI DI STATO` | updateFloorDisplay, refreshHudButtons |
+| Audio (WebAudio sintetizzato) | `// AUDIO` | Whoosh, musica contestuale cabin/corridoio/ristorante |
+| Audio contestuale corridoio | `function startCorridorAudio` | V2 Step 3a (4 temi corridoio) |
+| Musica ristorante "La Terrazza" | `// POLISH PACK V2 STEP 3b — MUSICA RISTORANTE` | V2 Step 3b |
+| Annunci vocali TTS | `// ANNUNCI VOCALI`, `function speak(` | `speak`, `speakWithSubtitle`, `announceArrival`, `announceAlarm` (D11) |
+| Movimento cabina | `// MOVIMENTO CABINA` | requestFloor, actuallyStartMove, `tickMove` (envelope sin/π) |
+| Animazione porte | `// ANIMAZIONE PORTE` | setDoors, animateDoorsTo, tickDoors, scheduleAutoClose, sensor IR |
+| Allarme | `// ALLARME`, `function toggleAlarm` | Luci rosse, sirena 660/880Hz |
+| Citofono interattivo (EN 81-28) | `INTERPHONE_DURATION_MS` | V2 Step 14 (lampeggio 4Hz, reception simulata, D10) |
+| Esci / Rientra cabina | `function exitCabin`, `function enterCabin` | Prenotazione, ADA compliance |
+| Raycasting & click pulsanti | `function updateHover` | Click + hover pulsanti 3D |
+| Pointer lock — mouse look | `function onClick` | First-person mouse look (con guard try/catch su `requestPointerLock`, D28) |
+| Movimento FPS + tastiera | `// MOVIMENTO FPS` | `tickPlayer`, keydown listener, NPC passeggeri |
+| Menu mobile + detection | `// POLISH PACK V4 STEP 8` | `initMobileMenu`, `openMobileMenu`, `refreshMobileMenuStates` (D27) |
+| `isMobileDevice` / `initMobileDetection` | `function isMobileDevice` | `state.inputMode` single source of truth (D26est) |
+| Avviso portrait (non bloccante) | `id="rotate-device-overlay"`, `function initRotateNotice` | Card dismissabile, `pointer-events: none` (D29) |
+| assert runtime contratti state | `function assertStateInvariants` | V2 Step 1c |
+| LOOP (RAF + tick*) | `function loop(` | `tickDisplay`, `tickMove`, `tickDoors`, `tickPlayer`, `tickFadeStates`; salta `render()` se `_ctxLost` (D28) |
+| Gestione context WebGL | `CTX_WATCHDOG_MS`, `function reviveRendererAfterContextRestore` | Listener `webglcontextlost`/`restored` + watchdog (D28) |
+| Settings QoL UI wiring | `function initSettingsQoL` | Slider volume + brightness + export JSON (D14) |
+| AVVIO | `// AVVIO` | `buildCorridor` iniziale, start screen, init eventi |
+| Preferenze persistenti | `const LANG_KEY`, `function loadLang` | Chiavi localStorage @v1: prefs, lang, config, audio, display, onboarded |
+| `window.BossHotelPure` namespace | `window.BossHotelPure = {` | 58 helper per `tests.html` — è il punto in cui finisce il file |
 
 ---
 
@@ -184,6 +199,37 @@ node scripts/run-tests.js   # eseguito 3 volte con locale en-US, it-IT, de-DE
   che non ci siano modifiche non committate da salvare.
 - **`Stop-Process -Name chrome`** è vietato (contratto 7 sopra). Vale anche
   per i processi Playwright/WebKit lanciati per i test.
+
+---
+
+## Regole di aggiornamento della documentazione
+
+Prima esistevano solo in `CONTRIBUTING.md`, che un agente non apre per primo.
+Stanno qui perché la loro assenza è la causa ricorrente di documentazione
+stale: nella sola sessione del 2026-09-28 il conteggio dei D-key era
+disallineato su tre file, `CHANGELOG.md` era fermo a due PR prima, e la
+tabella layout era fuori di ~2.500 righe.
+
+| Hai cambiato... | Devi aggiornare... |
+|---|---|
+| Le dimensioni / righe / KB di `elevator.html` | `README.md` riga "Panoramica", e la sezione "Struttura del progetto" |
+| Il numero di test in `tests.html` | `AGENTS.md` (conteggio in "Comandi build / verifica" + in "Polish Pack attivi"), `README.md` (riga 14 e le 4 occorrenze nella sezione sviluppo) |
+| Le funzioni in `BossHotelPure` | Conteggio nella tabella layout qui sopra, e `README.md` se menziona il numero |
+| Il numero di contratti D-key | `AGENTS.md` (tabella D-key + "Contratti D-key totali"), `CONTRIBUTING.md`, `ROADMAP_POST_V7.md` — **tutti e tre insieme** |
+| Il workflow di un Polish Pack | `PIANO_VN.md` (step ✅ + log decisioni) e `PIANO_MIGLIORAMENTI.md` (Fase NN) |
+| Un contratto D-key nuovo o modificato | `AGENTS.md` (riga della tabella) **e** `CONTRIBUTING.md` (checklist PR, step 6) |
+| Il comportamento di build/CI | `AGENTS.md` sezione "Comandi build / verifica" + descrizione delle job CI |
+| Qualsiasi cosa, al merge | `node scripts/generate-changelog.js` (D26) |
+
+**Regola generale**: se un numero compare in più di un file, aggiornalo in
+tutti nello stesso commit. Un numero stale in un solo file è peggio di
+nessun numero, perché il lettore si fida.
+
+**Cosa NON aggiornare**: i conteggi storici dentro le sezioni "Roadmap" e i
+log dei singoli step di `README.md`/`PIANO_*.md` (es. *"134 → 206 test,
+V3 Step 8"*). Sono il record di cosa è successo al tempo: correggerli
+falsificherebbe la storia del progetto. Solo lo stato corrente va tenuto
+allineato.
 
 ---
 
