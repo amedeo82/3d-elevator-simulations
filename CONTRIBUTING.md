@@ -46,7 +46,9 @@ node scripts/generate-changelog.js
 ## Convenzioni codice (contratti D-key)
 
 Il progetto ha **30 contratti D-key** documentati in `AGENTS.md`. Ogni
-modifica che li tocca deve aggiornare la documentazione. Lista rapida:
+modifica che li tocca deve aggiornare la documentazione. La tabella completa
+"file → quando aggiornarlo" è in `AGENTS.md`, sezione "Regole di aggiornamento
+della documentazione": leggila prima di committare. Lista rapida:
 
 | # | Contratto | Regola chiave |
 |---|---|---|
@@ -84,14 +86,20 @@ V3 T2 = Tier 2 manutenibilita, ecc.).
 2. **Definisci Decision Questions** prima di implementare (4-5 via `question` tool)
 3. **Implementa** seguendo i pattern esistenti (vedi D9 per helper puri)
 4. **Aggiungi test** in `tests.html` (assert vanilla, no dipendenze)
-5. **Esegui** `node scripts/check-balance.js elevator.html` + apri `tests.html`
-6. **Aggiorna** `AGENTS.md` se introduci un nuovo D-key
+5. **Verifica**: `node scripts/check-balance.js elevator.html` +
+   `node scripts/run-tests.js` (exit 1 se un test fallisce)
+6. **Aggiorna** `AGENTS.md` se introduci un nuovo D-key, e i documenti
+   elencati nella tabella "Regole di aggiornamento della documentazione"
 7. **Aggiorna** `PIANO_VN.md` (stato step + log decisioni) e
    `PIANO_MIGLIORAMENTI.md` (Fase NN)
-8. **Sync dist**: `Copy-Item elevator.html dist/index.html`
+8. **Sync dist**: `Copy-Item elevator.html dist/index.html` — la CI verifica
+   la parità SHA-256 e fallisce se i due file divergono
 9. **Commit atomico**: `git commit -m "type(scope): descrizione"`
-10. **Merge `--no-ff`** su `main`: `git merge --no-ff feature/vN-step-M-descr`
-11. **Push**: `git push origin main`
+10. **Push del branch**: `git push -u origin <branch>`
+11. **Apri la PR** verso `main` (protetta: `git push origin main` viene
+    rifiutato con `GH006`, i push diretti non funzionano)
+12. **Merge** della PR su `main` (squash o merge commit, poi
+    `git checkout main && git pull`)
 
 ### Code style
 
@@ -100,7 +108,9 @@ V3 T2 = Tier 2 manutenibilita, ecc.).
 - **Commenti**: italiano, sezioni `// ====================`
 - **No emoji** nel codice (decorazioni emoji solo in README, HUD)
 - **No build step**: vincolo D1, niente transpiler
-- **No dipendenze CDN**: vincolo D1, asset via blob URL se servono
+- **Dipendenze runtime via CDN ammesse**: `elevator.html` carica three.js
+  0.160 da unpkg tramite importmap (vincolo D1 = file singolo senza build,
+  non divieto di CDN). Asset locali via blob URL.
 
 ## Issue / PR
 

@@ -11,7 +11,7 @@ Una simulazione 3D realistica e interattiva di un ascensore d'hotel a 5 stelle, 
 Clicca il link per provare la simulazione direttamente nel browser (Chrome/Edge/Firefox aggiornati, supporto Pointer Lock + WebGL richiesto). Nessuna installazione, nessuna registrazione — l'app si carica da GitHub Pages e usa Three.js via CDN.
 
 > **🎉 Polish Pack V4 COMPLETO (2026-09-26)** — **8/8 step (100%)**.
-> Contratti D-key totali: **27**. Totale **302 test vanilla / ~470 assert**.
+> Contratti D-key totali: **30**. Totale **285 test vanilla**.
 > V4 include:
 > - **Step 1-6** (2026-09-25): routing D22, a11y ARIA D23, funzioni <150 righe D24,
 >   helper mergePlanes D25, open-source boilerplate D26.
@@ -188,7 +188,7 @@ Clicca il link per provare la simulazione direttamente nel browser (Chrome/Edge/
 - Ricevere **annunci vocali** in italiano all'arrivo al piano
 - Vedere **meteo casuale**, **orologio in tempo reale**, **mappa edificio** sul display
 
-Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticamente, senza dipendenze npm.
+Il tutto in **un singolo file HTML** di ~500KB (~11.400 righe), deployato staticamente, senza dipendenze npm in produzione.
 
 ---
 
@@ -447,15 +447,18 @@ Il tutto in **un singolo file HTML** di ~390KB (~9250 righe), deployato staticam
 ### 🧪 Test framework (V2 Step 12 + V3/V4 Steps)
 
 - `tests.html` esegue automaticamente la suite all'apertura (via iframe sandbox)
-- **232 test / 396 assert** passing (era 134/228 in V3, 206/343 in V4 Step 1)
-- ~10 sezioni organizzate: matematica pura, routing pickNextFloor, citofono,
+- **285 test** passing (era 134/228 in V3, 206/343 in V4 Step 1, 232/396 dopo
+  il merge V4)
+- ~50 sezioni organizzate: matematica pura, routing pickNextFloor, citofono,
   accessibility, contrasto WCAG, bug corner cases, QoL settings, micro-animazioni,
   performance, a11y ARIA, merge geometry helper
 - Esporta risultati JSON con un bottone (`Esporta risultati JSON`)
-- CI GitHub Actions con 2 job paralleli: `check` (sintassi + brace balance) +
-  `tests` (validazione statica presenza namespace + conteggio test)
-- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 30+ funzioni pure (V2 Step 12 + V3/V4 Steps). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`. Include helper `applyLangToDOM`/`setLang`/`applyAriaLabels` (V4 Step 3 test cross-iframe) e `mergePlanes` (V4 Step 5 helper geometry)
-- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **232 test (396 assert vanilla)** su `iframe.contentWindow.BossHotelPure`. Organizzati in ~50 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)
+- CI GitHub Actions con 3 job paralleli: `check` (sintassi + brace balance +
+  parità SHA-256 di `dist/index.html`) + `tests` (validazione statica
+  presenza namespace + conteggio test) + `tests-run` (**esecuzione reale della
+  suite** in Chromium headless via `scripts/run-tests.js`)
+- **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 58 funzioni pure (V2 Step 12 + V3/V4 Steps). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`. Include helper `applyLangToDOM`/`setLang`/`applyAriaLabels` (V4 Step 3 test cross-iframe) e `mergePlanes` (V4 Step 5 helper geometry)
+- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **285 test** su `iframe.contentWindow.BossHotelPure`. Organizzati in ~50 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)
 
 ---
 
@@ -524,8 +527,8 @@ per via di Pointer Lock + Web Speech API).
 
 ```
 .
-├── elevator.html          # File principale (~390 KB, ~10.500 righe) — tutta la simulazione
-├── tests.html             # Test framework (232 test / 396 assert vanilla su window.BossHotelPure)
+├── elevator.html          # File principale (~500 KB, ~11.400 righe) — tutta la simulazione
+├── tests.html             # Test framework (285 test su window.BossHotelPure)
 ├── scripts/
 │   ├── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
 │   ├── find-long-fns.js   # Helper per audit D24 (funzioni >=150 righe)
@@ -667,19 +670,23 @@ php -S localhost:8000
 
 ### Test (Polish Pack V2 Step 12 + V3/V4 Steps)
 
-Il progetto include un mini test framework vanilla in `tests.html`. Esegue **232 test (396 assert interni)** su funzioni pure esposte in `window.BossHotelPure`.
+Il progetto include un mini test framework vanilla in `tests.html`. Esegue **285 test** su funzioni pure esposte in `window.BossHotelPure`.
 
 ```bash
-# Avvia un server locale
+# Opzione A — runner headless, identico a quello della CI
+npm install --no-save --no-audit --no-fund playwright@1.56.0
+npx playwright install chromium
+node scripts/run-tests.js     # stampa "OK: 285/285 test passati", exit 1 se uno fallisce
+
+# Opzione B — ispezione manuale nel browser
 python3 -m http.server 8000
-
-# Apri nel browser
-# http://localhost:8000/tests.html
-
-# I test girano automaticamente al caricamento dell'iframe.
-# Risultato: banner "TUTTI I TEST PASSATI (134/134)" verde.
-# Esporta JSON con il bottone "Esporta risultati JSON".
+# apri http://localhost:8000/tests.html
+# Risultato atteso: banner verde "TUTTI PASS". Esporta JSON con il bottone.
 ```
+
+> Serve un server HTTP, mai `file://`: `tests.html` carica `elevator.html` in
+> un iframe sandbox e `elevator.html` è un ES module con importmap, che su
+> `file://` non si carica per CORS.
 
 ### Verifica sintassi + brace balance
 
