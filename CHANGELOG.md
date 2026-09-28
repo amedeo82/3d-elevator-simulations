@@ -9,6 +9,13 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- fix(desktop): start button unreachable + CI never ran the tests (#15) (`efc171f`)
+- fix(ui): defensive viewport-based fallback for mobile controls (#13) (`ea59faa`)
+- docs: comprehensive update for V4 Step 7+8 (mobile scene separation + hamburger menu) (#11) (`7eeba2e`)
+- feat(ui): mobile scene separation + hamburger menu (V4 Step 7+8) (#10) (`e31d058`)
+- ci: enforcement automatico D24 + dist parity check (`641a99c`)
+- docs: README aggiornato a V4 chiuso + 3 file standard open source (publication kit) (`a39d0e3`)
+- docs: open source boilerplate (LICENSE + CHANGELOG + CONTRIBUTING) - V4 chiuso 100% (`9e6df09`)
 - refactor(geometry): helper mergePlanes DRY + 3 callsites (V4 Step 5 D25) (`4f42e18`)
 - refactor: split 2 funzioni + 16 commenti narrativi (V4 Step 4 D24) (`0df5815`)
 - feat(a11y): aria-label/role/aria-live/aria-hidden localizzati (V4 Step 3 D23) (`8bd36c5`)
@@ -36,6 +43,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V2 (2026-08/09)
 
+- fix(mobile): real root cause of black screen on iPhone 15 Pro (#14) (`c702113`)
 - docs: chiudi Polish Pack V2 (10/13 step, 77%) (`76a70f8`)
 - docs: aggiorna documentazione per Polish Pack V2 Step 14 (`269d9d3`)
 - feat(interphone): riga HUD manutentore 'Citofono' con i18n (14d) (`37f77e7`)
@@ -96,6 +104,9 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V1 + fase iniziale (2026-08 e precedenti)
 
+- docs(readme): promuovi link live preview GitHub Pages in cima (#3) (`1106e79`)
+- Kilo/fix avvio progetto al termine del wizard (#2) (`d54c651`)
+- docs: index.html redirect a elevator.html per GitHub Pages landing (`ed427f5`)
 - docs: aggiorna PIANO_V2.md e PIANO_MIGLIORAMENTI.md per Step 12 (`2159cff`)
 - docs(piano): aggiungi Step 14 - Citofono interattivo + pairing SOS (`cae5aa5`)
 - fix(doors): ricostruito addRoomDoor con telaio a 4 barrette + suite attico (`ed1c762`)
@@ -111,6 +122,16 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Altro (infrastruttura, doc, fix)
 
+- fix(ui): prevent mobile menu overlay from causing black cabin on iOS (#12) (`8eaee73`)
+- fix(ui): improve mobile device detection for iOS Safari landscape (#9) (`d93a7ff`)
+- fix(ui): fix start button accessibility on mobile landscape (#8) (`cce86d7`)
+- fix(mobile): cabina nera su iOS Safari - fix visibilità scena (#7) (`ca45f92`)
+- chore: ignora .audit/ scratch dir (Playwright mobile test) (#6) (`b027298`)
+- fix(mobile): black screen su iOS Safari (#5) (`911c94d`)
+- chore: rimuovi browser-test/ scratch dir + ignora in .gitignore (#4) (`8dc9d7b`)
+- docs: post-pubblicazione (badge live, sezione Demo, issue template, roadmap) (#1) (`821fb00`)
+- docs: aggiorna sezione Deploy per riflettere rimozione demo live (`3d886a3`)
+- docs: rimuovi link demo live outdated (hve0n8mdm4ixk.space.minimax.io) (`02ab5e6`)
 - chore(slides): emoji cabina 🧟→🛗 (simbolo ascensore corretto) (`05345d3`)
 - docs(v3): scope discovery chiuso + Step 1 Accessibility pronto (`ceb0ad1`)
 - docs(agents): regola Chrome dell'utente + pattern headless dedicato (`6667b04`)

@@ -45,7 +45,7 @@ node scripts/generate-changelog.js
 
 ## Convenzioni codice (contratti D-key)
 
-Il progetto ha **26 contratti D-key** documentati in `AGENTS.md`. Ogni
+Il progetto ha **30 contratti D-key** documentati in `AGENTS.md`. Ogni
 modifica che li tocca deve aggiornare la documentazione. Lista rapida:
 
 | # | Contratto | Regola chiave |
