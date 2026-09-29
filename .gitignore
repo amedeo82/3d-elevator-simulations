@@ -88,3 +88,4 @@ browser-test/
 # Scritto nella root durante l'esecuzione locale e nella job CI, che lo
 # carica come artefatto su fallimento. Non va committato.
 test-output.json
+ui-test-output.json

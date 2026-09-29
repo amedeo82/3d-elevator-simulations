@@ -64,6 +64,29 @@ per evitare TDZ — vedi `AGENTS.md` § "Lezione state in cima").
 | `_fadeAlarm` | `{target: float, from: float, startMs: float}` | `toggleAlarm`/`tickAlarm` (set target) | `tickFadeStates()` (lerp 200ms `alarmLight.intensity`) | Transizione smooth invece di snap immediato. Step 4 V3 (D15). |
 | `_fadeOOO` | `{target, from, startMs}` | toggle O (set target) | `tickFadeStates()` (lerp 200ms) | Idem per fuori-servizio. Step 4 V3 (D15). |
 | `_fadeInterphone` | `{target, from, startMs}` | `triggerInterphone()`/tick citofono (set target) | `tickFadeStates()` (lerp 200ms `emissiveIntensity` pulsante) | Idem per citofono. Step 4 V3 (D15). |
+| `_logFilter` | `{cabin, door, audio, state, maint: bool}` | check UI overlay manutentore | `filterLogEvents()` → `tickMaintenance` (render log) | Default tutti `true`. Filtra quali categorie di eventi compaiono nel log della manutenzione. |
+| `alarmCount` | int >= 0 | `toggleAlarm` (incrementa), export stato | invariante `state.alarmCount >= 0`, export JSON | Contatore **totale a vita** degli allarmi attivati. Persistito in `localStorage.bossHotelPrefs@v1`, mai resettato al reload. Contract 14 di `assertStateInvariants`. |
+
+### Campi mobile e WebGL (Polish Pack V4, D26est + D28)
+
+Aggiunti dai Polish Pack V4 Step 7-8 e dal fix iOS del 2026-09-28. Fino al
+2026-09-29 erano assenti da questo documento: il drift aveva lasciato
+l'audit fermo alla fase V2.
+
+| Campo | Tipo | Scritto da | Letto da | Contratti |
+|---|---|---|---|---|
+| `isMobile` | bool | `initMobileDetection()` (=`isMobileDevice() \|\| isViewportMobile()`), `recheck()` su resize/orientationchange/matchMedia | `refreshMobileControls`, CSS `body.mobile-mode`, `initTouchControls` | Derivato, non persistito. Cambia a runtime: il listener resize ricalcola e, se il mode cambia, riavvia il tutorial con gli step giusti. D26est. |
+| `inputMode` | `'desktop' \| 'mobile'` | `initMobileDetection()`, `recheck()` (=`isMobile ? 'mobile' : 'desktop'`) | `getTutorialSteps()`, `getPanelHelpKeys()`, `getStartScreenKeys()`, keydown short-circuit, `onClick` (salta pointer lock), `applyLangToDOM` | **Single source of truth** per la selezione della scena. Tutti i branch UI/handler leggono solo questo flag, non `isMobile` direttamente: i due possono divergere durante il recheck. D26est. |
+| `onboardedDesktop` | bool | `markOnboarded()` (tutorial desktop completato) | helper onboarding (`bossHotelOnboarded@v1`) | Flag separato dal mobile: un utente che ha visto il tutorial desktop non lo salta su smartphone. Chiave `localStorage` e versione distinte per mode. D26est. |
+| `onboardedMobile` | bool | `markOnboarded()` (tutorial mobile completato) | helper onboarding (`bossHotelOnboardedMobile@v1`) | Idem. D26est. |
+| `_joystick` | `{active: bool, dx: float -1..1, dz: float -1..1}` | handler touchstart/touchmove/touchend del joystick | `tickPlayer` (movimento nel corridoio su mobile) | `dx`/`dz` normalizzati per `JS_MAX`. Azzerati a `{0,0}` al rilascio del dito. D26est. |
+| `_ctxLost` | bool | listener `webglcontextlost` (=true), `webglcontextrestored` (=false) | `loop()` (salta `renderer.render()`), watchdog `CTX_WATCHDOG_MS` | Dichiarato in CONFIGURAZIONE per non incappare in TDZ (D2). **Prima del 2026-09-28 era scritto ma mai letto**: nessun recupero del context. D28. |
+| `_ctxLostAt` | float (ms) | `webglcontextlost` (=`performance.now()`), restored (=0), watchdog (=`performance.now()` quando ritenta) | watchdog (calcola elapsed vs `CTX_WATCHDOG_MS`) | Timestamp della perdita corrente. Se `!_ctxLost`, il valore non è significativo. D28. |
+
+> **Nota D28**: su iOS il context WebGL viene ucciso dal sistema
+> (backgrounding dell'app, pressione di memoria) e Safari non emette sempre
+> `webglcontextrestored`. Senza watchdog il canvas resta nero in modo
+> definitivo. `_ctxLost` esiste proprio per rendere quel caso recuperabile.
 
 ---
 
