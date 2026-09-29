@@ -9538,7 +9538,14 @@ function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3
 // Performance: chiamato ogni frame dal loop RAF. ~194 righe di logica
 // per il movimento + audio + vibrazione + display. Profilare con
 // runBenchmark (V3 Step 5 Q5.4) per regressioni future.
-function tickMove(dt) {
+// `now` e' il timestamp DOMHighResTimeStamp passato dal loop (stessa base di
+// performance.now()). Prima questa funzione lo usava senza averlo ricevuto:
+// `now` era un identificatore non definito, quindi l'arrivo a un piano
+// lanciava ReferenceError e-interrompeva tutto il resto della logica di
+// arrivo (chime, annuncio vocale, apertura porte). Le funzioni sorelle
+// gia' lo ricevono come parametro: tickArrowFade(now), tickBreathButtons(now),
+// updateAdScreen(now). tickMove ora fa lo stesso.
+function tickMove(dt, now) {
   // whoosh loop (Fase 10 #3) — start/stop in base allo stato di movimento
   if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
   if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
@@ -10865,7 +10872,7 @@ let last = performance.now();
 // Polish Pack V4 Step 4 (D24): loop — game loop principale RAF-driven.
 // Ticka nell'ordine:
 //   1. dt = clamp((now-last)/1000, max 50ms) — anti-stutter quando tab torna visibile.
-//   2. tickMove(dt) — movimento cabina + vibrazione + display.
+//   2. tickMove(dt, now) — movimento cabina + vibrazione + display.
 //   3. tickDoors(dt) — animazione porte + IR sensor.
 //   4. tickPlayer(dt) — FPS nel corridoio (early return in cabina).
 //   5. tickNpcs(dt, now) — animazione NPC corridoio corrente.
@@ -10886,7 +10893,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   tickDoors(dt);
-  tickMove(dt);
+  tickMove(dt, now);
   tickPlayer(dt);
   // Polish Pack V2 Step 2a: sensore IR anti-ostacolo (soglia della cabina)
   tickIRSensor();
