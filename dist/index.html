@@ -5069,8 +5069,31 @@ function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const plateText    = premium ? '#e8c878' : '#f6c945';
   const platePrefix  = premium ? 'Suite '  : '';
 
-  // Telaio: 4 barrette sottili che formano un rettangolo attorno al varco.
-  // In questo modo il varco è effettivamente un buco e non un blocco solido.
+  // Polish Pack V4 Step 4 (D24) — split del 2026-09-29: era 137 righe.
+  // Misure e colori sono raggruppati in un oggetto di configurazione passato ai
+  // quattro costruttori, ognuno dei quali destruttura solo quello che gli
+  // serve. Cosi' le righe di costruzione restano identiche a prima: sono
+  // spostate, non riscritte.
+  const cfg = {
+    premium, DOOR_W, DOOR_H, FRAME_T, BAR, FRAME_Z, halfW, halfH,
+    frameColor, doorColor, panelColor, panelFrameC, handleColor, knobColor,
+    plateBg, plateBorder, plateText, platePrefix,
+  };
+
+  buildRoomDoorFrame(g, cfg);
+  buildRoomDoorLeaf(g, cfg);
+  buildRoomDoorHandle(g, cfg);
+  buildRoomDoorPlate(g, cfg, roomNum);
+
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+}
+
+// Telaio: 4 barrette sottili che formano un rettangolo attorno al varco.
+// In questo modo il varco è effettivamente un buco e non un blocco solido.
+function buildRoomDoorFrame(g, C) {
+  const { DOOR_W, DOOR_H, FRAME_T, BAR, FRAME_Z, halfW, halfH, frameColor } = C;
   const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.45, metalness: 0.05 });
   // architrave (in alto)
   const topBar = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + BAR, BAR, FRAME_T), frameMat);
@@ -5088,7 +5111,11 @@ function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const rightJamb = new THREE.Mesh(new THREE.BoxGeometry(BAR, DOOR_H + BAR * 2, FRAME_T), frameMat);
   rightJamb.position.set(halfW + BAR / 2, halfH, FRAME_Z);
   g.add(rightJamb);
+}
 
+// "buco" nel muro, anta, pannello decorativo incassato e la sua cornice.
+function buildRoomDoorLeaf(g, C) {
+  const { premium, DOOR_W, DOOR_H, FRAME_T, FRAME_Z, halfH, doorColor, panelColor, panelFrameC } = C;
   // "buco" nel muro: piano scuro dietro la porta, simula l'apertura.
   const opening = new THREE.Mesh(
     new THREE.PlaneGeometry(DOOR_W, DOOR_H),
@@ -5129,8 +5156,11 @@ function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const pfRight = new THREE.Mesh(new THREE.BoxGeometry(pfB, pfH, 0.012), panelFrameMat);
   pfRight.position.set(pfW / 2, pfY, pfZ);
   g.add(pfRight);
+}
 
-  // maniglia lato corridoio (vicino al bordo destro del varco, a metà altezza)
+// Maniglia lato corridoio (vicino al bordo destro del varco, a metà altezza).
+function buildRoomDoorHandle(g, C) {
+  const { FRAME_T, FRAME_Z, halfW, halfH, handleColor, knobColor } = C;
   const handleBase = new THREE.Mesh(
     new THREE.BoxGeometry(0.04, 0.12, 0.04),
     new THREE.MeshStandardMaterial({ color: handleColor, roughness: 0.25, metalness: 0.9 })
@@ -5143,8 +5173,11 @@ function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   );
   handleKnob.position.set(halfW - 0.14, halfH, FRAME_Z + FRAME_T / 2 + 0.055);
   g.add(handleKnob);
+}
 
-  // targhetta SOPRA la porta (sopra l'architrave)
+// Targhetta SOPRA la porta (sopra l'architrave), numero camera su canvas.
+function buildRoomDoorPlate(g, C, roomNum) {
+  const { premium, DOOR_H, FRAME_T, BAR, FRAME_Z, plateBg, plateBorder, plateText, platePrefix } = C;
   const c = document.createElement('canvas');
   const plateCanvasW = premium ? 192 : 128;
   const plateCanvasH = premium ? 72 : 64;
@@ -5168,10 +5201,6 @@ function addRoomDoor(parent, x, y, z, rotY, floor, roomNum, style = 'hotel') {
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(plateW, plateH), mat);
   plate.position.set(0, DOOR_H + BAR + (premium ? 0.18 : 0.12), FRAME_Z + FRAME_T / 2 + 0.005);
   g.add(plate);
-
-  g.position.set(x, y, z);
-  g.rotation.y = rotY;
-  parent.add(g);
 }
 function addPainting(parent, x, y, z, rotY, accent) {
   const c = document.createElement('canvas');
