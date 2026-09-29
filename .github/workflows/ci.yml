@@ -43,16 +43,40 @@ jobs:
         run: |
           # Contratto D24: tutte le funzioni top-level devono essere < 150 righe.
           # find-long-fns.js fa il conteggio rigoroso (brace-balance).
-          # Cerchiamo "  NNN lines" con NNN >= 150 nell'output del tool.
-          OUT=$(node scripts/find-long-fns.js 2>&1)
-          echo "$OUT" | tail -40
-          # Conta righe >= 150 guardando le intestazioni "  NNN lines" o "  NNN  L..."
-          # Il formato di find-long-fns.js emette "  NNN lines" (>= 2 spazi) o "  NNN  L".
-          LONG_FNS=$(echo "$OUT" | grep -E '^\s+([0-9]{3,})\s+(lines|L)' | awk '{print $1}' | awk -v t=150 '$1 >= t' | wc -l)
-          if [ "$LONG_FNS" != "0" ]; then
-            echo "::error::$LONG_FNS funzioni >= 150 righe (D24 violato):"
-            echo "$OUT" | grep -E '^\s+([0-9]{3,})\s+(lines|L)' | awk -v t=150 '$1 >= t'
+          #
+          # Due soglie, perche' una sola non basta. Il fallimento a 150 arriva
+          # quando il danno e' gia' fatto: la funzione e' li e la prossima
+          # modifica rompe la build. La soglia di ALLARTA a 120 (quella che
+          # AGENTS.md dichiara come soglia pratica) segnala il margine che
+          # sta per esaurirsi mentre c'e' ancora tempo a splittare.
+          #
+          # 2026-09-28: renderDisplayDynamicLayer era a 148, due righe dal
+          # limite. Nessun check lo aveva segnalato, e la rottura e' arrivata
+          # al commit successivo. Da qui il doppio livello.
+          OUT=$(node scripts/find-long-fns.js 2>&1) || { echo "::error::find-long-fns.js e' fallito"; echo "$OUT"; exit 1; }
+          # Guardia anti-falso-verde: senza output non c'e' niente da
+          # controllare, e "0 funzioni lunghe" sarebbe un falso verde.
+          if [ -z "$OUT" ]; then
+            echo "::error::find-long-fns.js non ha prodotto output: il controllo D24 non puo' considerarsi superato"
             exit 1
+          fi
+          FNS=$(echo "$OUT" | grep -E '^[[:space:]]+[0-9]{3,}[[:space:]]+(lines|L)')
+
+          OVER=$(echo "$FNS" | awk '{print $1}' | awk '$1 >= 150' | wc -l)
+          WARN=$(echo "$FNS" | awk '{print $1}' | awk '$1 >= 120 && $1 < 150' | wc -l)
+
+          if [ "$OVER" != "0" ]; then
+            echo "::error::$OVER funzioni >= 150 righe (D24 violato):"
+            echo "$FNS" | awk '$1 >= 150'
+            exit 1
+          fi
+
+          if [ "$WARN" != "0" ]; then
+            echo "::warning::${WARN} funzioni fra 120 e 149 righe: D24 rispettato ma il margine si sta esaurendo. Splittale prima che si avvicinino a 150."
+            echo "$FNS" | awk '$1 >= 120 && $1 < 150'
+            echo "$FNS" | awk '$1 >= 120 && $1 < 150 {printf "  %s: %s righe, %s di margine\n", $4, $1, 150-$1}'
+          else
+            echo "OK: nessuna funzione sopra le 120 righe"
           fi
           echo "OK: 0 funzioni >= 150 righe (D24 invariante rispettato)"
 
