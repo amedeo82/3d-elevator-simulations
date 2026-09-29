@@ -7130,8 +7130,26 @@ function renderDisplaySemistaticLayer(ctx, animT) {
 //
 // Performance: ~148 righe. Ridipinto ogni frame (~60Hz). Disabilitato
 // se browser perde visibilita' (loop() tickrate throttling V3 Step 1b).
+// Polish Pack V4 Step 4 (D24) + split del 2026-09-29: era 148 righe, a due
+// dal limite di 150, quindi la prossima modifica l'avrebbe rotta. Il body è
+// stato spezzato in tre helper che disegnano un blocco ciascuno, chiamati
+// nell'ordine in cui erano disegnati. Stesso module scope, nessuna firma
+// cambiata, nessun nuovo stato.
+//
+// Attenzione: i blocchi condividono il `ctx` (fillStyle, font, textAlign,
+// textBaseline, shadowBlur). Ogni helper continua a impostare esplicitamente
+// i valori di cui ha bisogno prima di usarli, quindi l'ordine non conta — ma
+// se in futuro sposti una riga da un blocco all'altro, verifica che l'aiuto
+// di disegno resti auto-sufficiente.
 function renderDisplayDynamicLayer(ctx, animT) {
-  const W = displayCanvas.width, H = displayCanvas.height;
+  const W = displayCanvas.width;
+  drawDisplayHeaderLayer(ctx, W);
+  drawDisplayFloorLayer(ctx, W);
+  drawDisplayDoorCountdown(ctx, W);
+}
+
+// Orologio + indicatori passeggeri + temperatura del meteo.
+function drawDisplayHeaderLayer(ctx, W) {
   // ---- HEADER overlay: orologio + passeggeri ----
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
@@ -7156,6 +7174,11 @@ function renderDisplayDynamicLayer(ctx, animT) {
     ctx.fillText(`${currentTemp}°C`, 170, 420);
   }
 
+}  // fine drawDisplayHeaderLayer
+
+// Pannello centrale: piano corrente, overlay fuori servizio / prenotazione,
+// freccia di direzione con etichetta e numerazione camere contestuale.
+function drawDisplayFloorLayer(ctx, W) {
   // ---- PIANO CORRENTE (grande) + FRECCIA DIREZIONE ----
   if (state.outOfOrder) {
     // Polish Pack v1.3 #6: overlay warning "fuori servizio" al posto del piano
@@ -7252,6 +7275,10 @@ function renderDisplayDynamicLayer(ctx, animT) {
     }
   }
 
+}  // fine drawDisplayFloorLayer
+
+// Countdown di chiusura porte con bordo lampeggiante.
+function drawDisplayDoorCountdown(ctx, W) {
   // ---- COUNTDOWN CHIUSURA PORTE (Fase 7) ----
   if (doorCountdownStart > 0) {
     const elapsed = (performance.now() - doorCountdownStart) / 1000;
