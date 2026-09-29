@@ -1539,6 +1539,145 @@
       //     rgba(0,0,0,0.92) + z-index 100000 che copriva tutto e rubava i
       //     tap al #startBtn; (b) nessun guard sulla creazione del context
       //     WebGL; (c) preserveDrawingBuffer:true era costo GPU inutile.
+      // ---- Polish Pack V4 Step 8: logica di movimento testabile ----
+      // tickMove non e' pura e non finiva in BossHotelPure, quindi nessun test
+      // la guardava: e' cosi' che un ReferenceError su `now` (usato senza
+      // averlo ricevuto) e' sopravvissuto mesi senza allarme. Questi helper
+      // sono la parte calcolabile, estratta e verificata.
+      describe('V4 Step 8: helper puri del movimento cabina', () => {
+        const H = 3.2; // FLOOR_HEIGHT in elevator.html
+
+        test('computeMoveState: agli estremi del viaggio', () => {
+          const a = P.computeMoveState(0, 4, 0, 5);
+          assertEq(a.moveT, 0, 'a inizio moveT deve essere 0');
+          assertEq(a.easedT, 0, 'a inizio easedT deve essere 0');
+          assertEq(a.y, 0, 'a inizio y deve essere 0 (piano terra)');
+          assertEq(a.floorShown, 0, 'a inizio il piano mostrato e\' terra');
+          assertEq(a.speed, 0, 'a inizio la velocita\' e\' 0');
+
+          const b = P.computeMoveState(4, 4, 0, 5);
+          assertEq(b.moveT, 1, 'a fine viaggio moveT deve essere 1');
+          assertEq(b.floorShown, 5, 'a fine viaggio il piano mostrato e\' quello di destinazione');
+          assertEq(b.speed, 0, 'a fine viaggio la velocita\' e\' 0 (frenata)');
+        });
+
+        test('computeMoveState: non va oltre il piano di destinazione', () => {
+          // moveElapsed puo' superare moveDuration di un frame: il clamp a 1
+          // impedisce che l'ascensore "overshoti" il piano.
+          const ms = P.computeMoveState(9.9, 4, 0, 5);
+          assertEq(ms.moveT, 1, 'moveT deve essere clampato a 1');
+          assertEq(ms.floorShown, 5, 'il piano mostrato non deve superare la destinazione');
+        });
+
+        test('computeMoveState: la velocita\' e\' massima a meta\' viaggio', () => {
+          // speed = 12*t*(1-t): il massimo e' 12*0.5*0.5 = 3.0 a t=0.5
+          const mid = P.computeMoveState(2, 4, 0, 5);
+          assert(Math.abs(mid.speed - 3.0) < 1e-9,
+            `velocita\' a meta\' viaggio attesa 3.0, trovata ${mid.speed}`);
+          const q = P.computeMoveState(1, 4, 0, 5); // t=0.25 -> 12*0.25*0.75
+          assert(Math.abs(q.speed - 2.25) < 1e-9,
+            `velocita\' a t=0.25 attesa 2.25, trovata ${q.speed}`);
+          // simmetrica: stessa velocita' a t e 1-t
+          const a = P.computeMoveState(1.2, 4, 0, 5);
+          const b = P.computeMoveState(2.8, 4, 0, 5);
+          assert(Math.abs(a.speed - b.speed) < 1e-9,
+            'la velocita\' deve essere simmetrica rispetto a meta\' viaggio');
+        });
+
+        test('computeMoveState: y e currentDisplay coerenti con l\'altezza piano', () => {
+          const ms = P.computeMoveState(4, 4, 0, 5);
+          assert(Math.abs(ms.y - 5 * H) < 1e-9,
+            `y al piano 5 attesa ${5 * H}, trovata ${ms.y}`);
+          assert(Math.abs(ms.y - ms.currentDisplay * H) < 1e-9,
+            'y deve essere currentDisplay moltiplicato per FLOOR_HEIGHT');
+        });
+
+        test('computeMoveState: il piano mostrato e\' arrotondato', () => {
+          // 2.5 non e\' raggiungibile esattamente, ma il round deve essere coerente
+          const ms = P.computeMoveState(2, 4, 0, 5); // currentDisplay = 2.5
+          assertEq(ms.currentDisplay, 2.5, 'currentDisplay a meta\' viaggio');
+          assertEq(ms.floorShown, 3, 'il piano mostrato arrotonda 2.5 a 3');
+        });
+
+        test('computeArrivalPhase: lampeggia solo nell\'ultimo secondo', () => {
+          assertEq(P.computeArrivalPhase(3, 1000), 'normal', 'esattamente 1000ms: non lampeggia');
+          assertEq(P.computeArrivalPhase(3.2, 800), 'blinking', '800ms rimanenti: lampeggia');
+          assertEq(P.computeArrivalPhase(1, 3000), 'normal', '3 secondi rimanenti: non lampeggia');
+        });
+
+        test('computeArrivalPhase: mai lampeggiare a viaggio fermo o gia\' finito', () => {
+          assertEq(P.computeArrivalPhase(0, 500), 'normal',
+            'a moveElapsed 0 non deve lampeggiare');
+          assertEq(P.computeArrivalPhase(4, 0), 'normal',
+            'a fine viaggio (0ms rimanenti) deve tornare normal');
+          assertEq(P.computeArrivalPhase(4, -100), 'normal',
+            'con tempo rimanente negativo deve essere normal');
+        });
+
+        test('computeMoveVibration: ampiezza minima in crociera', () => {
+          // speed 0 => solo il ronzio di crociera CRUISE_AMP = 0.0006
+          const v = P.computeMoveVibration(0, 0);
+          for (const k of ['x', 'z', 'roll', 'pitch']) {
+            assert(typeof v[k] === 'number', `campo ${k} mancante`);
+            assert(Math.abs(v[k]) < 0.005, `${k} fuori scala con speed 0: ${v[k]}`);
+          }
+        });
+
+        test('computeMoveVibration: ogni banda e\' periodica nella sua frequenza', () => {
+          // roll = sin(phase*5.1)*amp*0.6, quindi aggiungere 2pi/5.1 alla fase
+          // deve lasciare il valore identico. Stessa cosa per le altre tre
+          // bande alle rispettive frequenze. E' un controllo che non regge
+          // sull'ampiezza (x e z sono somme di due seni che possono
+          // annullarsi, quindi |x| puo' valere zero mentre roll no).
+          const speed = 0.4;
+          const base = P.computeMoveVibration(1.3, speed);
+          const bands = [
+            ['roll', 5.1], ['pitch', 6.7],
+          ];
+          for (const [k, freq] of bands) {
+            const shifted = P.computeMoveVibration(1.3 + (2 * Math.PI) / freq, speed);
+            assert(Math.abs(shifted[k] - base[k]) < 1e-9,
+              `${k} non e' periodica a freq ${freq}: ${base[k]} vs ${shifted[k]}`);
+          }
+          // determinismo: stessi input, stesso output
+          const again = P.computeMoveVibration(1.3, speed);
+          for (const k of ['x', 'z', 'roll', 'pitch']) {
+            assertEq(again[k], base[k], `${k} non deterministico`);
+          }
+        });
+
+        test('computeIdleVibration: smorzamento completo dopo 1.5s', () => {
+          const snap = { x: 0.01, z: 0.02, roll: 0.03, pitch: 0.04 };
+          assertEq(P.computeIdleVibration(snap, 1.5), { x: 0, z: 0, roll: 0, pitch: 0 },
+            'a 1.5s la vibrazione deve essere zero');
+          assertEq(P.computeIdleVibration(snap, 9), { x: 0, z: 0, roll: 0, pitch: 0 },
+            'oltre 1.5s deve restare zero');
+        });
+
+        test('computeIdleVibration: all\'inizio conserva lo snapshot', () => {
+          const snap = { x: 0.01, z: 0.02, roll: 0.03, pitch: 0.04 };
+          const v = P.computeIdleVibration(snap, 0);
+          assert(Math.abs(v.x - 0.01) < 1e-9, 'a elapsed 0 il fattore deve essere 1');
+          assert(Math.abs(v.pitch - 0.04) < 1e-9, 'pitch deve conservare lo snapshot');
+        });
+
+        test('computeIdleVibration: decresce monotonicamente', () => {
+          const snap = { x: 1, z: 1, roll: 1, pitch: 1 };
+          const a = P.computeIdleVibration(snap, 0.1).x;
+          const b = P.computeIdleVibration(snap, 0.5).x;
+          const c = P.computeIdleVibration(snap, 1.0).x;
+          assert(Math.abs(a) >= Math.abs(b) && Math.abs(b) >= Math.abs(c),
+            `la vibrazione deve decrescere: ${a}, ${b}, ${c}`);
+        });
+
+        test('computeArrivalDirection: sale e scende', () => {
+          assertEq(P.computeArrivalDirection(0, 5), 'up', 'dal terra al 5 si sale');
+          assertEq(P.computeArrivalDirection(5, 0), 'down', 'dal 5 al terra si scende');
+          assertEq(P.computeArrivalDirection(3, 3), 'down',
+            'a parita\' di piano la direzione non e\' up (coerente col ternario originale)');
+        });
+      });
+
       describe('FIX iPhone schermo nero (overlay portrait + budget GPU)', () => {
         const doc = iframe.contentDocument;
         test('avviso portrait non occupa piu\' tutto lo schermo', () => {
