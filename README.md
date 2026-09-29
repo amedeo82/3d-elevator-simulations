@@ -161,7 +161,8 @@ Prima di aprire la PR, esegui la sequenza di verifica:
 
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi e bilanciamento
-node scripts/run-tests.js                      # 285 test, exit 1 se uno fallisce
+node scripts/run-tests.js                      # 285 test di logica
+node scripts/run-ui-tests.js                   # 20 test di layout e interazione
 cp elevator.html dist/index.html              # la CI ne verifica la parità SHA-256
 ```
 

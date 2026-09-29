@@ -1,4 +1,4 @@
-# Contributing to BOSS HOTEL Elevator 3D
+﻿# Contributing to BOSS HOTEL Elevator 3D
 
 Grazie per l'interesse a contribuire a questo progetto. Questa guida
 spiega come configurare l'ambiente, eseguire i test, e seguire le
@@ -45,7 +45,7 @@ node scripts/generate-changelog.js
 
 ## Convenzioni codice (contratti D-key)
 
-Il progetto ha **30 contratti D-key** documentati in `AGENTS.md`. Ogni
+Il progetto ha **31 contratti D-key** documentati in `AGENTS.md`. Ogni
 modifica che li tocca deve aggiornare la documentazione. La tabella completa
 "file → quando aggiornarlo" è in `AGENTS.md`, sezione "Regole di aggiornamento
 della documentazione": leggila prima di committare. Lista rapida:
@@ -87,7 +87,9 @@ V3 T2 = Tier 2 manutenibilita, ecc.).
 3. **Implementa** seguendo i pattern esistenti (vedi D9 per helper puri)
 4. **Aggiungi test** in `tests.html` (assert vanilla, no dipendenze)
 5. **Verifica**: `node scripts/check-balance.js elevator.html` +
-   `node scripts/run-tests.js` (exit 1 se un test fallisce)
+   `node scripts/run-tests.js` (285 test di logica) +
+   `node scripts/run-ui-tests.js` (20 test di layout e interazione).
+   Entrambi i runner escono con codice 1 se un test fallisce
 6. **Aggiorna** `AGENTS.md` se introduci un nuovo D-key, e i documenti
    elencati nella tabella "Regole di aggiornamento della documentazione"
 7. **Aggiorna** `PIANO_VN.md` (stato step + log decisioni) e

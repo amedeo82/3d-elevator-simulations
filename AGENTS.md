@@ -1,4 +1,4 @@
-# AGENTS.md — Guida per agenti di coding su BOSS HOTEL Elevator 3D
+﻿# AGENTS.md — Guida per agenti di coding su BOSS HOTEL Elevator 3D
 
 ## Cos'è il progetto
 Simulatore 3D prima-persona di una cabina ascensore di hotel di lusso.
@@ -138,6 +138,7 @@ merge invece di due, e la coerenza del conteggio D-key resta garantita.
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi + brace balance
 node scripts/run-tests.js                      # 285 test in Chromium headless
+node scripts/run-ui-tests.js                   # 20 test di layout e interazione (D31)
 cp elevator.html dist/index.html              # build copy
 ```
 
@@ -193,7 +194,7 @@ node scripts/run-tests.js   # eseguito 3 volte con locale en-US, it-IT, de-DE
   accentiati o emoji: senza, `à` ed emoji appaiono come mojibake
   (`â€`, `ðŸŽ‰`) e si conclude erroneamente che il file sia corrotto.
 - **`-replace` su file grandi** (500 KB) è inaffidabile: se il pattern non
-  corrisponde esattamente（含 fine riga diverse) non modifica nulla e
+  corrisponde esattamente (per es. fine riga diverse) non modifica nulla e
   `$new -eq $old` resta vero. Per modifiche puntuali usare l'editor.
 - **`git reset --hard`** sovrascrive il working tree: verificare sempre prima
   che non ci siano modifiche non committate da salvare.
@@ -259,15 +260,17 @@ allineato.
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
 | `node scripts/run-tests.js` | Esegue i 285 test in Chromium headless, exit 1 se uno fallisce |
+| `node scripts/run-ui-tests.js` | 20 test **comportamentali** di layout/interazione (D31), exit 1 se uno fallisce |
 | `cp elevator.html dist/index.html` | Build copy obbligatoria: la CI ne verifica la parità SHA-256 |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
 | `node scripts/generate-changelog.js` | Rigenera `CHANGELOG.md` dai commit (D26) |
 | `node scripts/find-long-fns.js` | Elenca le funzioni più lunghe (invariante D24) |
 
-CI GitHub Actions: `.github/workflows/ci.yml` ha 3 job paralleli:
+CI GitHub Actions: `.github/workflows/ci.yml` ha 4 job paralleli:
 1. `check` — `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe)
 2. `tests` — validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento `elevator.html` in `tests.html`
-3. `tests-run` — **esecuzione reale dei test** in Chromium headless via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). Fallisce se un test non passa. È la job che intercetta i bug bloccanti: le due precedenti sono solo `grep` ed eseguivano zero test.
+3. `tests-run` — **esecuzione reale dei test** in Chromium headless via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). Fallisce se un test non passa. È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30)
+4. `ui-tests` — **test comportamentali di layout** via `scripts/run-ui-tests.js`: 20 test che aprono l'app e verificano che `#startBtn` sia premibile, che i tap su mobile non finiscano su un overlay, che la scena produca un frame. È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31)
 
 ## Test in locale (runner headless, come la CI)
 
@@ -280,15 +283,20 @@ browser ma NON installa il pacchetto npm che lo script richiede.
 npm install --no-save --no-audit --no-fund playwright@1.56.0  # una volta sola
 npx playwright install chromium                                # una volta sola
 node scripts/run-tests.js                                      # exit 1 se un test fallisce
+node scripts/run-ui-tests.js                                   # exit 1 se un test fallisce
 ```
 
 `--no-save` evita di creare `package.json`/`package-lock.json`, che il
 progetto non vuole. La versione **va pinnata**: se non combacia con il
 build del browser, `chromium.launch()` fallisce con
 `Executable doesn't exist at .../chromium_headless_shell-XXXX` e la causa
-appare illeggibile.
+appeare illeggibile.
 
-Scrive `test-output.json` nella root (gitignored) con i risultati completi.
+I due runner usano la stessa installazione. `run-tests.js` copre la logica
+pura (285 test su `window.BossHotelPure` in un iframe nascosto),
+`run-ui-tests.js` copre layout e interazione (20 test che aprono l'app in
+viewport reali, desktop e mobile) — vedi D30 e D31. Scrivono rispettivamente
+`test-output.json` e `ui-test-output.json` nella root (gitignored).
 Usa un server HTTP statico, non `file://`: `tests.html` carica `elevator.html`
 in un `<iframe sandbox>` e `elevator.html` è un ES module con importmap, che su
 `file://` non si carica per CORS.
@@ -340,8 +348,9 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D26est | **`state.inputMode` come single source of truth per scene selection** | Polish Pack V4 Step 7 (D26 esteso). Il progetto era nato desktop-first con tutti gli interventi mobile come overlay sopra logiche desktop (causando "mix confuso" su iPhone: cheatsheet WASD + joystick + ▲▼ + pointer hint desktop tutti visibili). Soluzione: aggiungere `state.inputMode = 'desktop' \| 'mobile'` dichiarato nel state object in CONFIGURATION (top of file per evitare TDZ), derivato da `isMobileDevice()` al boot e ricalcolato su resize/orientationchange/matchMedia change. Tutti i branch UI/handler/tutorial/cheatsheet leggono SOLO questo flag (non piu' controlli sparsi su `state.isMobile`). Data structures paralleli: `PANEL_HELP_KEYS_MOBILE` (13 voci touch-friendly) vs `PANEL_HELP_KEYS` (15 voci desktop); `TUTORIAL_STEPS_MOBILE` vs `TUTORIAL_STEPS`; `START_SCREEN_KEYS_MOBILE` vs `START_SCREEN_KEYS`. Helper mode-aware: `getPanelHelpKeys()`, `getStartScreenKeys()`, `getTutorialSteps()`. Per-mode onboarded flag: `localStorage[bossHotelOnboarded@v1]` (desktop) vs `localStorage[bossHotelOnboardedMobile@v1]` (mobile). Keydown short-circuit su mobile: il listener `keydown` ritorna subito tranne per tasti tutorial (`?`, Enter, Esc) per evitare che tastiere Bluetooth/USB inneschino azioni WASD/M/V/N/O/K/H/L. CSS split: `body.mobile-mode #panel-help/#crosshair { display: none }` + `body:not(.mobile-mode) #touch-controls { display: none }`. Runtime toggle in `initMobileDetection.recheck()`: su mode change chiama `applyLangToDOM()` e riavvia il tutorial con i nuovi step. |
 | D27 | **Mobile hamburger menu (☰ top-left) per azioni keyboard-only** | Polish Pack V4 Step 8. Il progetto mostrava contenuti mobile-friendly dopo D26est ma le 9 azioni keyboard-only (M audio, V annunci, N notte, O fuori servizio, K comando vocale, ? tutorial, H customizer, L lingua, Shift+M manutenzione) restavano inaccessibili via touch. Soluzione: bottone ☰ fisso top-left 44×44 px glassmorphism (`display: none` di default, `display: block` su `body.mobile-mode`) + overlay slide-in da destra (320px max-width 90vw, transform `translateX(100%)→0` con transition 250ms, z-index 5800). 9 voci in 2 sezioni: 5 toggle rapidi (audio/V/notte/OOO/vocale con badge ON/OFF colorato via `aria-checked`) + 4 link ad altri overlay (tutorial/customizer/manutenzione/lingua). 25 nuove stringhe IT/EN: `mmTitle`, `mmSectionToggles/Actions`, `mmAudio/Voice/Night/OOO/VoiceCmd/Tutorial/Customize/Maint/Lang`, `mmStateOn/Off` + 13 `ariaMm*`. 7 nuove funzioni JS: `openMobileMenu/closeMobileMenu/toggleMobileMenu/isMobileMenuOpen/handleMobileMenuAction/refreshMobileMenuStates/initMobileMenu`. Esposti in `BossHotelPure` per testing cross-iframe. Sicurezza UX: `openMobileMenu()` rilascia `pointer-lock` + chiude tutorial attivo (evita overlay stacking). NOTA 2026-09-28: la parte finale di questa riga riportava come causa dello "schermo nero" su iOS l'interferenza di un elemento fixed con z-index sul rendering WebGL (preserveDrawingBuffer). Quella diagnosi era **errata** — nessun browser si comporta in questo modo. Cause reali: overlay full-screen 92% nero che intercettava i tap sul #startBtn, `WebGLRenderer` senza guard, `preserveDrawingBuffer: true` inutile, context perso non recuperato. Vedi D28. La regola `visibility: hidden` resta comunque corretta di per se'. |
 | D28 | **Robustezza WebGL su iOS/Safari (guard, budget GPU, recupero context)** | Polish Pack fix 2026-09-28 (PR #14). 4 difetti reali alla base dello "schermo nero" su iPhone 15 Pro, riprodotti in WebKit 26.0. (1) `new THREE.WebGLRenderer()` va SEMPRE in try/catch: se il context non si crea il modulo abortisce e il listener su `#startBtn` non viene mai agganciato → `showWebglFallback()` inietta un overlay con bottone "Ricarica" invece di lasciare uno schermo nero muto. (2) `preserveDrawingBuffer: true` vietato: copia il buffer a ogni frame e nulla nel progetto legge i pixel del canvas (nessun `toDataURL`/`toBlob`) → costo puro, ed è la config che su iOS favorisce frame neri. Se in futuro serve catturare il canvas, farlo on-demand con `toDataURL` nel frame giusto, non con il flag permanente. (3) Budget memoria tarato da `computePixelRatioCap(dpr, isIOS)` (puro, esposto in `BossHotelPure`): max **1.5** su iOS, max 2 su desktop. `antialias` disattivato solo su iOS (backbuffer MSAA). Su iPhone 15 Pro landscape il backbuffer passa da 1704x786 a 1278x589. (4) Context perso recuperabile: `state._ctxLost`/`_ctxLostAt` (dichiarati in CONFIGURAZIONE, vincolo D2) vengono **letti** dal loop, che salta `renderer.render()`; `reviveRendererAfterContextRestore()` re-applica size/pixelRatio, `resetState()` e forza `needsUpdate` su tutti i materiali + `shadowMap.needsUpdate`; watchdog `CTX_WATCHDOG_MS` (6s) chiama `WEBGL_lose_context.restoreContext()` e, se il context non torna, mostra la fallback. Su iOS il context viene ucciso dal sistema (backgrounding, pressione di memoria) e Safari NON emette sempre `webglcontextrestored`. `requestPointerLock()` va sempre in try/catch e va saltato in mobile mode: l'API non esiste su iOS Safari. |
-| D29 | **Lo start screen deve essere sempre interamente raggiungibile** | Polish Pack fix 2026-09-28 (PR #15). Il contenuto di `#startscreen` misura ~772px in verticale. Sotto i ~870px di altezza viewport eccedeva, ma `#startscreen` aveva `overflow: visible` e `html, body` hanno `overflow: hidden`: **nessuno scroll possibile** e `#startBtn` finiva sotto il bordo inferiore, non cliccabile. Colpiva le risoluzioni laptop più comuni (1366x768, 1280x720, 1600x720, 1024x768, 1280x800, 1440x810). Regole: (1) `#startscreen` ha `overflow-y: auto` nella regola **base**, non dentro una media query — i fix "solo mobile" lasciano sempre scoperto il caso desktop; (2) mai `justify-content: center` su un contenitore scrollabile: l'eccedenza in alto diventa irraggiungibile (lo scroll parte da 0 mentre il centro è stato spostato fuori). Si usa `flex-start` + centraggio tramite `margin-top: auto` su `h1` e `margin-bottom: auto` su `#startBtn`: gli auto-margin assorbono lo spazio libero quando il contenuto entra e valgono 0 quando non entra; (3) mai usare lo shorthand `margin:` su quegli elementi dopo gli auto-margin, perché li azzera — usare solo longhand. Verifica: 13 viewport provati con scroll+click REALI (non `scrollIntoView` di Playwright, che mascherebbe il problema). |
+| D29 | **Lo start screen deve essere sempre interamente raggiungibile** | Polish Pack fix 2026-09-28 (PR #15). Il contenuto di `#startscreen` misura ~772px in verticale. Sotto i ~870px di altezza viewport eccedeva, ma `#startscreen` aveva `overflow: visible` e `html, body` hanno `overflow: hidden`: **nessuno scroll possibile** e `#startBtn` finiva sotto il bordo inferiore, non cliccabile. Colpiva le risoluzioni laptop più comuni (1366x768, 1280x720, 1600x720, 1024x768, 1280x800, 1440x810). Regole: (1) `#startscreen` ha `overflow-y: auto` nella regola **base**, non dentro una media query — i fix "solo mobile" lasciano sempre scoperto il caso desktop; (2) mai `justify-content: center` su un contenitore scrollabile: l'eccedenza in alto diventa irraggiungibile (lo scroll parte da 0 mentre il centro è stato spostato fuori). Si usa `flex-start` + centraggio tramite `margin-top: auto` su `h1` e `margin-bottom: auto` su `#startBtn`: gli auto-margin assorbono lo spazio libero quando il contenuto entra e valgono 0 quando non entra; (3) mai usare lo shorthand `margin:` su quegli elementi dopo gli auto-margin, perché li azzera — usare solo longhand. **Trap CSS scoperto il 2026-09-29**: `overflow-y: auto` sembra ridondante perché da solo `overflow-x: hidden` fa calcolare `overflow-y` come `auto` (regola CSS: se un asse non è `visible`, l'altro calcola ad `auto`). Rimuovendo solo `overflow-y` per "pulizia" lo start screen resta scorrevole, ma **rimuovendo entrambi il bug torna** e i test UI lo intercettano. Non trattarli come intercambiabili. Verifica: `node scripts/run-ui-tests.js` (13 test su 9 viewport desktop + 2 mobile). |
 | D30 | **La CI deve ESEGUIRE i test, non solo controllarli staticamente** | Polish Pack fix 2026-09-28 (PR #15). Fino a questa data la job `tests` eseguiva solo `grep` (esistenza di `BossHotelPure`, conteggio `test(` >= 30, referenziamento di `elevator.html`): **zero test eseguiti**. Di conseguenza 4 test restarono rossi per mesi senza allarme e i bug bloccanti iPhone e startBtn arrivarono in `main`. Ora esiste la job `tests-run` che esegue `tests.html` in Chromium headless via `scripts/run-tests.js`, fallendo se un test non passa. Vincoli: (1) i test devono essere **indipendenti dal locale del browser** — `loadLang()` cade su `detectBrowserLang()`, quindi un test che assume "la pagina parte in italiano" passa solo su macchina IT e fallisce su runner `en-US`; (2) Playwright va **pinnato** a una versione allineata al build del browser, altrimenti `Executable doesn't exist`; (3) il runner deve avere una guardia anti-falso-verde (0 test eseguiti = fallimento, non successo) e deve stampare gli errori di pagina raccolti, altrimenti un modulo non caricato produce solo "Timeout" illeggibile; (4) i test si eseguono su **server HTTP**, mai `file://` (ES module + importmap + iframe sandbox falliscono per CORS). Aggiungere un test = eseguirlo in locale con `node scripts/run-tests.js` prima del commit. |
+| D31 | **I test puri non coprono il layout: serve una job UI comportamentale** | Polish Pack fix 2026-09-29. D30 ha chiuso il gap "la CI non eseguiva i test", ma i 285 test girano su funzioni pure in un iframe nascosto: **nessun layout, nessun rendering**. Una CI verde poteva quindi stare accanto a un'app inutilizzabile, ed è esattamente ciò che è successo con i due bug bloccanti del 2026-09-28, entrambi di CSS. Esiste `scripts/run-ui-tests.js` + job `ui-tests` che verificano il comportamento reale: `#startBtn` dentro il viewport o su contenitore scorrevole su 9 viewport desktop, avvio col mouse alle coordinate vere, `elementFromPoint` per verificare che il tap su mobile arrivi al pulsante e non a un overlay, avviso portrait dismissabile e non a tutto schermo, frame 3D non vuoto via CDP. Tre regole non negoziabili, ciascuna imparata sul campo: (1) **mai `locator.click()`** per testare la raggiungibilità — usa `scrollIntoView` forzato e mascherebbe proprio il difetto cercato; usare `page.mouse.click(x, y)` alle coordinate reali; (2) **mai `page.screenshot()`** su questa app — va in timeout perché aspetta una stabilità di frame che un loop `requestAnimationFrame` continuo non raggiunge; usare CDP `Page.captureScreenshot`; (3) il framework di `test()` deve essere **async-aware**: una fn `async` che rigetta senza `await` passa silenziosamente e il runner mente. Un runner non mai visto fallire non è un runner testato. |
 
 ---
 
@@ -367,7 +376,7 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 - **Polish Pack V4**: 8/8 step (100%) — chiuso il 2026-09-26.
   Step 1-6 (Test exposure/Routing/A11y/Funzioni lunghe/Helper DRY/Open source)
   + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
-  Contratti D-key totali: **30** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28).
+  Contratti D-key totali: **31** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
   Totale test vanilla: **285 test** (aggiornato 2026-09-28 con i 12 test di
   regressione iPhone e i 5 sullo startBtn desktop).

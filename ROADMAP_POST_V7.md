@@ -1,4 +1,4 @@
-# Roadmap post-pubblicazione (post-V7)
+﻿# Roadmap post-pubblicazione (post-V7)
 
 > Documento di pianificazione aperto per la community. Raccoglie idee
 > e opportunità emerse dopo la release v7.0 (2026-09-25) ma non
@@ -45,7 +45,7 @@
 
 1. Fork del repo.
 2. Branch dedicato: `git checkout -b feature/<branch-name>`.
-3. Rispettare i 30 D-key contracts (vedi `AGENTS.md`).
+3. Rispettare i 31 D-key contracts (vedi `AGENTS.md`).
 4. PR con descrizione dettagliata + riferimento a issue (se esiste).
 
 Convenzioni aggiuntive:

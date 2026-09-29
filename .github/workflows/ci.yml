@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -11,9 +11,9 @@ jobs:
     name: Sintassi + brace balance + invarianti build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -60,9 +60,9 @@ jobs:
     name: Test framework (Polish Pack V2 Step 12)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -111,9 +111,9 @@ jobs:
     name: Esecuzione test in browser (Chromium headless)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -132,8 +132,56 @@ jobs:
 
       - name: Upload risultati test (artefatto in caso di fallimento)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-output
           path: test-output.json
+          if-no-files-found: ignore
+
+  # ===========================================================================
+  # Test COMPORTAMENTALI di layout e interazione.
+  # ===========================================================================
+  # `tests-run` esegue 285 test su funzioni pure dentro un iframe nascosto:
+  # nessun layout, nessun rendering. Per questo NON avrebbe beccato i due
+  # bug bloccanti chiusi il 2026-09-28, entrambi di CSS:
+  #   - #startBtn sotto il bordo inferiore su 1366x768 / 1280x720 / ...
+  #   - overlay "ruota il dispositivo" che intercettava i tap su iPhone
+  # Una CI verde poteva quindi stare accanto a un'app inutilizzabile.
+  # Questa job verifica il comportamento reale: l'utente puo' premere il
+  # pulsante start? Il tap arriva al pulsante o a un overlay? La scena
+  # renderizza qualcosa?
+  # ===========================================================================
+  ui-tests:
+    name: Test UI layout e interazione (Chromium headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Cache browser Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.56.0
+
+      - name: Installa Playwright + Chromium
+        run: |
+          # Stessa versione di tests-run: i due runner devono usare lo stesso
+          # build del browser, altrimenti "Executable doesn't exist".
+          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Esegui test UI (server HTTP + Chromium headless)
+        run: |
+          node scripts/run-ui-tests.js
+
+      - name: Upload risultati test UI (artefatto in caso di fallimento)
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ui-test-output
+          path: ui-test-output.json
           if-no-files-found: ignore
