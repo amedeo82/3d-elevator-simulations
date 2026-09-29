@@ -26,8 +26,8 @@ sezione §Audit V3) per affrontare le aree di miglioramento identificate.
 **Nota audit V3 → V4 (2026-09-25)**: l'audit iniziale di V4 riportava
 "32 funzioni `pure:` non esportate in `BossHotelPure`" basandosi su una
 snapshot stale. Verifica puntuale: tutte le 32 funzioni marcate `// pure:`
-risultano effettivamente esportate in `window.BossHotelPure` (righe
-10167-10197 di `elevator.html`) e coperte da 206 test / 343 assert in
+risultano effettivamente esportate in `window.BossHotelPure` (ancora
+`window.BossHotelPure = {` in `elevator.html`) e coperte da 206 test / 343 assert in
 `tests.html` (target V4 era 300+ assert, già superato). Pertanto **Step 1
 è di fatto già chiuso** dal lavoro di V2/V3; rimane solo un piccolo gap
 (`relativeLuminance` esportato ma senza test) da coprire in coda al primo
@@ -66,7 +66,7 @@ WASD + joystick + ▲▼ + pointer hint desktop tutti visibili insieme).
 | D21 | Test exposure completa | V4 Step 1 |
 | D22 | Routing inversione corretta | V4 Step 2 |
 | D23 | A11y aria attributes standard | V4 Step 3 |
-| D24 | Funzioni core <100 righe | V4 Step 4 |
+| D24 | Funzioni core <150 righe (soglia pratica consigliata: 120) | V4 Step 4 |
 | D25 | Helper geometry extraction | V4 Step 5 |
 | D26 | Open source boilerplate (LICENSE + CHANGELOG + CONTRIBUTING) | V4 Step 6 |
 | **D26 esteso** | `state.inputMode` come single source of truth per mode UI/handler/tutorial/cheatsheet | **V4 Step 7** |
@@ -153,7 +153,7 @@ righe!), `applyLangToDOM` (161), `tickNpcs` (92), `addSkylineWindow` (180),
 
 **Soluzione**:
 - Split `updateAdScreen` in `bakeAdScreen()` (costruzione canvas texture)
-  + `drawAdScreen()` (render scheduling). Ognuna <100 righe.
+  + `drawAdScreen()` (render scheduling). Ognuna <150 righe.
 - Split `applyLangToDOM` in helper per dominio (panelHelp, customizeHotel,
   maintOverlay, ecc.).
 - Aggiungi commenti narrativi (stile Step 7) alle top-10 funzioni più
@@ -368,11 +368,12 @@ Vedi anche:
 ### 2026-09-25 — Step 1 (Test exposure gap)
 
 **Audit pre-V4**: il piano apriva con "32 funzioni `pure:` non esportate in
-`BossHotelPure`, target 205 → 300+ assert". Verifica puntuale (grep su
-`elevator.html:5640-5890`, lettura di `tests.html:127-1467`):
+`BossHotelPure`, target 205 → 300+ assert". Verifica puntuale (grep sull'ancora
+`window.BossHotelPure = {` di `elevator.html`, lettura di `tests.html`):
 
 - tutte le 32 funzioni marcate `// pure:` risultano **già** in
-  `window.BossHotelPure` (righe 10167-10197 di `elevator.html`);
+  `window.BossHotelPure` (ancora `window.BossHotelPure = {` in
+  `elevator.html`);
 - `tests.html` contiene **206 test / 343 assert** (target 300+ già superato);
 - unico gap residuo: `relativeLuminance` (Step 1d V3) è esportato ma
   non ha test in `tests.html` (5-6 test banali da aggiungere in coda).

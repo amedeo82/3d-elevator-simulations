@@ -1,7 +1,7 @@
 # Piano V3 — Roadmap Polish Qualitativo
 **Documento di design e implementazione iterativa per BOSS HOTEL Elevator 3D**
 
-> Versione 0.5 — Aperto 2026-09-17 (chiusura V2) · Step 1–5 ✅ 2026-09-23
+> Versione 0.5 — Aperto 2026-09-17 (chiusura V2) · Step 1–9 ✅ chiuso 2026-09-23
 >
 > V3 sposta il focus da **aggiungere feature** a **migliorare la qualità**
 > di quelle esistenti. Niente nuove funzionalità grosse (rimandate a V4+):
@@ -9,9 +9,8 @@
 > più solido, accessibile, performante e piacevole da usare.
 >
 > Stato attuale: **9/9 step completati (100%)** ✅ Polish Pack V3 chiuso
-> al documento. Step 1–5 merged su `main`. Step 6 (QoL manutenzione) è il
-> prossimo. Vedi `PIANO_V2.md` §Stato finale V2 per lessons learned che
-> informano V3.
+> il 2026-09-23, tutti gli step merged su `main`. Vedi `PIANO_V2.md`
+> §Stato finale V2 per lessons learned che informano V3.
 >
 > Workflow: stesso pattern di V2 — file `PIANO_V3.md` con step numerati,
 > Decision Questions via `question` tool, branch dedicati per step,
@@ -35,7 +34,7 @@
 
 **Effort totale stimato**: ~10-15 ore, distribuite su 8-12 sessioni.
 
-**Progress attuale**: 5/9 step done · Tier T1: 3/3 done (100%) · Tier T2: 2/3 (67%) · Tier T3: 0/2 · Bonus: 0/1.
+**Progress attuale**: 9/9 step done · Tier T1: 3/3 done (100%) · Tier T2: 3/3 (100%) · Tier T3: 2/2 (100%) · Bonus: 1/1.
 
 **Legenda stato**: ⏳ pending · 🔄 in corso · ✅ done · ❌ scartato
 
@@ -981,4 +980,4 @@ Decision su Polish Pack V4 sarà fatta in futuro.
 
 ---
 
-**Polish Pack V3 è ufficialmente aperto.** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 chiusi. **Polish Pack V3 COMPLETO (100%)**.
+**Polish Pack V3 è ufficialmente chiuso (2026-09-23).** Step 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 chiusi. **Polish Pack V3 COMPLETO (100%)**.

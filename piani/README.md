@@ -202,14 +202,18 @@ di piano. 4 modifiche in `elevator.html` (+19/-2 righe):
 |---|---|---|---|
 | §11.1 — Funzionalità "core" | [PIANO_11.1_core.md](./PIANO_11.1_core.md) | 4 | 4/4 (#1 ✅, #2 ✅, #3 ✅, #4 ✅) |
 | §11.2 — Hotel premium | [PIANO_11.2_premium.md](./PIANO_11.2_premium.md) | 4 | 4/4 (#5 ✅, #6 ✅, #7 ✅, #8 ✅) |
-| §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 3/4 (#9 ✅, #10 ✅, #11 ✅) |
+| §11.3 — UX / accessibilità | [PIANO_11.3_ux.md](./PIANO_11.3_ux.md) | 4 | 3/4 (#9 ✅, #10 ✅, #11 ✅, #12 ❌ fuori scope) |
 | §11.4 — Robustezza e qualità | [PIANO_11.4_qualita.md](./PIANO_11.4_qualita.md) | 3 | 3/3 (#13 ✅, #14 ✅, #15 ✅) |
-| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 2/3 (#17 ✅, #18 ✅) |
-| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 6 | 6/6 (#19 ✅, #20 ✅, #21 ✅, #21b ✅, #22 ✅, #16 ❌ scartato per vincolo single-file) |
+| §11.5 — Tecnico / performance | [PIANO_11.5_tecnico.md](./PIANO_11.5_tecnico.md) | 3 | 2/3 (#16 ❌ scartato per vincolo single-file, #17 ✅, #18 ✅) |
+| §11.6 — Idee nuove | [PIANO_11.6_nuove.md](./PIANO_11.6_nuove.md) | 4 | 4/4 (#19 ✅, #20 ✅, #21 ✅, #22b ✅) |
 
-**Totale implementato al merge di v1.6**: **22/22 funzionalità (100%)** — pre-v1.6 era 19/22.
+**Totale backlog §11 (6 file, 22 funzionalità)**: **20/22 implementate (90,9%)**.
+Restano #12 (i18n IT/EN, fuori scope) e #16 (PWA, scartato dal vincolo
+single-file). I totali "22/22" riportati nelle sezioni di release v1.4–v1.6
+sopra contavano #16 fra le implementate: il denominatore 22 è corretto, il
+numeratore no.
 
-**Totale backlog residuo post-v1.6**: **0/22 funzionalità** (#12 i18n fuori scope, #16 PWA scartato).
+**Totale backlog residuo post-v1.6**: **2/22 funzionalità** (#12 i18n fuori scope, #16 PWA scartato).
 
 ## Backlog residuo post-v1.6 (fuori scope)
 

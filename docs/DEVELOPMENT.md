@@ -25,24 +25,38 @@ qui nulla: ogni file è la fonte autorevole del suo argomento.
 
 ```
 .
-├── elevator.html          # File principale (~500 KB, ~11.400 righe) — tutta la simulazione
+├── elevator.html          # File principale (~507 KB, ~11.914 righe) — tutta la simulazione
+├── index.html             # Redirect a elevator.html (entry point per deploy)
 ├── tests.html             # Test framework (298 test su window.BossHotelPure)
 ├── scripts/
 │   ├── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
+│   ├── run-tests.js       # Esegue i 298 test di logica in Chromium headless
+│   ├── run-ui-tests.js    # Esegue i 20 test UI di layout/interazione in Chromium headless
 │   ├── find-long-fns.js   # Helper per audit D24 (funzioni >=150 righe)
 │   ├── generate-changelog.js  # Auto-genera CHANGELOG.md dalla history git (D26)
 │   ├── extract-strings.js # Estrae chiavi STRINGS per audit i18n
 │   └── extract-js.js      # Estrae funzioni JS per analisi esterna
 ├── dist/
 │   └── index.html         # Build per il deploy (copia di elevator.html)
+├── docs/                  # Documentazione utente (FEATURES, CONTROLS, DEVELOPMENT, ROADMAP)
+├── piani/                 # Piani dei Polish Pack e storico implementativo
 ├── .github/
 │   └── workflows/
-│       └── ci.yml         # CI: 2 job paralleli (check sintassi + tests)
-├── README.md              # Questo file
+│       └── ci.yml         # CI: 4 job paralleli (vedi sotto)
+├── README.md              # Questo file (root)
 └── PIANO_MIGLIORAMENTI.md # Documento di design (fasi implementate)
 ```
 
-Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in un unico file per massima portabilità e facilità di deploy. Il file è organizzato internamente in sezioni numerate e commentate. `tests.html` e `.github/workflows/` sono gli unici file accessori (rispettivamente DX e CI).
+Il progetto è **monolitico per design**: tutto il codice (HTML, CSS, JS) sta in un unico file per massima portabilità e facilità di deploy. Il file è organizzato internamente in sezioni numerate e commentate. Gli unici sorgenti sono `elevator.html` e `tests.html`; tutto il resto è file accessori di tooling e documentazione: `scripts/` (verifica e runner), `.github/workflows/` (CI), `dist/` (build copy) e i documenti Markdown.
+
+I 4 job della CI (`.github/workflows/ci.yml`), in parallelo:
+
+| Job | `name:` | Cosa verifica |
+|---|---|---|
+| `check` | Sintassi + brace balance + invarianti build | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 |
+| `tests` | Test framework (Polish Pack V2 Step 12) | Validazione statica: presenza `window.BossHotelPure`, presenza `tests.html`, conteggio test |
+| `tests-run` | Esecuzione test in browser (Chromium headless) | I 298 test reali via `scripts/run-tests.js` |
+| `ui-tests` | Test UI layout e interazione (Chromium headless) | I 20 test comportamentali via `scripts/run-ui-tests.js` |
 
 ## 💻 Sviluppo locale
 
@@ -80,13 +94,21 @@ php -S localhost:8000
 
 ### Test (Polish Pack V2 Step 12 + V3/V4 Steps)
 
-Il progetto include un mini test framework vanilla in `tests.html`. Esegue **298 test** su funzioni pure esposte in `window.BossHotelPure`.
+Il progetto include due suite:
+
+- **298 test di logica** in `tests.html`, su funzioni pure esposte in
+  `window.BossHotelPure` (54 blocchi `describe`), eseguiti da `scripts/run-tests.js`.
+- **20 test UI** in `scripts/run-ui-tests.js`: aprono l'app in viewport reali
+  (desktop e mobile) e verificano layout e interazione (raggiungibilità di
+  `#startBtn`, tap che non finiscono su un overlay, frame 3D non vuoto). Coprono
+  ciò che i test di logica non vedono: nessuno dei due gira in un iframe nascosto.
 
 ```bash
 # Opzione A — runner headless, identico a quello della CI
 npm install --no-save --no-audit --no-fund playwright@1.56.0
 npx playwright install chromium
-node scripts/run-tests.js     # stampa "OK: 285/298 test passati", exit 1 se uno fallisce
+node scripts/run-tests.js      # stampa "OK: 298/298 test passati", exit 1 se uno fallisce
+node scripts/run-ui-tests.js   # stampa "OK: 20/20 test UI passati", exit 1 se uno fallisce
 
 # Opzione B — ispezione manuale nel browser
 python3 -m http.server 8000

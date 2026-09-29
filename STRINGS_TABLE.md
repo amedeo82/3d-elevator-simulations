@@ -22,7 +22,7 @@
 | `ariaMmOpenTutorial` | Apri tutorial contestuale | Open context tutorial |
 | `ariaMmToggleAudio` | Attiva/disattiva audio (tasto M) | Toggle audio (key M) |
 | `ariaMmToggleLang` | Cambia lingua IT/EN | Switch language IT/EN |
-| `ariaMmToggleNight` | Attiva/disattiva modalit\u00e0 notte (tasto N) | Toggle night mode (key N) |
+| `ariaMmToggleNight` | Attiva/disattiva modalità notte (tasto N) | Toggle night mode (key N) |
 | `ariaMmToggleOOO` | Attiva/disattiva fuori servizio (tasto O) | Toggle out of service (key O) |
 | `ariaMmToggleVoice` | Attiva/disattiva annunci vocali (tasto V) | Toggle voice announcements (key V) |
 | `ariaMmToggleVoiceCmd` | Attiva/disattiva comando vocale (tasto K) | Toggle voice command (key K) |
@@ -50,19 +50,19 @@
 | `cabinIdle` | Cabina ferma | Cabin idle |
 | `cabinMode` | In cabina | In cabin |
 | `cabinSubtitle` | Boss Hotel Edition | Boss Hotel Edition |
-| `cabinTitle` | Cabina 5\u2605 | 5\u2605 Cabin |
+| `cabinTitle` | Cabina 5★ | 5★ Cabin |
 | `callDisabledBottom` | Sei al piano Terra | You are on the ground floor |
 | `callDisabledTop` | Sei al piano piu' alto | You are on the top floor |
-| `cityHeader` | ROMA \u00b7 | ROME \u00b7 |
+| `cityHeader` | ROMA · | ROME · |
 | `citySubtitle` | Roma in tempo reale | Rome in real time |
 | `clickToResume` | Clicca per riprendere | Click to resume |
 | `corridorMode` | Nel corridoio | In corridor |
-| `customizeApplied` | Configurazione salvata \u00b7 Riavvio in corso... | Configuration saved \u00b7 Reloading... |
+| `customizeApplied` | Configurazione salvata · Riavvio in corso... | Configuration saved · Reloading... |
 | `customizeApply` | Applica e salva | Apply and save |
 | `customizeClose` | Chiudi | Close |
-| `customizeHint` | H per aprire/chiudere \u00b7 Esc per chiudere \u00b7 preset per cambiare hotel.<br>Applica e salva riavvia la pagina per aggiornare tutte le texture 3D. | H to open/close \u00b7 Esc to close \u00b7 presets to switch hotel.<br>Apply and save reloads the page to update all 3D textures. |
+| `customizeHint` | H per aprire/chiudere · Esc per chiudere · preset per cambiare hotel.<br>Applica e salva riavvia la pagina per aggiornare tutte le texture 3D. | H to open/close · Esc to close · presets to switch hotel.<br>Apply and save reloads the page to update all 3D textures. |
 | `customizeLabelAddr` | Indirizzo | Address |
-| `customizeLabelCity` | Citt\u00e0 | City |
+| `customizeLabelCity` | Città | City |
 | `customizeLabelColor` | Colore accent | Accent color |
 | `customizeLabelMotto` | Motivo | Motto |
 | `customizeLabelName` | Nome hotel | Hotel name |
@@ -73,11 +73,11 @@
 | `customizePresetBoss` | Boss Hotel | Boss Hotel |
 | `customizePresetBurj` | Burj Al Arab | Burj Al Arab |
 | `customizePresetLoaded` | Preset caricato nei campi. Modifica e premi "Applica e salva". | Preset loaded in fields. Edit and press "Apply and save". |
-| `customizePresetParis` | H\u00f4tel de Paris | H\u00f4tel de Paris |
+| `customizePresetParis` | Hôtel de Paris | Hôtel de Paris |
 | `customizePresetSky` | Sky Tower Tokyo | Sky Tower Tokyo |
 | `customizeReset` | Ripristina default | Reset defaults |
 | `customizeResetDone` | Default ripristinati nei campi. Premi "Applica e salva" per confermare. | Defaults restored in fields. Press "Apply and save" to confirm. |
-| `customizeResetMsg` | Default ripristinati \u00b7 Riavvio in corso... | Defaults restored \u00b7 Reloading... |
+| `customizeResetMsg` | Default ripristinati · Riavvio in corso... | Defaults restored · Reloading... |
 | `customizeSaveError` | ERRORE salvataggio:  | Save error:  |
 | `customizeTitle` | PERSONALIZZA HOTEL | CUSTOMIZE HOTEL |
 | `direction` | Direzione | Direction |
@@ -92,11 +92,11 @@
 | `elevatorRestored` | Ascensore ripristinato | Elevator restored |
 | `elevatorSuffix` | ELEVATOR | ELEVATOR |
 | `exit` | ESCI | EXIT |
-| `exitCabinBtn` | \u2197 Esci dalla cabina | \u2197 Exit the cabin |
-| `featureCabin` | Cabina 5\u2605 Boss Hotel Edition | 5\u2605 Boss Hotel Edition Cabin |
+| `exitCabinBtn` | ↗ Esci dalla cabina | ↗ Exit the cabin |
+| `featureCabin` | Cabina 5★ Boss Hotel Edition | 5★ Boss Hotel Edition Cabin |
 | `featureTTS` | Annunci vocali Web Speech API | Voice announcements Web Speech API |
 | `featureThemes` | 4 temi corridoio (lobby, uffici, hotel, attico) | 4 corridor themes (lobby, offices, hotel, attic) |
-| `featureTouchscreen` | Touch screen Display 540\u00d71100 | Touchscreen Display 540\u00d71100 |
+| `featureTouchscreen` | Touch screen Display 540×1100 | Touchscreen Display 540×1100 |
 | `featureWeather` | Meteo live Roma in tempo reale | Live weather Rome in real time |
 | `floorClosing` | CHIUSURA | CLOSING |
 | `floorInQueue` | PIANO IN Coda | FLOOR IN Queue |
@@ -118,8 +118,8 @@
 | `helpLookAroundMobile` | guarda intorno | look around |
 | `helpMaint` | manutentore | maintenance |
 | `helpMaintMobile` | manutentore | maintenance |
-| `helpNight` | toggle modalit\u00e0 notte | toggle night mode |
-| `helpNightMobile` | toggle modalit\u00e0 notte | toggle night mode |
+| `helpNight` | toggle modalità notte | toggle night mode |
+| `helpNightMobile` | toggle modalità notte | toggle night mode |
 | `helpOOO` | fuori servizio | out of order |
 | `helpOOOMobile` | fuori servizio | out of order |
 | `helpPlaceholder` | (azione) | (action) |
@@ -140,7 +140,7 @@
 | `inDiscesaShort` | IN DISCESA | GOING DOWN |
 | `inSalita` | In salita verso piano | Going up to floor |
 | `inSalitaShort` | IN SALITA | GOING UP |
-| `inViaggio` | IN VIAGGIO \u00b7 | IN TRANSIT \u00b7 |
+| `inViaggio` | IN VIAGGIO · | IN TRANSIT · |
 | `interphone` | CITOFONO | INTERPHONE |
 | `langToggleEN` | Lingua: English | Language: English |
 | `langToggleIT` | Lingua: Italiano | Language: Italian |
@@ -163,7 +163,7 @@
 | `maintFilter` | Filtro | Filter |
 | `maintFloor` | Piano | Floor |
 | `maintFps` | FPS | FPS |
-| `maintHint` | Shift+M esce \u00b7 1-9 teletrasporto | Shift+M to exit \u00b7 1-9 to teleport |
+| `maintHint` | Shift+M esce · 1-9 teletrasporto | Shift+M to exit · 1-9 to teleport |
 | `maintHistoryEmpty` | Nessun evento | No events |
 | `maintInterphone` | Citofono | Interphone |
 | `maintInterphoneCount` | Citofono (totale) | Interphone (total) |
@@ -176,12 +176,12 @@
 | `maintSevWarn` | warn | warn |
 | `maintTarget` | Target | Target |
 | `maintTitle` | MANUTENZIONE | MAINTENANCE |
-| `manutenzione` | \u2014 MANUTENZIONE IN CORSO \u2014 | \u2014 MAINTENANCE IN PROGRESS \u2014 |
+| `manutenzione` | — MANUTENZIONE IN CORSO — | — MAINTENANCE IN PROGRESS — |
 | `mmAudio` | Audio | Audio |
 | `mmCustomize` | Personalizza hotel | Customize hotel |
 | `mmLang` | Lingua IT / EN | Language IT / EN |
 | `mmMaint` | Manutentore | Maintenance |
-| `mmNight` | Modalit\u00e0 notte | Night mode |
+| `mmNight` | Modalità notte | Night mode |
 | `mmOOO` | Fuori servizio | Out of service |
 | `mmSectionActions` | Altro | More |
 | `mmSectionToggles` | Impostazioni rapide | Quick toggles |
@@ -194,7 +194,7 @@
 | `moving` | IN VIAGGIO | IN TRANSIT |
 | `movingDown` | IN DISCESA | GOING DOWN |
 | `movingUp` | IN SALITA | GOING UP |
-| `nextBtn` | Avanti \u2192 | Next \u2192 |
+| `nextBtn` | Avanti → | Next → |
 | `nightMode` | Modalita' notte | Night mode |
 | `nightModeOff` | Notte: OFF | Night: OFF |
 | `nightModeOn` | Notte: ON | Night: ON |
@@ -212,13 +212,13 @@
 | `pointerHint` | Clicca per attivare il puntatore | Click to activate the pointer |
 | `pointerHintMobile` | Trascina il dito per guardare. Usa il joystick per muoverti. | Drag to look around. Use the joystick to move. |
 | `portaChiusa` | Le porte si stanno chiudendo | Doors are closing |
-| `prenotationLabel` | PRENOTATA \u00b7 Tieni premuto E per entrare | BOOKED \u00b7 Hold E to enter |
+| `prenotationLabel` | PRENOTATA · Tieni premuto E per entrare | BOOKED · Hold E to enter |
 | `pressORestore` | Premere O per ripristinare | Press O to restore |
 | `queue` | Coda | Queue |
 | `queueAck` | Richiesta in coda | Request queued |
 | `reenter` | RIENTRA | ENTER |
-| `reenterCabinBtn` | \u2199 Rientra in cabina | \u2199 Re-enter cabin |
-| `restaurantMenu` | \u2014 LA TERRAZZA \u2014 | \u2014 THE TERRACE \u2014 |
+| `reenterCabinBtn` | ↙ Rientra in cabina | ↙ Re-enter cabin |
+| `restaurantMenu` | — LA TERRAZZA — | — THE TERRACE — |
 | `restaurantMenuDesserts` | DESSERT | DESSERTS |
 | `restaurantMenuMains` | SECONDI | MAINS |
 | `restaurantMenuStarters` | ANTIPASTI | STARTERS |
@@ -226,19 +226,21 @@
 | `restaurantMotto2` | Prenotazioni: concierge al piano 0 | Reservations: concierge at the lobby |
 | `restaurantTitle` | Ristorante panoramico | Panoramic restaurant |
 | `roomFloor` | Piano | Floor |
-| `roomInfo` | Camere 401 \u2013 432 | Rooms 401 \u2013 432 |
+| `roomInfo` | Camere 401 – 432 | Rooms 401 – 432 |
+| `rotateDismiss` | Continua | Continue |
+| `rotateNotice` | Ruota il dispositivo in orizzontale per un’esperienza migliore.<br>Rotate your device to landscape for a better experience. | Ruota il dispositivo in orizzontale per un’esperienza migliore.<br>Rotate your device to landscape for a better experience. |
 | `settingsExportReady` | Esporta stato | Export state |
 | `settingsReset` | Ripristina default | Reset defaults |
 | `settingsSaved` | Impostazioni salvate | Settings saved |
 | `settingsTitle` | Impostazioni | Settings |
 | `skipBtn` | Salta tutorial | Skip tutorial |
 | `slideCabinDesc` | Boss Hotel Edition | Boss Hotel Edition |
-| `slideCabinTitle` | Cabina 5\u2605 | 5\u2605 Cabin |
+| `slideCabinTitle` | Cabina 5★ | 5★ Cabin |
 | `slideTTSDesc` | Web Speech API | Web Speech API |
 | `slideTTSTitle` | Annunci vocali | Voice announcements |
-| `slideThemesDesc` | Lobby \u00b7 Uffici \u00b7 Hotel \u00b7 Attico | Lobby \u00b7 Offices \u00b7 Hotel \u00b7 Attic |
+| `slideThemesDesc` | Lobby · Uffici · Hotel · Attico | Lobby · Offices · Hotel · Attic |
 | `slideThemesTitle` | 4 temi corridoio | 4 corridor themes |
-| `slideTouchDesc` | Display 540\u00d71100 | Display 540\u00d71100 |
+| `slideTouchDesc` | Display 540×1100 | Display 540×1100 |
 | `slideTouchTitle` | Touch screen | Touch screen |
 | `slideWeatherDesc` | Roma in tempo reale | Rome in real time |
 | `slideWeatherTitle` | Meteo live | Live weather |
@@ -254,24 +256,24 @@
 | `startBtn` | Entra nell'ascensore | Enter the elevator |
 | `startHint` | Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. | You are about to enter a luxury 5-star elevator cabin. |
 | `startHint2` | Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina. | Select a floor from the touch panel, or exit into the corridor to re-enter the cabin. |
-| `startIntro` | Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch, apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessit\u00e0, attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona. | You are about to enter a luxury 5-star elevator cabin. Select a floor from the touch panel, open/close the doors, explore the corridor of the floor reached and, in case of need, activate the emergency call. Move the view with the mouse as in a first-person game. |
+| `startIntro` | Stai per entrare nella cabina di un ascensore di lusso a 5 stelle. Seleziona un piano dal pannello touch, apri/chiudi le porte, esplora il corridoio del piano raggiunto e, in caso di necessità, attiva la chiamata di emergenza. Muovi la visuale con il mouse come in un gioco in prima persona. | You are about to enter a luxury 5-star elevator cabin. Select a floor from the touch panel, open/close the doors, explore the corridor of the floor reached and, in case of need, activate the emergency call. Move the view with the mouse as in a first-person game. |
 | `startIntro2` | Seleziona un piano dal pannello touch, oppure esci nel corridoio per rientrare in cabina. | Select a floor from the touch panel, or exit into the corridor to re-enter the cabin. |
 | `stopAlarm` | STOP | STOP |
-| `systemFooter` | ELEVATOR SYSTEM \u00b7 | ELEVATOR SYSTEM \u00b7 |
-| `tooltipNext` | Avanti \u2192 | Next \u2192 |
+| `systemFooter` | ELEVATOR SYSTEM · | ELEVATOR SYSTEM · |
+| `tooltipNext` | Avanti → | Next → |
 | `tooltipSkip` | Salta tutorial | Skip tutorial |
 | `topbarSubtitle` | Simulazione 3D | 3D Simulation |
 | `topbarTitle` | Ascensore | Elevator |
 | `tts` | TTS | TTS |
 | `tutorialHelpPrompt` | Premi ? per aiuto. | Press ? for help. |
-| `tutorialNext` | Avanti \u2192 | Next \u2192 |
+| `tutorialNext` | Avanti → | Next → |
 | `tutorialSkip` | Salta tutorial | Skip tutorial |
 | `tutorialStep1Text` | Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra. | Welcome to <strong>{}</strong>. You are in the cabin at the ground floor. |
 | `tutorialStep1TextMobile` | Benvenuto al <strong>{}</strong>. Sei nella cabina al piano Terra. | Welcome to <strong>{}</strong>. You are in the cabin at the ground floor. |
 | `tutorialStep1Voice` | Benvenuto a {}. Premi uno, due, tre, quattro, cinque, sei, sette, otto o nove per chiamare un piano. | Welcome to {}. Press one, two, three, four, five, six, seven, eight or nine to call a floor. |
 | `tutorialStep1VoiceMobile` | Benvenuto a {}. Tocca le frecce su o giu per chiamare un piano. | Welcome to {}. Tap the up or down arrows to call a floor. |
 | `tutorialStep2Text` | Premi <kbd>E</kbd> per <strong>uscire</strong> dalla cabina ed esplorare il corridoio. | Press <kbd>E</kbd> to <strong>exit</strong> the cabin and explore the corridor. |
-| `tutorialStep2TextMobile` | Tocca <strong>\u25b2</strong> o <strong>\u25bc</strong> in basso a destra per <strong>chiamare un piano</strong>. | Tap <strong>\u25b2</strong> or <strong>\u25bc</strong> at the bottom right to <strong>call a floor</strong>. |
+| `tutorialStep2TextMobile` | Tocca <strong>▲</strong> o <strong>▼</strong> in basso a destra per <strong>chiamare un piano</strong>. | Tap <strong>▲</strong> or <strong>▼</strong> at the bottom right to <strong>call a floor</strong>. |
 | `tutorialStep2Voice` | Premi E per uscire dalla cabina. | Press E to exit the cabin. |
 | `tutorialStep2VoiceMobile` | Tocca le frecce per chiamare un piano. | Tap the arrows to call a floor. |
 | `tutorialStep3Text` | Nel corridoio usa <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> per muoverti. Premi di nuovo <kbd>E</kbd> vicino alle porte per rientrare. | In the corridor use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move. Press <kbd>E</kbd> again near the doors to re-enter. |
@@ -291,9 +293,9 @@
 | `weatherApiKeyRome` | Roma | Rome |
 | `weatherCard` | METEO + PREVISIONI 24H | WEATHER + 24H FORECAST |
 | `weatherUpdated` | Aggiornato: | Updated: |
-| `welcomeAddress` | Via Veneto 142 \u00b7 Roma | 420 Park Avenue \u00b7 New York |
+| `welcomeAddress` | Via Veneto 142 · Roma | 420 Park Avenue · New York |
 | `welcomeHeadline` | Benvenuto al | Welcome to |
 | `welcomeMotto` | Eleganza senza tempo. Dal 1898. | Timeless elegance. Since 1898. |
-| `welcomeStars` | \u2605 \u2605 \u2605 \u2605 \u2605 | \u2605 \u2605 \u2605 \u2605 \u2605 |
+| `welcomeStars` | ★ ★ ★ ★ ★ | ★ ★ ★ ★ ★ |
 | `welcomeSubtitle` | Cinque stelle lusso | Five star luxury |
 | `welcomeTagline` | Luxury since 1898 | Luxury redefined |
