@@ -26,7 +26,7 @@ qui nulla: ogni file è la fonte autorevole del suo argomento.
 ```
 .
 ├── elevator.html          # File principale (~500 KB, ~11.400 righe) — tutta la simulazione
-├── tests.html             # Test framework (285 test su window.BossHotelPure)
+├── tests.html             # Test framework (298 test su window.BossHotelPure)
 ├── scripts/
 │   ├── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
 │   ├── find-long-fns.js   # Helper per audit D24 (funzioni >=150 righe)
@@ -80,13 +80,13 @@ php -S localhost:8000
 
 ### Test (Polish Pack V2 Step 12 + V3/V4 Steps)
 
-Il progetto include un mini test framework vanilla in `tests.html`. Esegue **285 test** su funzioni pure esposte in `window.BossHotelPure`.
+Il progetto include un mini test framework vanilla in `tests.html`. Esegue **298 test** su funzioni pure esposte in `window.BossHotelPure`.
 
 ```bash
 # Opzione A — runner headless, identico a quello della CI
 npm install --no-save --no-audit --no-fund playwright@1.56.0
 npx playwright install chromium
-node scripts/run-tests.js     # stampa "OK: 285/285 test passati", exit 1 se uno fallisce
+node scripts/run-tests.js     # stampa "OK: 285/298 test passati", exit 1 se uno fallisce
 
 # Opzione B — ispezione manuale nel browser
 python3 -m http.server 8000
