@@ -304,13 +304,21 @@ Settings → Branches → `main` → "Status checks that are required", e non
 vivono nel repo: **nessuno script può verificarle**, quindi l'onere è di chi
 aggiunge una job.
 
-Stato al 2026-09-29: la job 4 (`ui-tests`, aggiunta in PR #20) era verde ma
-**non elencata** tra i required check. Le 3 precedenti erano richieste, la
-quarta no — quindi i 20 test di layout, che esistono proprio per intercettare
-i bug di CSS, non bloccavano nessun merge. Se leggi qui e trovi un job che
-non compare nella schermata delle impostazioni, aggiungilo: GitHub lo
-propone in autocompletamento solo dopo che quel job è passato almeno una
-volta su `main` o su una PR.
+Stato al 2026-09-29: le 4 job sono **tutte required** e la protezione di
+`main` le elenca tutte e quattro. La quarta, `ui-tests`, è stata aggiunta ai
+required check a mano dopo la PR #20, quando la job era verde ma non
+compariva nella schermata delle impostazioni: in quel buco i 20 test di
+layout, che esistono proprio per intercettare i bug di CSS, non bloccavano
+nessun merge.
+
+Se in futuro aggiungi una job, ricorda che GitHub la propone in
+autocompletamento **solo dopo** che quel job è passato almeno una volta su
+`main` o su una PR. Fino ad allora resta invisibile nella schermata.
+
+Nota: in PR #27 GitHub mostra un quinto check, `GitGuardian Security Checks`.
+**Non viene dal `ci.yml` di questo repo**: è uno scanner esterno, senza
+side effect sul merge perche' non e' tra i required check. Se in futuro
+diventa required, sara' un quinto controllo da mettere in tabella qui sopra.
 
 Regola pratica: **aggiungere una job alla CI e segnarla required è un unico
 gesto.** Una job verde e non richiesta dà una falsa sensazione di sicurezza,
