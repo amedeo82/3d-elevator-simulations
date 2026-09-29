@@ -238,7 +238,7 @@ tabella layout era fuori di ~2.500 righe.
 | Il numero di contratti D-key | `AGENTS.md` (tabella D-key + "Contratti D-key totali"), `CONTRIBUTING.md`, `ROADMAP_POST_V7.md` — **tutti e tre insieme** |
 | Il workflow di un Polish Pack | `PIANO_VN.md` (step ✅ + log decisioni), `PIANO_MIGLIORAMENTI.md` (Fase NN) e `docs/ROADMAP.md` |
 | Un contratto D-key nuovo o modificato | `AGENTS.md` (riga della tabella) **e** `CONTRIBUTING.md` (checklist PR, step 6) |
-| Il comportamento di build/CI | `AGENTS.md` sezione "Comandi build / verifica" + descrizione delle job CI |
+| Il comportamento di build/CI | `AGENTS.md` sezione "Comandi build / verifica" + la **tabella dei 4 job e dei loro `name:` esatti**, e segna la job nuova come required in Settings → Branches |
 | Qualsiasi cosa, al merge | `node scripts/generate-changelog.js` (D26) |
 
 **Mappa della documentazione** (il README è una landing breve, i dettagli
@@ -285,11 +285,37 @@ allineato.
 | `node scripts/generate-changelog.js` | Rigenera `CHANGELOG.md` dai commit (D26) |
 | `node scripts/find-long-fns.js` | Elenca le funzioni più lunghe (invariante D24) |
 
-CI GitHub Actions: `.github/workflows/ci.yml` ha 4 job paralleli:
-1. `check` — `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe)
-2. `tests` — validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento `elevator.html` in `tests.html`
-3. `tests-run` — **esecuzione reale dei test** in Chromium headless via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). Fallisce se un test non passa. È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30)
-4. `ui-tests` — **test comportamentali di layout** via `scripts/run-ui-tests.js`: 20 test che aprono l'app e verificano che `#startBtn` sia premibile, che i tap su mobile non finiscano su un overlay, che la scena produca un frame. È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31)
+CI GitHub Actions: `.github/workflows/ci.yml` ha 4 job paralleli.
+**I `name:` dei job sono la chiave con cui GitHub li identifica** nei
+required status checks: sono quelli da copiare in Settings → Branches.
+
+| # | `name:` della job (stringa esatta) | Cosa verifica |
+|---|---|---|
+| 1 | `Sintassi + brace balance + invarianti build` | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe) |
+| 2 | `Test framework (Polish Pack V2 Step 12)` | Validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento di `elevator.html` in `tests.html` |
+| 3 | `Esecuzione test in browser (Chromium headless)` | 285 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
+| 4 | `Test UI layout e interazione (Chromium headless)` | 20 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame. È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
+
+### Tutte e 4 devono essere "required status checks"
+
+Una job che gira ma non blocca il merge **non è un controllo**: è un
+suggerimento che qualcuno deve notare. Le impostazioni stanno in
+Settings → Branches → `main` → "Status checks that are required", e non
+vivono nel repo: **nessuno script può verificarle**, quindi l'onere è di chi
+aggiunge una job.
+
+Stato al 2026-09-29: la job 4 (`ui-tests`, aggiunta in PR #20) era verde ma
+**non elencata** tra i required check. Le 3 precedenti erano richieste, la
+quarta no — quindi i 20 test di layout, che esistono proprio per intercettare
+i bug di CSS, non bloccavano nessun merge. Se leggi qui e trovi un job che
+non compare nella schermata delle impostazioni, aggiungilo: GitHub lo
+propone in autocompletamento solo dopo che quel job è passato almeno una
+volta su `main` o su una PR.
+
+Regola pratica: **aggiungere una job alla CI e segnarla required è un unico
+gesto.** Una job verde e non richiesta dà una falsa sensazione di sicurezza,
+che è il motivo per cui i due bug del 2026-09-28 sono arrivati in `main`
+con la CI verde.
 
 ## Test in locale (runner headless, come la CI)
 
