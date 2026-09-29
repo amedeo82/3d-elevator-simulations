@@ -6091,141 +6091,186 @@ const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OT
 // Contratti D-key: nessuno specifico (rendering puro canvas 2D).
 // Performance: ~134 righe. ~1 chiamata per rebuild schermata meteo
 // (ogni AD_SCREEN_DURATION secondi in updateAdScreen).
+// Dispatch delle icone meteo grandi sul display touch.
+// Polish Pack V4 Step 4 (D24) — split del 2026-09-29: era 134 righe, sopra la
+// soglia pratica di 120 che il check CI segnala come allerta. La catena
+// if/else-if su 10 tipi di meteo e' diventata una mappa di pittori: ogni ramo
+// vive nella sua funzione e il dispatch avviene per chiave. Un solo tipo e'
+// disegnato per volta, quindi la semantica di `else if` e' preservata.
+//
+// Il ctx e' gia' traslato al centro dell'icona: i pittori disegnano attorno a
+// (0, 0) e ricevono solo raggio e tempo di animazione.
 function drawWeatherIconBig(ctx, cx, cy, r, type, animT) {
   ctx.save();
   ctx.translate(cx, cy);
-  if (type === 'sunny') {
-    // sole
-    ctx.fillStyle = '#ffd66b';
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI*2); ctx.fill();
-    // raggi animati
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + animT * 0.5;
-      ctx.strokeStyle = '#ffd66b';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75);
-      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      ctx.stroke();
-    }
-  } else if (type === 'partly') {
-    // sole + nuvola
-    ctx.fillStyle = '#ffd66b';
-    ctx.beginPath(); ctx.arc(-r*0.3, -r*0.1, r*0.4, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#e0e0e0';
-    ctx.beginPath();
-    ctx.arc(r*0.2, r*0.2, r*0.35, 0, Math.PI*2);
-    ctx.arc(-r*0.1, r*0.25, r*0.28, 0, Math.PI*2);
-    ctx.arc(r*0.4, r*0.3, r*0.25, 0, Math.PI*2);
-    ctx.fill();
-  } else if (type === 'cloudy') {
-    ctx.fillStyle = '#d0d0d0';
-    for (const [dx, dy, sz] of [[-r*0.3, 0, 0.4], [0, 0.1, 0.5], [r*0.3, 0, 0.35]]) {
-      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
-    }
-  } else if (type === 'rain') {
-    ctx.fillStyle = '#a0a0a0';
-    for (const [dx, dy, sz] of [[-r*0.3, -r*0.1, 0.4], [0, 0, 0.5], [r*0.3, -r*0.1, 0.35]]) {
-      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
-    }
-    // gocce
-    ctx.strokeStyle = '#88bbff';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 6; i++) {
-      const t = (animT * 2 + i * 0.3) % 1;
-      const x = -r*0.5 + (i % 3) * r*0.5;
-      const y = r*0.3 + t * r*0.6;
-      ctx.globalAlpha = 1 - t;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - 2, y + 8);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  } else if (type === 'storm') {
-    ctx.fillStyle = '#606068';
-    for (const [dx, dy, sz] of [[-r*0.3, -r*0.2, 0.4], [0, -r*0.1, 0.5], [r*0.3, -r*0.2, 0.35]]) {
-      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
-    }
-    // fulmine
-    ctx.fillStyle = '#ffd66b';
-    ctx.beginPath();
-    ctx.moveTo(-r*0.1, 0); ctx.lineTo(r*0.1, 0);
-    ctx.lineTo(0, r*0.3); ctx.lineTo(r*0.2, r*0.3);
-    ctx.lineTo(-r*0.1, r*0.7); ctx.lineTo(r*0.05, r*0.4);
-    ctx.lineTo(-r*0.15, r*0.4); ctx.lineTo(-r*0.2, 0.1);
-    ctx.closePath(); ctx.fill();
-  } else if (type === 'snow') {
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 6; i++) {
-      const t = (animT * 1.5 + i * 0.3) % 1;
-      const x = -r*0.5 + (i % 3) * r*0.5;
-      const y = -r*0.3 + t * r*1.0;
-      ctx.globalAlpha = 1 - t * 0.5;
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (type === 'fog') {
-    ctx.fillStyle = '#c0c0c0';
-    for (let i = 0; i < 4; i++) {
-      const y = -r*0.4 + i * r*0.25;
-      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(animT * 2 + i);
-      ctx.fillRect(-r*0.8, y, r*1.6, r*0.15);
-    }
-    ctx.globalAlpha = 1;
-  } else if (type === 'hail') {
-    // Polish Pack V2 Step 4b: grandine (cerchi grigi che cadono veloci)
-    ctx.fillStyle = '#888890';
-    for (const [dx, dy, sz] of [[-r*0.3, -r*0.2, 0.4], [0, -r*0.1, 0.5], [r*0.3, -r*0.2, 0.35]]) {
-      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
-    }
-    // chicchi di grandine (cerchi grigi che cadono)
-    ctx.fillStyle = '#a0a0a8';
-    for (let i = 0; i < 8; i++) {
-      const t = (animT * 3 + i * 0.15) % 1;  // piu' veloce della pioggia
-      const x = -r*0.5 + (i % 4) * r*0.33;
-      const y = r*0.2 + t * r*0.8;
-      ctx.globalAlpha = 1 - t;
-      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (type === 'mist') {
-    // Polish Pack V2 Step 4b: foschia (particelle bianche lente, piu' chiare della nebbia)
-    ctx.fillStyle = '#e8e8e8';
-    for (let i = 0; i < 12; i++) {
-      const t = (animT * 0.5 + i * 0.083) % 1;  // piu' lento
-      const x = -r*0.7 + t * r*1.4;
-      const y = -r*0.5 + (i % 4) * r*0.3;
-      ctx.globalAlpha = (1 - Math.abs(t - 0.5) * 2) * 0.7;
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (type === 'wind') {
-    // Polish Pack V2 Step 4b: vento (linee orizzontali animate)
-    ctx.fillStyle = '#90a0b0';
-    for (const [dx, dy, sz] of [[-r*0.3, 0, 0.4], [r*0.3, -r*0.1, 0.35]]) {
-      ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
-    }
-    // linee di vento (orizzontali, animate)
-    ctx.strokeStyle = '#c0d0e0';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
-      const t = (animT * 2 + i * 0.25) % 1;
-      const x = -r*0.9 + t * r*1.8;
-      const y = -r*0.4 + (i % 3) * r*0.4;
-      ctx.globalAlpha = 1 - Math.abs(t - 0.5) * 2;
-      const len = r * (0.3 + 0.1 * (i % 2));
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + len, y);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
+  const painter = WEATHER_ICON_PAINTERS[type];
+  if (painter) painter(ctx, r, animT);
   ctx.restore();
 }
+
+function paintWeatherSunny(ctx, r, animT) {
+  // sole
+  ctx.fillStyle = '#ffd66b';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI*2); ctx.fill();
+  // raggi animati
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + animT * 0.5;
+    ctx.strokeStyle = '#ffd66b';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75);
+    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    ctx.stroke();
+  }
+}
+
+function paintWeatherPartly(ctx, r) {
+  // sole + nuvola
+  ctx.fillStyle = '#ffd66b';
+  ctx.beginPath(); ctx.arc(-r*0.3, -r*0.1, r*0.4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#e0e0e0';
+  ctx.beginPath();
+  ctx.arc(r*0.2, r*0.2, r*0.35, 0, Math.PI*2);
+  ctx.arc(-r*0.1, r*0.25, r*0.28, 0, Math.PI*2);
+  ctx.arc(r*0.4, r*0.3, r*0.25, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function paintWeatherCloudy(ctx, r) {
+  ctx.fillStyle = '#d0d0d0';
+  for (const [dx, dy, sz] of [[-r*0.3, 0, 0.4], [0, 0.1, 0.5], [r*0.3, 0, 0.35]]) {
+    ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function paintWeatherRain(ctx, r, animT) {
+  ctx.fillStyle = '#a0a0a0';
+  for (const [dx, dy, sz] of [[-r*0.3, -r*0.1, 0.4], [0, 0, 0.5], [r*0.3, -r*0.1, 0.35]]) {
+    ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+  }
+  // gocce
+  ctx.strokeStyle = '#88bbff';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const t = (animT * 2 + i * 0.3) % 1;
+    const x = -r*0.5 + (i % 3) * r*0.5;
+    const y = r*0.3 + t * r*0.6;
+    ctx.globalAlpha = 1 - t;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - 2, y + 8);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function paintWeatherStorm(ctx, r) {
+  ctx.fillStyle = '#606068';
+  for (const [dx, dy, sz] of [[-r*0.3, -r*0.2, 0.4], [0, -r*0.1, 0.5], [r*0.3, -r*0.2, 0.35]]) {
+    ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+  }
+  // fulmine
+  ctx.fillStyle = '#ffd66b';
+  ctx.beginPath();
+  ctx.moveTo(-r*0.1, 0); ctx.lineTo(r*0.1, 0);
+  ctx.lineTo(0, r*0.3); ctx.lineTo(r*0.2, r*0.3);
+  ctx.lineTo(-r*0.1, r*0.7); ctx.lineTo(r*0.05, r*0.4);
+  ctx.lineTo(-r*0.15, r*0.4); ctx.lineTo(-r*0.2, 0.1);
+  ctx.closePath(); ctx.fill();
+}
+
+function paintWeatherSnow(ctx, r, animT) {
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 6; i++) {
+    const t = (animT * 1.5 + i * 0.3) % 1;
+    const x = -r*0.5 + (i % 3) * r*0.5;
+    const y = -r*0.3 + t * r*1.0;
+    ctx.globalAlpha = 1 - t * 0.5;
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function paintWeatherFog(ctx, r, animT) {
+  ctx.fillStyle = '#c0c0c0';
+  for (let i = 0; i < 4; i++) {
+    const y = -r*0.4 + i * r*0.25;
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(animT * 2 + i);
+    ctx.fillRect(-r*0.8, y, r*1.6, r*0.15);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function paintWeatherHail(ctx, r, animT) {
+  // Polish Pack V2 Step 4b: grandine (cerchi grigi che cadono veloci)
+  ctx.fillStyle = '#888890';
+  for (const [dx, dy, sz] of [[-r*0.3, -r*0.2, 0.4], [0, -r*0.1, 0.5], [r*0.3, -r*0.2, 0.35]]) {
+    ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+  }
+  // chicchi di grandine (cerchi grigi che cadono)
+  ctx.fillStyle = '#a0a0a8';
+  for (let i = 0; i < 8; i++) {
+    const t = (animT * 3 + i * 0.15) % 1;  // piu' veloce della pioggia
+    const x = -r*0.5 + (i % 4) * r*0.33;
+    const y = r*0.2 + t * r*0.8;
+    ctx.globalAlpha = 1 - t;
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function paintWeatherMist(ctx, r, animT) {
+  // Polish Pack V2 Step 4b: foschia (particelle bianche lente, piu' chiare della nebbia)
+  ctx.fillStyle = '#e8e8e8';
+  for (let i = 0; i < 12; i++) {
+    const t = (animT * 0.5 + i * 0.083) % 1;  // piu' lento
+    const x = -r*0.7 + t * r*1.4;
+    const y = -r*0.5 + (i % 4) * r*0.3;
+    ctx.globalAlpha = (1 - Math.abs(t - 0.5) * 2) * 0.7;
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function paintWeatherWind(ctx, r, animT) {
+  // Polish Pack V2 Step 4b: vento (linee orizzontali animate)
+  ctx.fillStyle = '#90a0b0';
+  for (const [dx, dy, sz] of [[-r*0.3, 0, 0.4], [r*0.3, -r*0.1, 0.35]]) {
+    ctx.beginPath(); ctx.arc(dx*r, dy*r, sz*r, 0, Math.PI*2); ctx.fill();
+  }
+  // linee di vento (orizzontali, animate)
+  ctx.strokeStyle = '#c0d0e0';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i++) {
+    const t = (animT * 2 + i * 0.25) % 1;
+    const x = -r*0.9 + t * r*1.8;
+    const y = -r*0.4 + (i % 3) * r*0.4;
+    ctx.globalAlpha = 1 - Math.abs(t - 0.5) * 2;
+    const len = r * (0.3 + 0.1 * (i % 2));
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Mappa dei pittori. Dichiarata dopo le funzioni ma usata solo a runtime,
+// durante il render loop, quindi la TDZ non lo raggiunge.
+const WEATHER_ICON_PAINTERS = {
+  sunny: paintWeatherSunny,
+  partly: paintWeatherPartly,
+  cloudy: paintWeatherCloudy,
+  rain: paintWeatherRain,
+  storm: paintWeatherStorm,
+  snow: paintWeatherSnow,
+  fog: paintWeatherFog,
+  hail: paintWeatherHail,
+  mist: paintWeatherMist,
+  wind: paintWeatherWind,
+};
 
 // disegna il display touch completo
 let lastDisplayedFloor = -999;
