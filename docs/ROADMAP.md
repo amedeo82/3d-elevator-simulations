@@ -9,9 +9,9 @@ Per il backlog futuro aperto alla community vedi [`ROADMAP_POST_V7.md`](../ROADM
 
 
 > **🎉 Polish Pack V4 COMPLETO (2026-09-26)** — **8/8 step (100%)**.
-> Contratti D-key totali: **30**. Totale **285 test vanilla**.
+> Contratti D-key totali: **31**. Totale **298 test vanilla**.
 > V4 include:
-> - **Step 1-6** (2026-09-25): routing D22, a11y ARIA D23, funzioni <150 righe D24,
+> - **Step 1-6** (2026-09-25): test exposure D21, routing D22, a11y ARIA D23, funzioni <150 righe D24,
 >   helper mergePlanes D25, open-source boilerplate D26.
 > - **Step 7** (2026-09-26) — **Mobile scene separation** (D26 extended):
 >   separazione architetturale desktop/mobile con `state.inputMode` come single source of truth,
@@ -182,7 +182,7 @@ Per il backlog futuro aperto alla community vedi [`ROADMAP_POST_V7.md`](../ROADM
       di v1.7** (auto-close + prenotazione lobby-only).
 
 ### 🎉 Polish Pack V2 — **CHIUSO 2026-09-17** (10/13 step, 77%)
-- [x] **Step 1** Salute del codice — CI GitHub Actions + `AGENTS.md` + audit `state` (STATE.md, 26+ campi) + mini event bus homemade
+- [x] **Step 1** Salute del codice — CI GitHub Actions + `AGENTS.md` + audit `state` (STATE.md, 66 campi) + mini event bus homemade
 - [x] **Step 2** UX invisibile — sensore IR anti-ostacolo (ASME A17.1 §2.13.5) + tutorial contestuale prima volta (5 step, tasto `?`, prompt inattività 30s)
 - [x] **Step 3** Audio contestuale corridoi + musica ristorante — 4 temi corridoio (3 layer ciascuno) + chitarra classica + piatti al piano 8
 - [x] **Step 4** Meteo evoluto — stagionalità mensile (clima Roma) + 3 nuove condizioni (grandine, foschia, vento) + slide 24h con previsioni
@@ -213,19 +213,21 @@ D1 single-file · D2 stato in cima · D3 no emoji · D4 italiano+sezioni · D5 H
 - [x] **Step 8** Test coverage estesa (T3b) — 134 → 206 test (casi limite routing, edge cases passeggeri, integrazione, helper citofono, stress test, state invariant check). Branch `feature/v3-step-8-test-coverage`.
 - [x] **Step 9** Mobile responsive layout (Bonus) — touch controls, HUD scalato, landscape forzato, pulsantiera touch adattata. Branch `feature/v3-step-9-mobile`.
 
-### 🎉 Polish Pack V4 — **CHIUSO 2026-09-25** (6/6 step, 100%) — vedi `PIANO_V4.md`
+### 🎉 Polish Pack V4 — **CHIUSO 2026-09-26** (8/8 step, 100%) — vedi `PIANO_V4.md`
 - [x] **Step 1** Test exposure gap (T1a) — chiuso senza modifiche al codice (audit obsoleto): tutte le 32 funzioni `pure:` erano già esportate da V2/V3. Decisione via `question`: chiudere come ✅ fatto.
 - [x] **Step 2** Routing bug fix (T1b) — `pickNextFloor`/`queueNextSmart` con inversione asimmetrica look algorithm: `lastDir='up'`+invert → MAX della coda down; `lastDir='down'`+invert → MIN della coda up. 4 test esistenti aggiornati + 6 nuovi. D22 introdotto. Branch `feature/v4-step-2-routing-bug`.
 - [x] **Step 3** A11y aria attributes (T1c) — 19 `aria-label` localizzati IT/EN su bottoni HUD + 4 `aria-hidden` su decorativi + 2 live region con `role="status" aria-live="polite"` (`#subtitle`, `#mode-badge`) + 2 role specializzati (`alertdialog` su rotate-overlay, `application` su virtual-joystick). Nuovo helper `applyAriaLabels()` chiamato da `applyLangToDOM()` su init + cambio lingua. 15 nuovi assert. D23 introdotto. Branch `feature/v4-step-3-a11y-aria`.
 - [x] **Step 4** Funzioni lunghe + commenti (T2a) — 2 split minimi (`buildCorridor` 178→76, `startCorridorAudio` 156→50) + 16 commenti narrativi stile V3 Step 7 sulle funzioni ≥80 righe. Target "nessuna funzione ≥150" raggiunto. Nuovo helper `scripts/find-long-fns.js` con brace-counting corretto. D24 introdotto. Branch `feature/v4-step-4-fn-comments`.
 - [x] **Step 5** Helper `mergePlanes` DRY (T2b) — nuovo helper `mergePlanes(transforms, material, useGroups=false)` che clona geometries (non muta input) e applica `applyMatrix4`+`mergeGeometries`. 3 callsites refactorati (3 pareti + 4 LED + 4 frame). 6 nuovi assert (espone in `BossHotelPure`). D25 introdotto. Branch `feature/v4-step-5-merge-planes`.
-- [x] **Step 6** Open source boilerplate (T3a) — `LICENSE` MIT aggiornato (copyright Amedeo Vecchi 2026), `CHANGELOG.md` auto-generato da `scripts/generate-changelog.js` (~85 righe parser `git log` con regex euristiche V1..V4), `CONTRIBUTING.md` comprehensive (~110 righe con D-key contracts D1-D26 + workflow Polish Pack + code style). D26 introdotto. Branch `feature/v4-step-6-os-boilerplate`.
+- [x] **Step 6** Open source boilerplate (T3a) — `LICENSE` MIT aggiornato (copyright Amedeo Vecchi 2026), `CHANGELOG.md` auto-generato da `scripts/generate-changelog.js` (~85 righe parser `git log` con regex euristiche V1..V4), `CONTRIBUTING.md` comprehensive (~126 righe con D-key contracts D1-D26 + workflow Polish Pack + code style). D26 introdotto. Branch `feature/v4-step-6-os-boilerplate`.
+- [x] **Step 7** Mobile scene separation (T3b) — `state.inputMode` (`'desktop' | 'mobile'`) come single source of truth al posto dei controlli sparsi su `state.isMobile`: data structures paralleli (`PANEL_HELP_KEYS_MOBILE` 13 voci, `TUTORIAL_STEPS_MOBILE`, `START_SCREEN_KEYS_MOBILE` 12 voci), helper mode-aware (`getPanelHelpKeys`/`getStartScreenKeys`/`getTutorialSteps`), flag onboarded per mode (`bossHotelOnboarded@v1` desktop / `bossHotelOnboardedMobile@v1` mobile), CSS split `body.mobile-mode`, keydown short-circuit su mobile, runtime toggle su `resize`/`orientationchange`/`matchMedia`. D26est introdotto. Branch `feature/v4-step-7-mobile-scene`.
+- [x] **Step 8** Mobile hamburger menu (T3c) — bottone ☰ 44×44 px top-left (solo mobile) + overlay slide-in da destra con 9 voci in 2 sezioni (5 toggle rapidi con badge ON/OFF e `aria-checked`, 4 link ad altri overlay). `openMobileMenu()` rilascia il pointer lock e chiude il tutorial attivo. 25 chiavi i18n × IT/EN. 7 nuove funzioni esposte in `BossHotelPure`. D27 introdotto. Branch `feature/v4-step-8-mobile-menu`.
 
-**Decisioni D-key** (26 contratti totali, vedi `AGENTS.md` per dettagli):
+**Decisioni D-key** (31 contratti totali, vedi `AGENTS.md` per dettagli):
 - V1 (D1-D6): single-file · stato in cima · no emoji · italiano+sezioni · HOTEL_CONFIG · config prime texture
-- V2 (D7-D11): coda `{floor,direction}` · STRINGS[lang] · BossHotelPure · citofono/SOS distinti · speakWithSubtitle
-- V3 (D12-D16): prefers-reduced-motion · bug latenti documentati · settings QoL 2 chiavi @v1 · micro-animazioni + movePaused · textureCache LRU + mergeGeometries
-- V4 (D22-D26): routing inversione asimmetrico · A11y ARIA · funzioni <150 + commenti · mergePlanes helper · open source boilerplate
+- V2 (D7-D10): coda `{floor,direction}` · STRINGS[lang] · BossHotelPure · citofono/SOS distinti
+- V3 (D11-D20): speakWithSubtitle · prefers-reduced-motion · bug latenti documentati · settings QoL 2 chiavi @v1 · micro-animazioni + movePaused · textureCache LRU + mergeGeometries · log strutturato + history persistita · documentazione funzioni core · test coverage via helper puri · layout mobile responsive
+- V4 (D21-D27): test exposure completa · routing inversione asimmetrico · A11y ARIA · funzioni <150 + commenti · mergePlanes helper · open source boilerplate · `state.inputMode` single source of truth (D26est) · mobile hamburger menu
 
 ### 🎉 Polish Pack v1.6 — completato 2026-09-12 (branch `feature/polish-pack-v1.6`)
 - [x] **#13** Verifica accessibilità tastiera nel corridoio (audit `WASD` + tasti 1-9, reset `keys` in exit/enter cabina)

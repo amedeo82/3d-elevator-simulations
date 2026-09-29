@@ -27,7 +27,7 @@
 
 ### Per domande di design / architettura
 
-- Vedi `AGENTS.md` sezione "Contratti D-key" (D1-D26) per i pattern di
+- Vedi `AGENTS.md` sezione "Contratti D-key" (D1-D31) per i pattern di
   progetto
 - Vedi `PIANO_MIGLIORAMENTI.md` per il log implementativo storico
 

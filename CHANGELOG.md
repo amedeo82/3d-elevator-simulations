@@ -9,6 +9,11 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- refactor(movimento): tickMove 135 -> 63 righe, logica resa testabile (#26) (`c3394ed`)
+- refactor(corridoio): addRoomDoor da 137 righe a orchestratore + 4 costruttori (#25) (`f627e42`)
+- refactor(meteo): drawWeatherIconBig da catena if/else a mappa di pittori + D24 a due livelli (#23) (`6c20ec4`)
+- refactor(display): split renderDisplayDynamicLayer, era a 2 righe dal limite (#21) (`44f66ee`)
+- test(ui): 20 test comportamentali di layout + STATE.md completo + actions v5 (#20) (`8ce5240`)
 - fix(desktop): start button unreachable + CI never ran the tests (#15) (`efc171f`)
 - fix(ui): defensive viewport-based fallback for mobile controls (#13) (`ea59faa`)
 - docs: comprehensive update for V4 Step 7+8 (mobile scene separation + hamburger menu) (#11) (`7eeba2e`)
@@ -104,6 +109,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V1 + fase iniziale (2026-08 e precedenti)
 
+- docs: regole di aggiornamento documentale + ancole al posto dei numeri di riga (#18) (`7f4af39`)
 - docs(readme): promuovi link live preview GitHub Pages in cima (#3) (`1106e79`)
 - Kilo/fix avvio progetto al termine del wizard (#2) (`d54c651`)
 - docs: index.html redirect a elevator.html per GitHub Pages landing (`ed427f5`)
@@ -122,6 +128,13 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Altro (infrastruttura, doc, fix)
 
+- docs(ci): stato aggiornato delle required status check (#28) (`8b9c83e`)
+- docs: conteggio test 285 -> 298 dopo gli helper del movimento (#27) (`69acec5`)
+- fix(movimento): tickMove usava `now` senza averlo ricevuto (#24) (`cf4c55d`)
+- docs(ci): tabella delle 4 job con i name esatti + regola required check (#22) (`6e1014a`)
+- docs: README come landing breve, 6 screenshot, navigabilita' dei .md (#19) (`1fc512b`)
+- docs(agent): workflow operativo in AGENTS.md, verificato (#17) (`39114fb`)
+- docs: allinea la documentazione ai fix delle PR #14 e #15 (#16) (`2725d60`)
 - fix(ui): prevent mobile menu overlay from causing black cabin on iOS (#12) (`8eaee73`)
 - fix(ui): improve mobile device detection for iOS Safari landscape (#9) (`d93a7ff`)
 - fix(ui): fix start button accessibility on mobile landscape (#8) (`cce86d7`)

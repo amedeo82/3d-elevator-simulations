@@ -1,4 +1,4 @@
-# ARCHITECTURE — BOSS HOTEL Elevator 3D
+﻿# ARCHITECTURE — BOSS HOTEL Elevator 3D
 
 > Documento di riferimento architetturale (Polish Pack V3 Step 7, Q7.3).
 > Complementa `AGENTS.md` (regole progetto + contratti D-key) con i diagrammi
@@ -96,7 +96,7 @@
    |  - Tutorial contestuale prima volta (5 step)
    |  - 3-layer rendering caching (static/semistatic/dynamic)
    |  - Helper matematici puri (clamp, lerp, smoothstep, easeInOutCubic)
-   |  - 30+ helper puri in window.BossHotelPure
+   |  - 62 helper puri in window.BossHotelPure
    |
    v
    CARICA PREFS (linee ~9130-9150)
@@ -222,7 +222,7 @@
    |
    +-- cabin (Group)
    |    +-- pavimento, soffitto, pareti, specchio, maniglione
-   |    +-- panel pubblicitario (5 schermate rotanti)
+   |    +-- panel pubblicitario (6 schermate rotanti)
    |    +-- dettagli premium (profili, battiscopa, LED, telecamera)
    |    +-- doors (anta sx + dx, indicatori)
    |    +-- panel (pulsantiera touch)
@@ -316,7 +316,7 @@
 ## 7. Module dependencies (file interni)
 
 ```
-   elevator.html (single-file, ~9700 righe)
+   elevator.html (single-file, 11.914 righe, ~507 KB)
    |
    +-- import { THREE } from 'three'
    +-- import { Reflector } from 'three/addons/objects/Reflector.js'
@@ -324,13 +324,13 @@
    |
    +-- window.BossHotelPure (esposto a tests.html)
    |    |
-   |    +-- ~30 helper puri (matematici + business logic + accessibility + Q2.x + Q4.x + Q5.x + Q6.x)
+   |    +-- 62 helper puri (matematici + business logic + accessibility + Q2.x + Q4.x + Q5.x + Q6.x)
    |
    +-- bus (mini event bus homemade, V2 Step 1d)
    |    +-- emit/on/off — pattern semplice per disaccoppiare produttori/consumatori
    |
    +-- tests.html (iframe sandbox, esegue assert vanilla su BossHotelPure)
-        +-- 183+ assert, ~30 describe block
+        +-- 298 test in 54 describe block
 ```
 
 **Nessuna build step, nessuna dipendenza npm** (single-file HTML con importmap
@@ -410,8 +410,9 @@ TUTORIAL_STEPS (5)                     TUTORIAL_STEPS_MOBILE (5)
   Step 1-5 con WASD/E/H/M/V/N/O/K        Step 1-5 con tap/drag/joystick/▲▼
                                         + menu impostazioni
 
-START_SCREEN_KEYS (15)                 START_SCREEN_KEYS_MOBILE (13)
+START_SCREEN_KEYS (14)                 START_SCREEN_KEYS_MOBILE (12)
   Mouse/Click/ESC/E/WASD/...             Drag/Tap/Tap HUD/Joystick/▲▼
+  (= PANEL_HELP_KEYS.slice(1))           (= PANEL_HELP_KEYS_MOBILE.slice(1))
 ```
 
 ### 9.3 Helper mode-aware
@@ -500,14 +501,31 @@ restavano inaccessibili via touch. D27 aggiunge un menu hamburger:
 `mmSectionToggles/Actions`, `mmAudio/Voice/Night/OOO/VoiceCmd/Tutorial/
 Customize/Maint/Lang`, `mmStateOn/Off`, `ariaHamburger/MmClose/MmToggleAudio/...`).
 
-**FIX cabin nera iOS (post-merge)**: `#mobile-menu` ha `visibility: hidden`
-di default + `visibility: visible` su `.mobile-menu-shown`. Su iOS Safari un
-elemento `position: fixed` con `z-index` > canvas anche con
-`pointer-events: none` + `opacity: 0` + `transform: translateX(100%)`
-può causare "cabina nera" (bug `preserveDrawingBuffer: true` introdotto in
-PR #7). `visibility: hidden` è il fix canonico perché rimuove l'elemento
-dal compositor. `display: none` sarebbe troppo aggressivo (romperebbe la
-transition CSS del panel).
+**FIX cabin nera iOS (2026-09-28, D28)**: le cause reali dello "schermo
+nero" su iPhone 15 Pro **non** sono l'interferenza di un elemento `fixed`
+con `z-index` sul rendering WebGL: nessun browser si comporta in questo
+modo, e la diagnosi era sbagliata. `#mobile-menu` mantiene comunque
+`visibility: hidden` di default + `visibility: visible` su
+`.mobile-menu-shown` (`display: none` romperebbe la transition CSS del
+panel), ma è una scelta di igiene, non la causa. Le quattro cause
+verificate, e i relativi fix:
+1. **Overlay full-screen 92% nero che intercettava i tap su `#startBtn`**:
+   l'utente non riusciva ad avviare la simulazione.
+2. **`new THREE.WebGLRenderer()` senza guard**: se il context non si crea
+   il modulo abortisce e il listener su `#startBtn` non viene mai
+   agganciato. Ora la creazione è in `try/catch` e, in caso di fallimento,
+   `showWebglFallback()` inietta un overlay con bottone "Ricarica".
+3. **`preserveDrawingBuffer: true` inutile**: copia il backbuffer a ogni
+   frame e nulla nel progetto legge i pixel del canvas (nessun
+   `toDataURL`/`toBlob`), quindi è costo puro; è inoltre la config che su
+   iOS favorisce frame neri. Se in futuro serve catturare il canvas, va
+   fatto on-demand con `toDataURL` nel frame giusto.
+4. **Context WebGL perso non recuperato**: su iOS il context viene ucciso
+   dal sistema (backgrounding, pressione di memoria) e Safari non emette
+   sempre `webglcontextrestored`. Ora `state._ctxLost`/`_ctxLostAt` fanno
+   saltare `renderer.render()` nel loop e un watchdog
+   (`CTX_WATCHDOG_MS`) chiama `WEBGL_lose_context.restoreContext()`;
+   se il context non torna, `showWebglFallback()` mostra la fallback.
 
 ---
 
@@ -534,9 +552,9 @@ Vedi `AGENTS.md` §Contratti D-key per i dettagli completi. Riassunto:
 | D15 | Micro-animazioni reducedMotion | V3 Step 4 |
 | D16 | Performance pattern (LRU + merge) | V3 Step 5 |
 | D17 | Log strutturato + history persist | V3 Step 6 |
-| D18 | (riservato, non introdotto) | — |
-| D19 | (riservato, non introdotto) | — |
-| D20 | (riservato, non introdotto) | — |
+| D18 | Documentazione architetturale funzioni core | V3 Step 7 |
+| D19 | Test coverage estesa via helper puri | V3 Step 8 |
+| D20 | Layout mobile responsive (`isMobileDevice()`) | V3 Step 9 |
 | D21 | Test exposure completa | V4 Step 1 |
 | D22 | Routing inversione asimmetrico | V4 Step 2 |
 | D23 | A11y ARIA standard | V4 Step 3 |
@@ -549,8 +567,8 @@ Vedi `AGENTS.md` §Contratti D-key per i dettagli completi. Riassunto:
 ---
 
 Vedi anche:
-- `AGENTS.md` — regole progetto + convenzioni codice + 27 contratti D-key completi
+- `AGENTS.md` — regole progetto + convenzioni codice + 31 contratti D-key completi
 - `PIANO_V4.md` — roadmap Polish Pack V4 (piano attuale, 8/8 step chiuso)
 - `PIANO_MIGLIORAMENTI.md` — log implementativo di tutte le fasi
 - `README.md` — overview user-facing del progetto
-- `tests.html` — test suite vanilla JS (262+ assert)
+- `tests.html` — test suite vanilla JS (298 test, 54 blocchi `describe`)

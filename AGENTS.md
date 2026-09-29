@@ -2,15 +2,17 @@
 
 ## Cos'è il progetto
 Simulatore 3D prima-persona di una cabina ascensore di hotel di lusso.
-Single-file HTML (~500 KB, ~11.400 righe) con JS inline (modulo ES).
-Three.js r160 via importmap. Nessuna build step, nessuna dipendenza npm.
+Single-file HTML (~507 KB, 11.914 righe) con JS inline (modulo ES).
+Three.js r160 via importmap (unpkg). Nessuna build step, nessuna dipendenza npm.
 
 Stato: **22/22 funzionalità backlog implementate (100%)** — V1 chiuso con v1.8.
 Polish Pack V2 **chiuso 2026-09-17** (10/13 step, 77%; Step 6 PWA, 11 L-block,
 13 WebXR rinviati).
-Polish Pack V3 **in corso** (5/9 step, 56%; Step 1–5 ✅, Step 6–9 ⏳).
-Roadmap attiva: `PIANO_V3.md`.
-Log implementativo: `PIANO_MIGLIORAMENTI.md` (fasi 1–22).
+Polish Pack V3 **chiuso 2026-09-23** (9/9 step, 100%).
+Polish Pack V4 **chiuso 2026-09-26** (8/8 step, 100%).
+Piano attivo: nessuno — i pack sono chiusi. Dettaglio in `PIANO_V4.md`.
+Backlog futuro aperto: `ROADMAP_POST_V7.md`.
+Log implementativo: `PIANO_MIGLIORAMENTI.md` (fasi 1–30).
 Audit oggetto `state`: `STATE.md`.
 
 ---
@@ -38,7 +40,7 @@ rg -n "id=\"rotate-device-overlay\"" elevator.html
 | Illuminazione | `// ILLUMINAZIONE` | ceilingLight, fillLight, alarmLight |
 | Texture procedurali | `// TEXTURE PROCEDURALI` | makeBrushedMetalTexture, makeMarbleTexture, makeCeilingTexture |
 | Cabina (gruppo radice) | `const cabin = new THREE.Group()` | Pavimento, soffitto, pareti, specchio, maniglione |
-| Pannello pubblicitario laterale | `// PANNELLO PUBBLICITARIO` | Display 5 schermate rotanti (Fase 2) |
+| Pannello pubblicitario laterale | `// PANNELLO PUBBLICITARIO` | Display 6 schermate rotanti (Fase 2) |
 | Dettagli premium cabina | `// DETTAGLI PREMIUM CABINA` | Profili alluminio, battiscopa, LED, telecamera, citofono, targhe (Fase 1) |
 | Porte | `// PORTE` | Anta sx/dx + indicatori direzione |
 | Corridoio tematico + arredi | `// CORRIDOIO, ARREDI` | Costruzione corridoio per piano, pulsantiera esterna ▲/▼, `buildCorridor` + helper `buildCorridorShell`/`buildCorridorLights` |
@@ -69,7 +71,7 @@ rg -n "id=\"rotate-device-overlay\"" elevator.html
 | Settings QoL UI wiring | `function initSettingsQoL` | Slider volume + brightness + export JSON (D14) |
 | AVVIO | `// AVVIO` | `buildCorridor` iniziale, start screen, init eventi |
 | Preferenze persistenti | `const LANG_KEY`, `function loadLang` | Chiavi localStorage @v1: prefs, lang, config, audio, display, onboarded |
-| `window.BossHotelPure` namespace | `window.BossHotelPure = {` | 58 helper per `tests.html` — è il punto in cui finisce il file |
+| `window.BossHotelPure` namespace | `window.BossHotelPure = {` | 62 helper per `tests.html` — è il punto in cui finisce il file |
 
 ---
 
@@ -391,8 +393,13 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D12 | **`prefers-reduced-motion` OS-level → `state.reducedMotion`** | Polish Pack V3 Step 1b. `initReducedMotion()` legge `window.matchMedia('(prefers-reduced-motion: reduce)').matches` e ascolta i cambi a runtime. `shouldDisableMotion(state)` decide se skippare le micro-animazioni non essenziali (crossfade freccia 200ms, futuri "respiro" tasti dello Step 4). Animazioni essenziali (apertura/chiusura porte, vibrazione cabina, lampeggio allarme) restano attive per ragioni di sicurezza/realismo. Helper puro, esposto in `BossHotelPure` per test. |
 | D13 | **Bug latenti documentati con decisione esplicita (fix o "leave alone")** | Polish Pack V3 Step 2. L'audit corner case dei 5 noti + ricerca attiva di bug latenti ha prodotto 4 fix (Q2.6 A/B/C + promise-chaining Q2.3) e 1 "leave alone" con razionale (D = memory leak promise, risolto indirettamente dal refactor Q2.3). Pattern: ogni bug latente emerso durante l'audit viene documentato con decisione esplicita, non lasciato implicito. |
 | D14 | **Settings QoL in due chiavi localStorage separate @v1** | Polish Pack V3 Step 3. `bossHotelAudio@v1` (effects / music / tts, default 1.0/0.5/0.85) + `bossHotelDisplay@v1` (brightness, default 1.0). Init `initSettingsQoL()` chiamato DOPO `loadAudioSettings/loadDisplaySettings` per garantire che gli sliders riflettano le preferenze salvate dell'utente e non i default. `v=1` esplicito per migrazione forward-compatible. |
-| D15 | **Micro-animazioni rispettano `state.reducedMotion` + `movePaused` in CONFIGURATION** | Polish Pack V3 Step 4. Animazioni cosmetiche (respiro tasti panel, lampeggio gentile cartello, bounce-out vibrazione, fade stati) skippate se `shouldDisableMotion(state) === true`. Animazioni essenziali (lampeggio allarme, vibrazione cabina, apertura/chiusura porte) restano attive. `movePaused` dichiarato in CONFIGURATION (riga ~1683) per evitare TDZ in `drawModernDisplay` (chiamato durante init prima della dichiarazione originaria). Pattern coerente con `state`/`hoveredBtn`/`buttonList` — lezione V2 bug TDZ. |
+| D15 | **Micro-animazioni rispettano `state.reducedMotion` + `movePaused` in CONFIGURATION** | Polish Pack V3 Step 4. Animazioni cosmetiche (respiro tasti panel, lampeggio gentile cartello, bounce-out vibrazione, fade stati) skippate se `shouldDisableMotion(state) === true`. Animazioni essenziali (lampeggio allarme, vibrazione cabina, apertura/chiusura porte) restano attive. `movePaused` dichiarato in CONFIGURATION (subito dopo `state`) per evitare TDZ in `drawModernDisplay` (chiamato durante init prima della dichiarazione originaria). Pattern coerente con `state`/`hoveredBtn`/`buttonList` — lezione V2 bug TDZ. |
 | D16 | **Performance: `textureCache` LRU + `mergeGeometries` + skip no-op costosi** | Polish Pack V3 Step 5. `textureCache` LRU capacity 10 cacha canvas texture della cabina (es. base di `drawMovingSign` durante flash gentile, hit ratio ~90%). `mergeGeometries` per geometrie dello stesso materiale (richiede `geometry.applyMatrix4(matrix)` per posizionare le singole geometrie prima del merge). Skip no-op costosi (`ctx.filter = brightness(1.0)` quando default). Benchmark via `runBenchmark()` (5s idle + 5s moving) + bottone in maintenance overlay (Shift+M) per misurazione iterativa. |
+| D17 | **Log eventi strutturati + history persistita** | Polish Pack V3 Step 6. `logEvent(label, {severity, category})` con categorie (cabin/door/audio/state/maint) e severity, separato dal log UI da 10 entry: `_exportLog` ne conserva 50 per il reporting. Il filtro per categoria vive in `state._logFilter` e viene applicato da `filterLogEvents()`. History persistita sotto `localStorage.bossHotelHistory@v1` (`HISTORY_KEY`): `alarmHistory`, `alarmCount`, `interphoneHistory`, `interphoneCount` — i contatori sono totali vita e non si resettano al reload. |
+| D18 | **Documentazione architetturale per le funzioni core** | Polish Pack V3 Step 7. Ogni funzione >= 80 righe riceve un commento narrativo con scopo, sezioni interne e contratti di performance applicabili. Il riferimento e' `ARCHITECTURE.md` piu' la tabella "Layout del file" qui sopra, che naviga per ancore e non per numeri di riga. Nota: `ARCHITECTURE.md` riportava D18 come "(riservato, non introdotto)": era sbagliato, il contratto e' attivo dal 2026-09-23. |
+| D19 | **Copertura test estesa via helper puri** | Polish Pack V3 Step 8. Il pattern e' portare in `window.BossHotelPure` la logica calcolabile delle funzioni con effetti, cosi' da testarla senza istanziare la scena. Da allora e' la regola generale (D9) ed e' anche il motivo per cui un bug come il `ReferenceError` su `now` dentro `tickMove` era invisibile: `tickMove` non era pura e non aveva test. Correzione del 2026-09-29: estratti `computeMoveState`, `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`, `computeArrivalDirection`. |
+| D20 | **Layout mobile responsive con `isMobileDevice()`** | Polish Pack V3 Step 9. `isMobileDevice()` raccoglie 6 dimensioni (innerWidth/innerHeight, clientWidth/clientHeight, screen.width/height): `true` se **qualsiasi** <= 500, altrimenti `Math.min(...dims) <= 768` (cattura gli iPad in portrait). `isViewportMobile()` e' il force-mobile (`width<=900 || height<=500`) usato da `initMobileDetection`. Il layout adesso **non** blocca: l'avviso portrait e' una card dismissabile e il gioco resta usabile in portrait (vedi D29). |
+| D21 | **Test exposure completa** | Polish Pack V4 Step 1. Namespace `window.BossHotelPure` con 62 funzioni pure, consumato da `tests.html` via `iframe.contentWindow.BossHotelPure` (l'iframe e' sandboxed con `allow-same-origin allow-scripts`). `tests.html` contiene 298 test in 54 blocchi `describe`. Attenzione: esporre su `window` non basta, i test cross-iframe leggono **solo** `BossHotelPure` — e' stato un bug per questo (vedi la nota su `openMobileMenu` sotto D27). |
 | D22 | **Routing inversione asimmetrico (look algorithm)** | Polish Pack V4 Step 2. `pickNextFloor`/`queueNextSmart` quando non ci sono richieste same-dir nella coda: `lastDir='up'` + invert a `down` → ritorna MAX (highest) della coda down; `lastDir='down'` + invert a `up` → ritorna MIN (lowest) della coda up. Logica: la cabina prosegue nella direzione attuale fino al farthest della direzione opposta, poi serve i restanti tornando indietro (algoritmo elevator classico). Versione stateful `queueNextSmart` deve restare in sync con `pickNextFloor` (test in `tests.html` bloccano la divergenza). |
 | D23 | **A11y: `aria-label`/`role`/`aria-live`/`aria-hidden` su elementi chiave** | Polish Pack V4 Step 3. Helper `applyAriaLabels()` chiamato da `applyLangToDOM()` setta `aria-label` localizzati (nuove chiavi `aria*` in `STRINGS.it`/`STRINGS.en`) su bottoni HUD (`hud-exit-btn`, `hud-reenter-btn`, `startBtn`, 5 `m-filter-btn`, `m-export-json`, `m-benchmark-btn`, 2 `virtual-call-btn`, `virtual-joystick`, tutorial, customizer). Live regions: `#subtitle` e `#mode-badge` con `role="status" aria-live="polite" aria-atomic="true"`. Decorative: `#pointerhint`, `.rotate-icon`, `.joystick-knob`, `#rotate-device-overlay` con `aria-hidden="true"` o `role="alertdialog"`. Test: 15+ assert manuali in `tests.html` (no CDN, conforme D1) che verificano presenza attributi + cambio lingua aggiorna `aria-label`. `setLang`/`applyLangToDOM`/`applyAriaLabels` esposti in `BossHotelPure` per test cross-iframe. |
 | D24 | **Funzioni core <150 righe con commenti narrativi** | Polish Pack V4 Step 4. Tutte le funzioni top-level in `elevator.html` devono essere <150 righe (target raggiunto: 0 funzioni >=150). Le 16 funzioni piu' lunghe (>=80 righe) hanno commenti narrativi stile V3 Step 7 (`Polish Pack V4 Step 4 (D24):` + scopo + sezioni + contratti D-key + performance). Pattern di split consentito: estrarre helper mantenendo stesso module scope + side-effect su `state`. Esempi: `buildCorridor` 178 → 76 (estratto `buildCorridorShell` + `buildCorridorLights`); `startCorridorAudio` 156 → ~50 (estratto 4 helper `setupLobbyAudio`/`setupOfficeAudio`/`setupHotelAudio`/`setupPenthouseAudio`); `renderDisplayDynamicLayer` 148 → 7 + 3 helper (estratto `drawDisplayHeaderLayer`/`drawDisplayFloorLayer`/`drawDisplayDoorCountdown`, 2026-09-29). Attenzione al **margine**: 148/150 significa che la modifica successiva l'avrebbe rotta, quindi la soglia pratica da tenere è ~120, non 149. Helper tool: `node scripts/find-long-fns.js` (brace-counting corretto) da rieseguire dopo refactor importanti. Uno split va verificato come puro spostamento di codice, vedi § "Refactor: dimostra che è puro spostamento di codice". |
@@ -442,13 +449,19 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 
 ---
 
-## Workflow di sessione interattiva (per PIANO_V3)
+## Workflow di sessione interattiva (per un nuovo Polish Pack)
+
+Valido quando si apre un nuovo pack. I pack V1–V4 sono chiusi: per il
+lavoro di manutenzione valgono invece le regole di "Workflow operativo
+(Git + verifica)" e "Regole di aggiornamento della documentazione" piu' in alto.
 
 1. Apri la sezione dello step, leggi le Decision Questions
 2. Usa il tool `question` per chiedere 1 domanda alla volta
 3. Implementa SOLO le opzioni approvate, nello scope approvato
-4. Aggiorna `PIANO_V3.md` segnando lo step ✅
-5. Esegui `node scripts/check-balance.js elevator.html` dopo ogni modifica
-6. Fai commit separati per ogni sotto-step (Q5.1 = opzione A nel pattern V3)
-7. Aggiorna `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge finale
-8. Smoke test screenshot pre/post ottimizzazione (obbligo V3, lezione V2)
+4. Aggiorna `PIANO_VN.md` segnando lo step ✅
+5. Esegui la sequenza completa: `check-balance` → `run-tests` → `run-ui-tests`
+   → copia in `dist/index.html`
+6. Fai commit separati per ogni sotto-step
+7. Aggiorna `PIANO_MIGLIORAMENTI.md` con la fase implementata al merge
+8. Smoke test screenshot pre/post ottimizzazione
+9. Aggiorna la tabella D-key se hai introdotto un contratto nuovo

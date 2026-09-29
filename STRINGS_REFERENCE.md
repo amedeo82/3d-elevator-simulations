@@ -20,6 +20,8 @@
    - [Slide start screen](#slide-start-screen)
    - [Meteo live](#meteo-live)
    - [Generici HUD / badge](#generici-hud--badge)
+   - [Mobile hamburger menu (D27, V4 Step 8)](#mobile-hamburger-menu-d27-v4-step-8)
+   - [Mobile tutorial (D26est, V4 Step 7)](#mobile-tutorial-d26est-v4-step-7)
 3. [Tabella completa auto-generata](#3-tabella-completa-auto-generata)
 4. [Convenzioni e contratti D-key](#4-convenzioni-e-contratti-d-key)
 
@@ -299,9 +301,10 @@
 ## 3. Tabella completa auto-generata
 
 Vedi `STRINGS_TABLE.md` (rigenerato automaticamente da `scripts/extract-strings.js`):
-**275 chiavi uniche totali** (1 IT-only, 1 EN-only). Lo script parsa `elevator.html`,
-estrae i blocchi STRINGS.it e STRINGS.en con gestione di escape single-quote,
-e produce una tabella markdown ordinata alfabeticamente.
+**299 chiavi uniche totali** (297 presenti in entrambe le lingue, 1 IT-only, 1 EN-only). Lo script parsa `elevator.html`,
+estrae i blocchi STRINGS.it e STRINGS.en con gestione di escape single-quote
+e decodifica gli escape `\uXXXX` in caratteri Unicode, e produce una tabella
+markdown ordinata alfabeticamente.
 
 Per rigenerare:
 ```bash

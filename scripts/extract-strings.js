@@ -28,6 +28,15 @@ function extractLangBlock(lang) {
   return s.slice(start, end + 1);
 }
 
+// Decodifica gli escape \uXXXX rimasti grezzi nel sorgente: senza questo
+// passo la tabella generata mostrava "\u00e0" invece di "à" e divergeva da
+// STRINGS_REFERENCE.md, che riporta i caratteri veri.
+function decodeUnicodeEscapes(str) {
+  return str.replace(/\\u([0-9a-fA-F]{4})/g, function (_, hex) {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+}
+
 function parseKeys(block) {
   // Match: key: 'value with \\\' escapes' OR key: 'value'
   // Skip template literals and functions.
@@ -35,7 +44,9 @@ function parseKeys(block) {
   var re = /(\w+):\s*'((?:\\'|[^'])*)'/g;
   var m;
   while ((m = re.exec(block)) !== null) {
-    out[m[1]] = m[2].replace(/\\'/g, "'").replace(/\\n/g, '\n');
+    out[m[1]] = decodeUnicodeEscapes(m[2])
+      .replace(/\\'/g, "'")
+      .replace(/\\n/g, '\n');
   }
   return out;
 }

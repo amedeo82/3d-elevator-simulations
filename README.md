@@ -1,9 +1,9 @@
 ﻿# BOSS HOTEL — Simulatore Ascensore 3D
 
-[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-298%20passing-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Mobile](https://img.shields.io/badge/Mobile-iOS%20%2B%20Android-blue)]() [![Release](https://img.shields.io/badge/Release-v7.1-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-298%20passing-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Mobile](https://img.shields.io/badge/Mobile-iOS%20%2B%20Android-blue)]() [![Release](https://img.shields.io/badge/Release-v7.0-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
 
 > Un simulatore 3D in prima persona dell'interno di un ascensore di lusso, in
-> **un singolo file HTML** di ~500 KB. Nessuna build, nessun bundler, nessuna
+> **un singolo file HTML** di ~507 KB. Nessuna build, nessun bundler, nessuna
 > dipendenza npm: si apre e funziona.
 
 ## 🚀 Provalo subito
@@ -28,7 +28,7 @@ python3 -m http.server 8000    # poi apri http://localhost:8000
 |---|---|
 | [Panoramica](#-panoramica) | Cosa fa il simulatore, in breve |
 | [Galleria](#-galleria) | Screenshot desktop e mobile |
-| [Funzionalità](#-funzionalità) | Le 30 aree funzionali, in sintesi |
+| [Funzionalità](#-funzionalità) | Le 32 aree funzionali, in sintesi |
 | [Comandi](#-comandi) | Mouse, tastiera, touch |
 | [Stack tecnico](#-stack-tecnico) | Cosa c'è sotto il cofano |
 | [Documentazione](#-documentazione) | Tutti i documenti di progetto |
@@ -53,7 +53,7 @@ un ascensore di lusso. L'utente può:
 - Attivare l'**allarme di emergenza** o il **citofono EN 81-28**, distinti
 - Personalizzare l'hotel (nome, tema, piani) con 4 preset pronti
 
-Il tutto in **un singolo file HTML** di ~500 KB (~11.400 righe), deployato
+Il tutto in **un singolo file HTML** di ~507 KB (~11.914 righe), deployato
 staticamente, senza dipendenze npm in produzione.
 
 ## 📸 Galleria
@@ -70,7 +70,7 @@ staticamente, senza dipendenze npm in produzione.
 
 ## ✨ Funzionalità
 
-Trent'aree funzionali, dalle texture procedurali del marmo agli annunci vocali.
+32 aree funzionali, dalle texture procedurali del marmo agli annunci vocali.
 Il catalogo completo, con i tasti per ognuna, è in
 **[`docs/FEATURES.md`](docs/FEATURES.md)**.
 
@@ -120,7 +120,7 @@ Guida allo sviluppo e al deploy:
 
 | File | Contenuto |
 |---|---|
-| [`docs/FEATURES.md`](docs/FEATURES.md) | Catalogo completo delle 30 aree funzionali |
+| [`docs/FEATURES.md`](docs/FEATURES.md) | Catalogo completo delle 32 aree funzionali |
 | [`docs/CONTROLS.md`](docs/CONTROLS.md) | Comandi mouse, tastiera e touch |
 | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Struttura del progetto, sviluppo locale, test, deploy |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Storico release, Polish Pack, backlog residuo |
@@ -131,7 +131,7 @@ Documenti di progetto:
 
 | File | Contenuto |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 30 contratti D-key, layout del codice ad ancore |
+| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 31 contratti D-key, layout del codice ad ancore |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guida contributor, workflow PR, code style |
 | [`STATE.md`](STATE.md) | Audit completo dello `state` globale |
 | [`STRINGS_REFERENCE.md`](STRINGS_REFERENCE.md) | Mappatura i18n IT/EN |

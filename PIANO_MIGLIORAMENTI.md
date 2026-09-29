@@ -1,4 +1,4 @@
-# Piano di Miglioramento — Simulatore Ascensore 3D
+﻿# Piano di Miglioramento — Simulatore Ascensore 3D
 **Hotel Royal Edition → BOSS HOTEL Premium Edition**
 
 Documento di design e implementation log.
@@ -2816,7 +2816,8 @@ tornava nera su iPhone Safari dopo aver visto i nuovi elementi mobile
 **Verifica**:
 - `node scripts/check-balance.js elevator.html` → passa.
 - 3 CI checks su PR #11 verdi (Sintassi+balance, Test framework,
-  GitGuardian Security).
+  GitGuardian Security). La suite CI è oggi cresciuta a **4 job**
+  (`check`, `tests`, `tests-run`, `ui-tests`).
 
 **Branch**: `kilo/playful-null-mhs`.
 
@@ -2826,8 +2827,8 @@ tornava nera su iPhone Safari dopo aver visto i nuovi elementi mobile
 
 **Risultato finale V4**:
 - **8/8 step** (100%): T1 (3) + T2 (4: Step 4-5 + 7-8) + T3 (1)
-- **27 contratti D-key** totali (D1-D27, inclusi D26est e D27)
-- **262 test** passing (100% verde)
+- **31 contratti D-key** totali (D1-D31, incluso D26est)
+- **298 test** passing (100% verde) + **20 test UI** in `scripts/run-ui-tests.js`
 - **~456 assert** totali
 - **~1 giorno** di lavoro (8 sessioni su 1 settimana)
 
@@ -2845,3 +2846,54 @@ Polish Pack V4 ha aggiunto al simulatore V3:
 
 Il progetto e ora pronto per V5+ (WebXR, Multiplayer, PWA, Localizzazione).
 Vedi `PIANO_V4.md` sezione "Roadmap possibile post-V4" per idee.
+
+---
+
+### Fase 31 — Audit integrale e allineamento documentale ✅ (2026-09-29)
+
+Fase di manutenzione senza nuove feature: ripresa di un audit end-to-end del
+codice e della documentazione, con l'obiettivo di chiudere i buchi che la CI
+verde non stava intercettando.
+
+**Bug di logica**:
+- `ReferenceError: now is not defined` dentro `tickMove`. La variabile era
+  usata senza essere dichiarata nell'ambiente della funzione: il bug era
+  invisibile perché `tickMove` non è pura e quindi non aveva copertura.
+
+**Estrazione di helper puri dal movimento cabina** (D19):
+- 5 helper calcolabili ora in `window.BossHotelPure`: `computeMoveState`,
+  `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`,
+  `computeArrivalDirection`.
+- +13 nuovi test in `tests.html` (298 totali). Il refactor è stato verificato
+  come **puro spostamento di codice** (confronto del multiset delle righe dei
+  body, indentazione normalizzata), non come riscrittura.
+
+**Refactor oltre la soglia D24**: 4 funzioni splittate per restare sotto le
+150 righe (soglia pratica consigliata: 120). `find-long-fns.js` elenca oggi
+**0 funzioni >= 150 righe**, ed è l'invariante verificata dalla job `check`.
+
+**Nuova job CI `ui-tests` + `scripts/run-ui-tests.js`** (20 test):
+- I test puri girano su funzioni in un iframe nascosto: nessun layout, nessun
+  rendering. Una CI verde poteva quindi convivere con un'app inutilizzabile,
+  ed è esattamente ciò che è successo con i due bug bloccanti del 2026-09-28,
+  entrambi di CSS.
+- Regole non negoziabili imparate sul campo: mai `locator.click()` (maschera i
+  difetti di raggiungibilità, usare `page.mouse.click` alle coordinate reali),
+  mai `page.screenshot()` (timeout su loop `requestAnimationFrame` continuo,
+  usare CDP `Page.captureScreenshot`), framework `test()` async-aware.
+
+**Contratti introdotti**:
+- **D28** — robustezza WebGL su iOS/Safari: `WebGLRenderer` in try/catch con
+  fallback, rimozione di `preserveDrawingBuffer: true`, budget memoria via
+  `computePixelRatioCap(dpr, isIOS)`, recupero del context perso
+  (`CTX_WATCHDOG_MS` + `reviveRendererAfterContextRestore`).
+- **D29** — lo start screen deve essere sempre interamente raggiungibile:
+  `overflow-y: auto` nella regola base, niente `justify-content: center` su
+  contenitore scorrevole, centraggio via `margin-top/bottom: auto`.
+- **D30** — la CI deve **eseguire** i test, non solo controllarli staticamente.
+- **D31** — i test puri non coprono il layout: serve una job UI comportamentale.
+
+**Stato al merge**: **31 contratti D-key** (D1-D31, incluso D26est),
+**298 test** di logica + **20 test UI**, **4 job CI** (`check`, `tests`,
+`tests-run`, `ui-tests`), `elevator.html` a 11.914 righe, **62 funzioni** in
+`window.BossHotelPure`, **6 schermate** sul pannello pubblicitario.

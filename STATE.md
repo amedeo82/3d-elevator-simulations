@@ -1,8 +1,10 @@
 # STATE.md — Audit dell'oggetto `state` di BOSS HOTEL Elevator 3D
 
 Documento di riferimento per l'oggetto globale `state` dichiarato in
-`elevator.html` alla riga **484** (sezione **CONFIGURAZIONE**, in cima al file
-per evitare TDZ — vedi `AGENTS.md` § "Lezione state in cima").
+`elevator.html` alla riga **2382** (`const state = {`), dentro la sezione
+**CONFIGURAZIONE** che apre il file alla riga **1403** — dichiarato in cima
+alle funzioni che lo usano per evitare TDZ (vedi `AGENTS.md` § "Lezione
+state in cima"). Il blocco `state` chiude alla riga **2515**.
 
 > Generato durante Polish Pack V2 Step 1c. Mantenere in sync con modifiche al file.
 
@@ -65,7 +67,20 @@ per evitare TDZ — vedi `AGENTS.md` § "Lezione state in cima").
 | `_fadeOOO` | `{target, from, startMs}` | toggle O (set target) | `tickFadeStates()` (lerp 200ms) | Idem per fuori-servizio. Step 4 V3 (D15). |
 | `_fadeInterphone` | `{target, from, startMs}` | `triggerInterphone()`/tick citofono (set target) | `tickFadeStates()` (lerp 200ms `emissiveIntensity` pulsante) | Idem per citofono. Step 4 V3 (D15). |
 | `_logFilter` | `{cabin, door, audio, state, maint: bool}` | check UI overlay manutentore | `filterLogEvents()` → `tickMaintenance` (render log) | Default tutti `true`. Filtra quali categorie di eventi compaiono nel log della manutenzione. |
-| `alarmCount` | int >= 0 | `toggleAlarm` (incrementa), export stato | invariante `state.alarmCount >= 0`, export JSON | Contatore **totale a vita** degli allarmi attivati. Persistito in `localStorage.bossHotelPrefs@v1`, mai resettato al reload. Contract 14 di `assertStateInvariants`. |
+| `alarmCount` | int >= 0 | `toggleAlarm` (incrementa), `loadHistory()`, `saveHistory()` | invariante `state.alarmCount >= 0`, export JSON, riga contatori overlay manutentore | Contatore **totale a vita** degli allarmi attivati. Persistito in `localStorage.bossHotelHistory@v1` (NON `bossHotelPrefs@v1`), mai resettato al reload. Contract 14 di `assertStateInvariants`. |
+| `alarmHistory` | `Array<{ts, floor, reason}>` | `toggleAlarm` (push, cap 20), `loadHistory()` | `exportStateJSON()`, riga "ultimo allarme" overlay manutentore | Ultimi 20 allarmi, dal più recente. Persistito in `localStorage.bossHotelHistory@v1`. Contract 15 di `assertStateInvariants`. Step 6 V3 (D17). |
+| `interphoneHistory` | `Array<{ts, reason, durationMs}>` | `handleInterphoneCall()` (push, cap 20), `stopInterphoneCall(reason)` (evento di fine chiamata), `loadHistory()` | `exportStateJSON()`, riga "ultima interphonata" overlay manutentore | Ultime 20 interphonate, dalla più recente. Persistito in `localStorage.bossHotelHistory@v1`. Contract 16 di `assertStateInvariants`. Step 6 V3 (D17). |
+| `interphoneCount` | int >= 0 | `handleInterphoneCall()` (incrementa), `loadHistory()`, `saveHistory()` | invariante `state.interphoneCount >= 0`, export JSON, riga contatori overlay manutentore | Contatore **totale a vita** delle interphonate, come `alarmCount`. Persistito in `localStorage.bossHotelHistory@v1`. Contract 15 di `assertStateInvariants`. |
+| `_lastBenchmark` | `{idleStats, movingStats, idleDc, movingDc, ts}` \| null | `tickBenchmark()` a benchmark concluso | `exportStateJSON()` (`lastBenchmark`) | Ultimo benchmark eseguito dal bottone del maintenance overlay (Shift+M). `null` se mai eseguito. Step 5 V3. |
+| `_benchPhase` | `'idle' \| 'moving' \| null` | creato a **runtime** da `runBenchmark()` (`'idle'` → `'moving'` → `null`) | `tickBenchmark()` (early return se null) | Non dichiarato nel literal di `state`: creato a runtime al primo benchmark. `null` = nessun benchmark in corso. Step 5 V3. |
+| `_benchIdle`, `_benchMoving` | `{samples: number[], dc: number[]}` | creati a runtime da `runBenchmark()`, azzerati a `null` alla fine | `tickBenchmark()` (append campioni + `aggregateFpsStats` a fine) | Buffer di campioni FPS e draw call per ciascuna delle due fasi. Non dichiarati nel literal di `state`. Step 5 V3. |
+| `_benchStartMs` | float (ms) | creato a runtime da `runBenchmark()` (=`performance.now()`) | `tickBenchmark()` (calcola elapsed vs 5000ms) | Timestamp di inizio benchmark. Non dichiarato nel literal di `state`. Step 5 V3. |
+
+> **Nota**: `_benchPhase`, `_benchIdle`, `_benchMoving` e `_benchStartMs`
+> **non** compaiono nel literal `const state = {` (`elevator.html:2382-2515`):
+> sono creati a runtime dalla prima chiamata a `runBenchmark()` e azzerati
+> (`null`) al termine. Vanno quindi considerati parte del contratto runtime di
+> `state` anche se il loro tipo non è dichiarato staticamente.
 
 ### Campi mobile e WebGL (Polish Pack V4, D26est + D28)
 
@@ -98,7 +113,7 @@ stringhe brand hardcoded sparse. Modificabile via HUD tasto `H`, persiste in
 
 | Campo | Tipo | Scritto da | Letto da | Contratti |
 |---|---|---|---|---|
-| `name` | string | HUD form, `applyHotelCustomizerForm()`, `applyHotelPreset()` | targa cabina, cartello piano, display touch header, panelHelpBrand, citofono label | Nome completo (caps per targhe). |
+| `name` | string | HUD form, `hcPopulateFormFromConfig()` (usata dai preset), `applyHotelThemeOverride()` | targa cabina, cartello piano, display touch header, panelHelpBrand, citofono label | Nome completo (caps per targhe). |
 | `shortName` | string | HUD form | start screen, citofono label | Nome friendly (mixed case). |
 | `address` | string | HUD form | targa cabina, pannello pubblicitario | Indirizzo completo. |
 | `city`, `country` | string | HUD form | pannello pubblicitario | Localizzazione geografica. |

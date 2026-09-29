@@ -27,7 +27,7 @@ node -e "const http=require('http'),fs=require('fs'),path=require('path');const 
 
 # 3. Esegui la test suite
 # Apri http://localhost:8765/tests.html
-# Aspettati: tutti i test verdi (target 230+ test, 380+ assert).
+# Aspettati: tutti i test verdi (target 298 test, 380+ assert).
 
 # 4. (Opzionale) Genera CHANGELOG.md dalla history
 node scripts/generate-changelog.js
@@ -72,7 +72,7 @@ della documentazione": leggila prima di committare. Lista rapida:
 | D25 | Helper `mergePlanes` DRY | Clona geometries, no side-effect. |
 | D26 | Open source boilerplate | LICENSE + CHANGELOG + CONTRIBUTING. |
 
-Per la lista completa (D1-D26) vedi `AGENTS.md`.
+Per la lista completa (D1-D31) vedi `AGENTS.md`.
 
 ## Workflow "Polish Pack"
 
@@ -87,7 +87,7 @@ V3 T2 = Tier 2 manutenibilita, ecc.).
 3. **Implementa** seguendo i pattern esistenti (vedi D9 per helper puri)
 4. **Aggiungi test** in `tests.html` (assert vanilla, no dipendenze)
 5. **Verifica**: `node scripts/check-balance.js elevator.html` +
-   `node scripts/run-tests.js` (285 test di logica) +
+   `node scripts/run-tests.js` (298 test di logica) +
    `node scripts/run-ui-tests.js` (20 test di layout e interazione).
    Entrambi i runner escono con codice 1 se un test fallisce
 6. **Aggiorna** `AGENTS.md` se introduci un nuovo D-key, e i documenti

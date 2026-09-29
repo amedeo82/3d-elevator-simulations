@@ -52,7 +52,7 @@ importmap, i rischi principali da considerare sono:
 - **localStorage poisoning** — un utente malintenzionato con accesso al
   browser potrebbe modificare i preferenze persistenti
 - **Subresource Integrity** — l'importmap di three.js fa riferimento a
-  cdn.jsdelivr.net; pinning con hash SRI sarebbe una buona pratica
+  unpkg.com (three@0.160.0); pinning con hash SRI sarebbe una buona pratica
 
 ## Out of scope
 

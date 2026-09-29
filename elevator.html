@@ -2201,12 +2201,6 @@ function saveHotelConfig() {
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
 }
-function applyHotelPreset(key) {
-  const p = HOTEL_PRESETS[key];
-  if (!p) return;
-  for (const k of Object.keys(HOTEL_CONFIG_DEFAULTS)) HOTEL_CONFIG[k] = p[k];
-  applyHotelConfigToUI();
-}
 function applyHotelConfigToUI() {
   // start screen
   const nameEl = document.getElementById('startHotelName');
@@ -5265,25 +5259,6 @@ function addWallLamp(parent, x, y, z, rotY) {
   g.rotation.y = rotY;
   parent.add(g);
 }
-function addCeilingLamp(parent, x, y, z, theme) {
-  const light = new THREE.PointLight(0xfff1c8, 0.5, 5, 1.5);
-  light.position.set(x, y, z);
-  parent.add(light);
-  const led = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.5, 0.5),
-    new THREE.MeshBasicMaterial({ color: 0xfff1c8 })
-  );
-  led.rotation.x = Math.PI / 2;
-  led.position.set(x, y + 0.01, z);
-  parent.add(led);
-  // cornice
-  const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.03, 0.55),
-    new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 })
-  );
-  frame.position.set(x, y - 0.02, z);
-  parent.add(frame);
-}
 function addWaterCooler(parent, x, y, z, rotY) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(
@@ -6445,9 +6420,7 @@ function startTutorial(force) {
   const tt = document.getElementById('tutorial-tooltip');
   if (tt) tt.className = 'tutorial-shown';
   renderTutorialStep();
-  if (typeof pointerLockControls !== 'undefined' && pointerLockControls && pointerLockControls.isLocked) {
-    document.exitPointerLock();
-  }
+  if (document.pointerLockElement) document.exitPointerLock();
 }
 function nextTip() {
   const steps = getTutorialSteps();
