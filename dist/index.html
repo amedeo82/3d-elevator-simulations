@@ -9538,6 +9538,68 @@ function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3
 // Performance: chiamato ogni frame dal loop RAF. ~194 righe di logica
 // per il movimento + audio + vibrazione + display. Profilare con
 // runBenchmark (V3 Step 5 Q5.4) per regressioni future.
+// ---- Helper puri del movimento -------------------------------------------------
+// Polish Pack V4 Step 8 (D9 + D24), 2026-09-29.
+//
+// tickMove e' lunga, non e' pura e quindi non finiva in BossHotelPure: nessun
+// test la guardava. E' cosi' che un ReferenceError su `now` e' sopravvissuto
+// mesi senza che nulla lo segnalasse, perche' l'unica copertura automatica
+// esercitava funzioni pure su funzioni pure. Qui la parte calcolabile viene
+// estratta: nessun side effect, nessuna dipendenza da `state`, testabile.
+//
+// moveElapsed/moveDuration in secondi, moveFrom/moveTo in piani.
+function computeMoveState(moveElapsed, moveDuration, moveFrom, moveTo) {
+  const moveT = Math.min(1, moveElapsed / moveDuration);
+  const easedT = easeInOutCubic(moveT);
+  const currentDisplay = moveFrom + (moveTo - moveFrom) * easedT;
+  return {
+    moveT,
+    easedT,
+    y: currentDisplay * FLOOR_HEIGHT,
+    currentDisplay,
+    floorShown: Math.round(currentDisplay),
+    // easeInOutCubic' = 12*t*(1-t): 0 agli estremi, massimo 3.0 a t=0.5.
+    // Il commento che era qui prima diceva 0.75: era sbagliato, la formula e'
+    // quella originale e il valore corretto e' 3.
+    speed: 12 * moveT * (1 - moveT),
+    remainingMs: (moveDuration - moveElapsed) * 1000,
+  };
+}
+
+// Lampeggio "gentile" negli ultimi secondi di viaggio.
+function computeArrivalPhase(moveElapsed, remainingMs) {
+  return (moveElapsed > 0 && remainingMs < 1000 && remainingMs > 0) ? 'blinking' : 'normal';
+}
+
+// Vibrazione multi-band durante il movimento. `phase` e' state._movePhase
+// gia' avanzato di dt*4, `speed` e' la derivata dell'easing: l'ampiezza e'
+// alta in accelerazione e frenata, bassa in crociera, con un minimo di ronzio.
+function computeMoveVibration(phase, speed) {
+  const CRUISE_AMP = 0.0006;
+  const amp = CRUISE_AMP + speed * 0.0035;
+  return {
+    x: (Math.sin(phase * 7.3) + Math.sin(phase * 11.1)) * amp,
+    z: (Math.cos(phase * 8.7) + Math.sin(phase * 13.3)) * amp,
+    roll: Math.sin(phase * 5.1) * amp * 0.6,
+    pitch: Math.cos(phase * 6.7) * amp * 0.6,
+  };
+}
+
+// Vibrazione residua a cabina ferma: curva bounce-out per ~1.5s dopo l'arrivo,
+// poi smorzamento completo. `snap` e' lo stato._vibSnap catturato all'arrivo.
+function computeIdleVibration(snap, elapsedS) {
+  if (elapsedS >= 1.5) return { x: 0, z: 0, roll: 0, pitch: 0 };
+  const k = typeof easeOutBounce === 'function'
+    ? easeOutBounce(elapsedS)
+    : Math.exp(-3 * elapsedS) * Math.cos(elapsedS * 8 * Math.PI);
+  return { x: snap.x * k, z: snap.z * k, roll: snap.roll * k, pitch: snap.pitch * k };
+}
+
+// Direzione del viaggio appena concluso, per il routing intelligente.
+function computeArrivalDirection(from, to) {
+  return to > from ? 'up' : 'down';
+}
+
 // `now` e' il timestamp DOMHighResTimeStamp passato dal loop (stessa base di
 // performance.now()). Prima questa funzione lo usava senza averlo ricevuto:
 // `now` era un identificatore non definito, quindi l'arrivo a un piano
@@ -9557,21 +9619,11 @@ function tickMove(dt, now) {
     // simulando il 'maniglione che rimbalza'. easeOutBounce e' in BossHotelPure.
     if (state._vibSnap) {
       const elapsedS = (now - state._vibSnap.stopTimeMs) / 1000;
-      if (elapsedS >= 1.5) {
-        // dopo 1.5s, vibrazione completamente smorzata
-        state.vibrationX = 0;
-        state.vibrationZ = 0;
-        state.vibrationRoll = 0;
-        state.vibrationPitch = 0;
-      } else {
-        const k = typeof easeOutBounce === 'function'
-          ? easeOutBounce(elapsedS)
-          : Math.exp(-3 * elapsedS) * Math.cos(elapsedS * 8 * Math.PI);
-        state.vibrationX = state._vibSnap.x * k;
-        state.vibrationZ = state._vibSnap.z * k;
-        state.vibrationRoll = state._vibSnap.roll * k;
-        state.vibrationPitch = state._vibSnap.pitch * k;
-      }
+      const v = computeIdleVibration(state._vibSnap, elapsedS);
+      state.vibrationX = v.x;
+      state.vibrationZ = v.z;
+      state.vibrationRoll = v.roll;
+      state.vibrationPitch = v.pitch;
     } else {
       // fallback: comportamento originale (decay esponenziale) se _vibSnap non c'e'
       state.vibrationX *= 0.85;
@@ -9582,13 +9634,14 @@ function tickMove(dt, now) {
     return;
   }
   moveElapsed += dt;
-  moveT = Math.min(1, moveElapsed / moveDuration);
-  const t = easeInOutCubic(moveT);  // Polish Pack V2 Step 9c: frenata/accelerazione progressiva
-  const y = (moveFrom + (moveTo - moveFrom) * t) * FLOOR_HEIGHT;
-  // Polish Pack V2 Step 9c: velocità istantanea (derivata dell'easing) — usata per
-  // whoosh audio + envelope vibrazione. easeInOutCubic' = 12*t*(1-t), che è 0 a t=0
-  // e t=1, massimo a t=0.5. Coerente con la fisica del movimento.
-  const speed = 12 * moveT * (1 - moveT); // 0..0.75..0, derivata analitica
+  // Polish Pack V4 Step 8: la parte calcolabile e' in computeMoveState (puro,
+  // testato in tests.html). Stessi valori di prima, calcolati una volta sola.
+  const ms = computeMoveState(moveElapsed, moveDuration, moveFrom, moveTo);
+  // `moveT` resta variabile di modulo come gli altri stati del movimento
+  // (moveFrom/moveTo/moveElapsed): viene resettata in requestFloor e
+  // actuallyStartMove, quindi va aggiornata qui e non ombreggiata da una locale.
+  moveT = ms.moveT;
+  const { speed, floorShown, remainingMs } = ms;
   if (whooshGain && whooshFilter) {
     whooshFilter.frequency.value = 300 + speed * 700;
     // Polish Pack V3 Step 3: whoosh moltiplicato per state.audio.effects.
@@ -9598,33 +9651,27 @@ function tickMove(dt, now) {
   }
   // cabin.position.y è la y della cabina. la cabina è a y=0 quando siamo al piano 0.
   // muoviamo la cabina verticalmente
-  cabin.position.y = y;
+  cabin.position.y = ms.y;
   // Polish Pack V2 Step 9a: vibrazione multi-band realistica. L'envelope "speed"
   // (derivata dell'easing) modula l'ampiezza: alta in accel/frenata (t→0 o t→1),
   // bassa in crociera (t≈0.5). Questo simula lo "shock" dei passeggeri a inizio/fine viaggio.
   // Aggiungiamo un minimo di vibrazione di crociera (mulino a vuoto del motore) per
   // dare "presenza" anche durante la velocità di crociera.
   state._movePhase += dt * 4;
-  const CRUISE_AMP = 0.0006;
-  const amp = CRUISE_AMP + speed * 0.0035;
   // 4 bande: X (orizzontale), Z (profondità), Roll (laterale), Pitch (avanti-indietro)
-  state.vibrationX = (Math.sin(state._movePhase * 7.3) + Math.sin(state._movePhase * 11.1)) * amp;
-  state.vibrationZ = (Math.cos(state._movePhase * 8.7) + Math.sin(state._movePhase * 13.3)) * amp;
-  state.vibrationRoll  = Math.sin(state._movePhase * 5.1) * amp * 0.6;
-  state.vibrationPitch = Math.cos(state._movePhase * 6.7) * amp * 0.6;
+  const vib = computeMoveVibration(state._movePhase, speed);
+  state.vibrationX = vib.x;
+  state.vibrationZ = vib.z;
+  state.vibrationRoll  = vib.roll;
+  state.vibrationPitch = vib.pitch;
   // aggiorna display: piano corrente "arrotondato" durante il movimento
-  const currentDisplay = moveFrom + (moveTo - moveFrom) * t;
-  const floorShown = Math.round(currentDisplay);
-  // aggiorna strip DOM (piccolo, già esistente) + display touchscreen della cabina
   state.floorShown = floorShown;
   document.getElementById('floorNum').textContent = floorShown === 0 ? 'T' : String(floorShown);
   if (typeof markDisplayDirty === 'function') markDisplayDirty();
   // Polish Pack V3 Step 4 (Q4.3): detection fase lampeggio gentile pre-arrivo.
   // Negli ultimi 1s prima dell'arrivo, setta _arrivalPhase='blinking'.
   // drawMovingSign viene chiamato ogni frame per animare l'overlay.
-  const remainingMs = (moveDuration - moveElapsed) * 1000;
-  const newArrivalPhase = (moveElapsed > 0 && remainingMs < 1000 && remainingMs > 0)
-    ? 'blinking' : 'normal';
+  const newArrivalPhase = computeArrivalPhase(moveElapsed, remainingMs);
   if (newArrivalPhase !== state._arrivalPhase) {
     state._arrivalPhase = newArrivalPhase;
   }
@@ -9635,50 +9682,56 @@ function tickMove(dt, now) {
     drawMovingSign(moveFrom, moveTo, floorShown);
   }
 
-  if (moveT >= 1) {
-    // arrivato
-    state.currentFloor = moveTo;
-    state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
-    state.isMoving = false;
-    // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
-    state._arrivalPhase = 'normal';
-    // Polish Pack V3 Step 4 (Q4.5): snapshot vibrazione per bounce-out post-arrivo.
-    // tickMove poi usa questi valori come baseline per la curva bounce-out
-    // (sostituisce il decay esponenziale `* 0.85` che era troppo 'flat').
-    state._vibSnap = {
-      x: state.vibrationX,
-      z: state.vibrationZ,
-      roll: state.vibrationRoll,
-      pitch: state.vibrationPitch,
-      stopTimeMs: now
-    };
-    lightFloorButton(moveTo, false);
-    state.requestedFloors = state.requestedFloors.filter(r => r.floor !== moveTo);
-    // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
-    playChime(queueSize() > 0 ? 'intermediate' : 'final');
-    // annuncio vocale all'arrivo
-    if (typeof announceArrival === 'function') announceArrival(moveTo);
-    // rigenera meteo al piano raggiunto
-    if (typeof maybeRegenerateWeather === 'function') maybeRegenerateWeather(moveTo);
-    // ricostruisci il corridoio per il nuovo piano raggiunto
-    buildCorridor(moveTo);
-    setDoors(true);
-    // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
-    if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
-    // Polish Pack V2 Step 10a: spawn NPC passeggeri che escono nel corridoio
-    if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(moveTo);
-    // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
-    bus.emit('floor:arrived', { floor: moveTo });
-    updateFloorDisplay();
-    refreshHudButtons();
-    // processa la coda (Polish Pack V2 Step 7a+7d: smart routing con direction)
-    // Determina la direzione del movimento appena concluso per scegliere il prossimo.
-    const lastDirection = moveTo > moveFrom ? 'up' : 'down';
-    const nextEntry = queueNextSmart(moveTo, lastDirection);
-    if (nextEntry) {
-      queueRemove(nextEntry.floor);
-      setTimeout(() => requestFloor(nextEntry.floor, nextEntry.direction), 1200);
-    }
+  if (moveT >= 1) handleFloorArrival(now);
+}
+
+// Polish Pack V4 Step 4 (D24) — split del 2026-09-29: il blocco di arrivo era
+// la parte piu' grossa di tickMove. Isolato perche' e' un evento che succede
+// una volta per viaggio e non una condizione valutata ogni frame, e perche'
+// contiene gli effetti piu' numerosi: audio, voce, corridoio, coda, NPC.
+function handleFloorArrival(now) {
+  // arrivato
+  state.currentFloor = moveTo;
+  state.floorShown = moveTo; // sincronizza display touchscreen con piano reale
+  state.isMoving = false;
+  // Polish Pack V3 Step 4 (Q4.3): reset fase lampeggio gentile.
+  state._arrivalPhase = 'normal';
+  // Polish Pack V3 Step 4 (Q4.5): snapshot vibrazione per bounce-out post-arrivo.
+  // tickMove poi usa questi valori come baseline per la curva bounce-out
+  // (sostituisce il decay esponenziale `* 0.85` che era troppo 'flat').
+  state._vibSnap = {
+    x: state.vibrationX,
+    z: state.vibrationZ,
+    roll: state.vibrationRoll,
+    pitch: state.vibrationPitch,
+    stopTimeMs: now
+  };
+  lightFloorButton(moveTo, false);
+  state.requestedFloors = state.requestedFloors.filter(r => r.floor !== moveTo);
+  // Polish Pack v1.2 #5: distingui fermata intermedia vs arrivo finale
+  playChime(queueSize() > 0 ? 'intermediate' : 'final');
+  // annuncio vocale all'arrivo
+  if (typeof announceArrival === 'function') announceArrival(moveTo);
+  // rigenera meteo al piano raggiunto
+  if (typeof maybeRegenerateWeather === 'function') maybeRegenerateWeather(moveTo);
+  // ricostruisci il corridoio per il nuovo piano raggiunto
+  buildCorridor(moveTo);
+  setDoors(true);
+  // Polish Pack v1.6 #14: logica passeggeri coerente con il piano tematico
+  if (typeof adjustPassengersForFloor === 'function') adjustPassengersForFloor(moveTo);
+  // Polish Pack V2 Step 10a: spawn NPC passeggeri che escono nel corridoio
+  if (typeof spawnNpcsAtFloor === 'function') spawnNpcsAtFloor(moveTo);
+  // Polish Pack V2 Step 1d: emetti evento arrivo cabina (consumatori: display, HUD)
+  bus.emit('floor:arrived', { floor: moveTo });
+  updateFloorDisplay();
+  refreshHudButtons();
+  // processa la coda (Polish Pack V2 Step 7a+7d: smart routing con direction)
+  // Determina la direzione del movimento appena concluso per scegliere il prossimo.
+  const lastDirection = computeArrivalDirection(moveFrom, moveTo);
+  const nextEntry = queueNextSmart(moveTo, lastDirection);
+  if (nextEntry) {
+    queueRemove(nextEntry.floor);
+    setTimeout(() => requestFloor(nextEntry.floor, nextEntry.direction), 1200);
   }
 }
 
@@ -11865,6 +11918,12 @@ window.BossHotelPure = {
   isMobileDevice,
   // FIX mobile (iPhone) 2026-09-28: helper puri per budget GPU/WEBGL mobile.
   computePixelRatioCap, detectIOS,
+  // Polish Pack V4 Step 8 (2026-09-29): logica di movimento estratta da
+  // tickMove. Serve a due scopi: accorciare la funzione (D24) e renderla
+  // testabile — tickMove non e' pura e non aveva alcuna copertura, ed e'
+  // stato perche' un ReferenceError su `now` e' sopravvissuto senza allarme.
+  computeMoveState, computeArrivalPhase, computeMoveVibration,
+  computeIdleVibration, computeArrivalDirection,
   // FIX 2026-09-28: helper del menu mobile. Erano esposti solo su `window`,
   // quindi i test cross-iframe (che leggono solo BossHotelPure) non li
   // trovavano — violazione del contratto D9/D27. Stessa funzione, stesso
