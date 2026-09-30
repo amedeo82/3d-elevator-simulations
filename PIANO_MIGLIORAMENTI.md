@@ -2828,7 +2828,7 @@ tornava nera su iPhone Safari dopo aver visto i nuovi elementi mobile
 **Risultato finale V4**:
 - **8/8 step** (100%): T1 (3) + T2 (4: Step 4-5 + 7-8) + T3 (1)
 - **31 contratti D-key** totali (D1-D31, incluso D26est)
-- **298 test** passing (100% verde) + **20 test UI** in `scripts/run-ui-tests.js`
+- **299 test** passing (100% verde) + **20 test UI** in `scripts/run-ui-tests.js`
 - **~456 assert** totali
 - **~1 giorno** di lavoro (8 sessioni su 1 settimana)
 
@@ -2894,6 +2894,6 @@ verde non stava intercettando.
 - **D31** — i test puri non coprono il layout: serve una job UI comportamentale.
 
 **Stato al merge**: **31 contratti D-key** (D1-D31, incluso D26est),
-**298 test** di logica + **20 test UI**, **4 job CI** (`check`, `tests`,
-`tests-run`, `ui-tests`), `elevator.html` a 11.914 righe, **62 funzioni** in
+**299 test** di logica + **20 test UI**, **4 job CI** (`check`, `tests`,
+`tests-run`, `ui-tests`), `elevator.html` a ~12.000 righe, **62 funzioni** in
 `window.BossHotelPure`, **6 schermate** sul pannello pubblicitario.

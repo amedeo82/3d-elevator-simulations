@@ -2617,21 +2617,65 @@ const PIXEL_RATIO_CAP = computePixelRatioCap(typeof devicePixelRatio === 'number
 // Fallback visibile: mai uno schermo nero muto. Usato se WebGL non e'
 // disponibile/creabile. Non dipende dal modulo, resta sullo schermo anche se
 // il resto del modulo aborta.
-function showWebglFallback(reason) {
+// Quale livello di WebGL e' davvero disponibile. Serve a distinguere "WebGL2
+// rifiutato" da "nessun WebGL": i due hanno cause diverse e rimedi diversi.
+// Su iOS il rifiuto e' quasi sempre ambientale (Modalita' a basso consumo,
+// tropi contesti WebGL aperti fra schede e app) e non un difetto del codice.
+function probeWebGLSupport() {
+  const out = { webgl2: false, webgl: false, note: '' };
+  try {
+    const c = document.createElement('canvas');
+    const gl2 = c.getContext('webgl2');
+    if (gl2) {
+      out.webgl2 = true;
+      out.note = 'WebGL2 attivo';
+      return out;
+    }
+    const gl1 = c.getContext('webgl') || c.getContext('experimental-webgl');
+    if (gl1) {
+      out.webgl = true;
+      out.note = 'solo WebGL1: WebGL2 rifiutato dal browser';
+    } else {
+      out.note = 'nessun contesto WebGL: il browser ha rifiutato la creazione';
+    }
+  } catch (e) {
+    out.note = 'errore durante il probe: ' + (e && e.message);
+  }
+  return out;
+}
+
+// Fallback visibile: mai uno schermo nero muto. Usato se WebGL non e'
+// disponibile/creabile. Non dipende dal modulo, resta sullo schermo anche se
+// il resto del modulo aborta. `probe` e' il risultato di probeWebGLSupport().
+function showWebglFallback(reason, probe) {
   if (document.getElementById('webgl-fallback')) return;
-  const msg = (state.lang === 'en')
-    ? 'This device could not start 3D (WebGL unavailable).<br><small>Close other tabs/apps and reload. If you are in Low Power Mode, turn it off.</small>'
-    : 'Questo dispositivo non ha potuto avviare la grafica 3D (WebGL non disponibile).<br><small>Chiudi altre schede/app e ricarica. Se la Modalita\' a basso consumo e\' attiva, disattivala.</small>';
+  const en = state.lang === 'en';
+  // Il rimedio dipende dalla causa: se WebGL1 c'e' ma WebGL2 no, il problema
+  // e' il WebGL2; se non c'e' WebGL affatto, e' ambiente (Low Power Mode o
+  // tropi contesti). Non promettere "chiudi e ricarica" se non aiuta.
+  const advice = probe && probe.webgl
+    ? (en ? 'WebGL2 is unavailable but WebGL1 works. Close other tabs and reload.'
+           : 'WebGL2 non disponibile ma WebGL1 funziona. Chiudi altre schede e ricarica.')
+    : (en ? 'This is usually Low Power Mode, or too many other apps/tabs using 3D. Turn off Low Power Mode in Settings > Battery, close other tabs, then reload.'
+           : 'Di solito e\' Modalita\' a basso consumo attiva, oppure tropi app/schede che usano il 3D. Disattiva Modalita\' a basso consumo in Impostazioni > Batteria, chiudi altre schede e ricarica.');
+  const msg = (en ? 'This device could not start 3D.' : 'Questo dispositivo non ha potuto avviare la grafica 3D.');
   const d = document.createElement('div');
   d.id = 'webgl-fallback';
   d.setAttribute('role', 'alert');
   d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#05050a;color:#ffd66b;'
-    + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;'
+    + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;'
     + 'text-align:center;padding:24px;font-family:monospace;font-size:16px;line-height:1.6;';
-  d.innerHTML = '<div style="font-size:52px">&#9888;</div><div>' + msg + '</div>'
-    + (reason ? '<small style="opacity:.55">' + String(reason).slice(0, 180) + '</small>' : '');
+  let html = '<div style="font-size:48px">&#9888;</div>'
+    + '<div style="max-width:32rem">' + msg + '<br><small style="opacity:.8">' + advice + '</small></div>';
+  if (probe && probe.note) {
+    html += '<small style="opacity:.5;font-size:12px">Diagnostica: ' + probe.note + '</small>';
+  }
+  if (reason) {
+    html += '<small style="opacity:.4;font-size:11px;max-width:30rem">' + String(reason).slice(0, 180) + '</small>';
+  }
+  d.innerHTML = html;
   const btn = document.createElement('button');
-  btn.textContent = state.lang === 'en' ? 'Reload' : 'Ricarica';
+  btn.textContent = en ? 'Reload' : 'Ricarica';
   btn.style.cssText = 'background:#ffd66b;color:#1a1300;border:0;border-radius:999px;'
     + 'padding:12px 28px;font-family:inherit;font-size:15px;cursor:pointer;';
   btn.addEventListener('click', () => location.reload());
@@ -2639,18 +2683,40 @@ function showWebglFallback(reason) {
   document.body.appendChild(d);
 }
 
+// Creazione del renderer con tentativi. Su iOS la creazione del contesto puo'
+// fallire in modo transitorio (pressione di memoria, altre schede che lo
+// richiedono): qualche tentativo ravvicinato e' gratuito e risolve quei casi.
+// Falliti tutti, la fallback spiega la causa reale.
 let renderer;
+let webglProbe = null;
 try {
-  // preserveDrawingBuffer rimosso (vedi nota sopra). antialias disattivato
-  // solo su iOS, dove il backbuffer MSAA e' il principale costo di memoria.
-  renderer = new THREE.WebGLRenderer({
-    antialias: !IS_IOS,
-    powerPreference: 'high-performance',
-  });
-  if (!renderer.getContext()) throw new Error('WebGL context non disponibile');
+  const ATTEMPTS = IS_IOS ? 4 : 1;
+  const ATTEMPT_ATTRS = [
+    { antialias: !IS_IOS, powerPreference: 'high-performance' },
+    // Secondo tentativo: niente hint sulla GPU, cosi' WebKit non prova a
+    // prenotare risorse dedicate che su iOS possono essere negate.
+    { antialias: !IS_IOS },
+    { antialias: false },
+  ];
+  let lastErr = null;
+  for (let i = 0; i < ATTEMPTS; i++) {
+    try {
+      renderer = new THREE.WebGLRenderer(ATTEMPT_ATTRS[i % ATTEMPT_ATTRS.length]);
+      if (!renderer.getContext()) throw new Error('WebGL context non disponibile');
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      renderer = null;
+    }
+  }
+  if (!renderer) {
+    webglProbe = probeWebGLSupport();
+    throw lastErr || new Error('creazione WebGLRenderer fallita');
+  }
 } catch (err) {
   console.error('[webgl] creazione context fallita:', err);
-  showWebglFallback(err && err.message);
+  showWebglFallback(err && err.message, webglProbe);
   throw err;  // aborta il modulo: la fallback resta visibile sullo schermo
 }
 renderer.setPixelRatio(PIXEL_RATIO_CAP);
@@ -10526,7 +10592,10 @@ setInterval(() => {
     return;
   }
   console.error('[webgl] context non recuperabile');
-  showWebglFallback('WebGL context lost');
+  // Il context e' stato creato e poi perso: il probe serve a dire se ora
+  // WebGL e' ancora ottenibile (spesso lo e', dopo che la pressione e' calata)
+  // oppure se il browser lo rifiuta ancora del tutto.
+  showWebglFallback('WebGL context perso e non recuperato', probeWebGLSupport());
 }, CTX_WATCHDOG_MS);
 
 renderer.domElement.addEventListener('click', onClick);
@@ -11891,6 +11960,9 @@ window.BossHotelPure = {
   isMobileDevice,
   // FIX mobile (iPhone) 2026-09-28: helper puri per budget GPU/WEBGL mobile.
   computePixelRatioCap, detectIOS,
+  // 2026-09-30: diagnostica del livello WebGL realmente disponibile, per
+  // distinguere "WebGL2 rifiutato" da "nessun WebGL" nella fallback.
+  probeWebGLSupport,
   // Polish Pack V4 Step 8 (2026-09-29): logica di movimento estratta da
   // tickMove. Serve a due scopi: accorciare la funzione (D24) e renderla
   // testabile — tickMove non e' pura e non aveva alcuna copertura, ed e'

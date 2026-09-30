@@ -316,7 +316,7 @@
 ## 7. Module dependencies (file interni)
 
 ```
-   elevator.html (single-file, 11.914 righe, ~507 KB)
+   elevator.html (single-file, ~12.000 righe, ~507 KB)
    |
    +-- import { THREE } from 'three'
    +-- import { Reflector } from 'three/addons/objects/Reflector.js'
@@ -330,7 +330,7 @@
    |    +-- emit/on/off — pattern semplice per disaccoppiare produttori/consumatori
    |
    +-- tests.html (iframe sandbox, esegue assert vanilla su BossHotelPure)
-        +-- 298 test in 54 describe block
+        +-- 299 test in 54 describe block
 ```
 
 **Nessuna build step, nessuna dipendenza npm** (single-file HTML con importmap
@@ -571,4 +571,4 @@ Vedi anche:
 - `PIANO_V4.md` — roadmap Polish Pack V4 (piano attuale, 8/8 step chiuso)
 - `PIANO_MIGLIORAMENTI.md` — log implementativo di tutte le fasi
 - `README.md` — overview user-facing del progetto
-- `tests.html` — test suite vanilla JS (298 test, 54 blocchi `describe`)
+- `tests.html` — test suite vanilla JS (299 test, 54 blocchi `describe`)
