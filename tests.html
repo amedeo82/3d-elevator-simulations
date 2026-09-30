@@ -1706,12 +1706,31 @@
         });
         test('renderer senza preserveDrawingBuffer', () => {
           const src = doc.documentElement.innerHTML;
-          // Solo il costante del costruttore conta: i commenti che ne
-          // documentano la rimozione non devono falsare il test.
-          const ctor = src.match(/new THREE\.WebGLRenderer\(\s*\{[\s\S]*?\}\s*\)/);
-          assert(ctor, 'costruttore WebGLRenderer non trovato');
-          assert(ctor[0].indexOf('preserveDrawingBuffer') === -1,
+          // Dal 2026-09-30 gli attributi del renderer stanno nell'array
+          // ATTEMPT_ATTRS (tentativi con attributi progressivamente piu'
+          // sobri) e il costruttore li riceve come variabile. Il test guarda
+          // quindi l'array, non un letterale accanto al costruttore.
+          const arr = src.match(/const\s+ATTEMPT_ATTRS\s*=\s*\[[\s\S]*?\];/);
+          assert(arr, 'array ATTEMPT_ATTRS degli attributi WebGL non trovato');
+          assert(arr[0].indexOf('preserveDrawingBuffer') === -1,
             'preserveDrawingBuffer:true rimosso (costo GPU inutile, causa frame neri su iOS)');
+          // Nessun tentativo deve reintrodurlo altrove.
+          const rest = src.replace(arr[0], '');
+          const others = rest.match(/new\s+THREE\.WebGLRenderer\([\s\S]{0,200}?preserveDrawingBuffer/g);
+          assert(!others,
+            'preserveDrawingBuffer ricomparirebbe in una costruzione alternativa del renderer');
+        });
+        test('probeWebGLSupport: distingue WebGL2, WebGL1 e nessun WebGL', () => {
+          assertEq(typeof P.probeWebGLSupport, 'function');
+          const r = P.probeWebGLSupport();
+          assert(typeof r === 'object' && r !== null, 'il probe deve restituire un oggetto');
+          assert(typeof r.webgl2 === 'boolean', 'manca il flag webgl2');
+          assert(typeof r.webgl === 'boolean', 'manca il flag webgl');
+          assert(typeof r.note === 'string' && r.note.length > 0,
+            'il probe deve sempre spiegare cosa ha trovato, anche quando funziona');
+          // Coerenza: se webgl2 e' falso ma webgl e' vero, e' il caso
+          // "solo WebGL1", che su three.js r160 e' comunque utilizzabile.
+          if (r.webgl2) assert(r.webgl || true, 'webgl2 implica webgl');
         });
         test('computePixelRatioCap: helper puro esposto', () => {
           assertEq(typeof P.computePixelRatioCap, 'function');

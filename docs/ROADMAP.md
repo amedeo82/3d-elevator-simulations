@@ -9,7 +9,7 @@ Per il backlog futuro aperto alla community vedi [`ROADMAP_POST_V7.md`](../ROADM
 
 
 > **🎉 Polish Pack V4 COMPLETO (2026-09-26)** — **8/8 step (100%)**.
-> Contratti D-key totali: **31**. Totale **298 test vanilla**.
+> Contratti D-key totali: **31**. Totale **299 test vanilla**.
 > V4 include:
 > - **Step 1-6** (2026-09-25): test exposure D21, routing D22, a11y ARIA D23, funzioni <150 righe D24,
 >   helper mergePlanes D25, open-source boilerplate D26.

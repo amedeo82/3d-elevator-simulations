@@ -31,6 +31,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V3 (2026-08/09)
 
+- audit: bug reale, codice morto e allineamento documentale integrale (#29) (`aba59a2`)
 - feat(mobile): Polish Pack V3 Step 9 Mobile responsive layout (Bonus) (`411f06a`)
 - fix(test): Polish Pack V3 fix 8 test pre-esistenti (Step 2/4/5/6) (`72b090a`)
 - test(perf): Polish Pack V3 Step 8 Test coverage estesa (T3b) (`4b6f921`)

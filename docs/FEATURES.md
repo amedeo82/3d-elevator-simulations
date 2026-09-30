@@ -258,7 +258,7 @@ Ogni voce elenca i tasti o gli attivatori corrispondenti.
 ### 🧪 Test framework (V2 Step 12 + V3/V4 Steps)
 
 - `tests.html` esegue automaticamente la suite all'apertura (via iframe sandbox)
-- **298 test** passing (era 134/228 in V3, 206/343 in V4 Step 1, 232/396 dopo
+- **299 test** passing (era 134/228 in V3, 206/343 in V4 Step 1, 232/396 dopo
   il merge V4)
 - 54 sezioni (`describe` block) organizzate: matematica pura, routing pickNextFloor, citofono,
   accessibility, contrasto WCAG, bug corner cases, QoL settings, micro-animazioni,
@@ -271,5 +271,5 @@ Ogni voce elenca i tasti o gli attivatori corrispondenti.
   (**20 test UI di layout e interazione** in Chromium headless via
   `scripts/run-ui-tests.js`)
 - **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 62 funzioni pure (V2 Step 12 + V3/V4 Steps). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`. Include helper `applyLangToDOM`/`setLang`/`applyAriaLabels` (V4 Step 3 test cross-iframe) e `mergePlanes` (V4 Step 5 helper geometry)
-- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **298 test** su `iframe.contentWindow.BossHotelPure`. Organizzati in 54 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)
+- **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **299 test** su `iframe.contentWindow.BossHotelPure`. Organizzati in 54 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)
 

@@ -53,7 +53,7 @@ un ascensore di lusso. L'utente può:
 - Attivare l'**allarme di emergenza** o il **citofono EN 81-28**, distinti
 - Personalizzare l'hotel (nome, tema, piani) con 4 preset pronti
 
-Il tutto in **un singolo file HTML** di ~507 KB (~11.914 righe), deployato
+Il tutto in **un singolo file HTML** di ~507 KB (~12.000 righe), deployato
 staticamente, senza dipendenze npm in produzione.
 
 ## 📸 Galleria
@@ -87,7 +87,7 @@ Il catalogo completo, con i tasti per ognuna, è in
 | 🏨 **Personalizzazione** | `HOTEL_CONFIG` con 4 preset, salvataggio locale |
 | 📱 **Mobile** | Touch controls, menu hamburger, separazione architetturale desktop/mobile |
 | 🛠️ **Manutenzione** | Wireframe, teletrasporto, benchmark 5s, log eventi, export JSON |
-| 🧪 **Test** | 298 test automatici in browser, eseguiti anche in CI |
+| 🧪 **Test** | 299 test automatici in browser, eseguiti anche in CI |
 
 ## 🕹️ Comandi
 
@@ -161,7 +161,7 @@ Prima di aprire la PR, esegui la sequenza di verifica:
 
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi e bilanciamento
-node scripts/run-tests.js                      # 298 test di logica
+node scripts/run-tests.js                      # 299 test di logica
 node scripts/run-ui-tests.js                   # 20 test di layout e interazione
 cp elevator.html dist/index.html              # la CI ne verifica la parità SHA-256
 ```
