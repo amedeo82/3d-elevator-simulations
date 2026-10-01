@@ -1732,6 +1732,32 @@
           // "solo WebGL1", che su three.js r160 e' comunque utilizzabile.
           if (r.webgl2) assert(r.webgl || true, 'webgl2 implica webgl');
         });
+        // FIX mobile (iPhone) 2026-09-30 (D32): dopo context-lost, il watchdog
+        // deve poter RICREARE il renderer (non solo fare restore del context).
+        // Su iOS Safari l'evento restored spesso non arriva: l'unica strada
+        // per recuperare l'app senza ricaricare la pagina e' buttare via il
+        // renderer e crearne uno nuovo. Verifica statica: la pipeline
+        // `tryCreateRenderer()` esiste ed e' esportata, e il watchdog la
+        // invoca dentro il setInterval come fallback al restore.
+        test('tryCreateRenderer: pipeline riusabile, esportata', () => {
+          const src = doc.documentElement.innerHTML;
+          assert(/function\s+tryCreateRenderer\s*\(/.test(src),
+            'manca la funzione tryCreateRenderer() riusabile dal watchdog');
+          assert(/renderer\s*=\s*tryCreateRenderer\s*\(/.test(src),
+            'tryCreateRenderer() deve essere invocato all\'avvio');
+          // Deve essere invocata anche dentro il setInterval del watchdog.
+          const watchMatch = src.match(/setInterval\(\s*\(\)\s*=>\s*\{[\s\S]*?tryCreateRenderer\s*\(/);
+          assert(watchMatch, 'tryCreateRenderer deve essere invocato anche dal watchdog come fallback al restore');
+        });
+        test('watchdog usa il probe per decidere se ricreare', () => {
+          const src = doc.documentElement.innerHTML;
+          // Il watchdog deve chiamare probeWebGLSupport() PRIMA di decidere se
+          // tentare la ricreazione: solo se WebGL e' ancora disponibile ha
+          // senso ricreare il renderer. Se il browser ha rifiutato del tutto,
+          // la fallback e' l'unica opzione.
+          assert(/probeWebGLSupport\s*\(\s*\)/.test(src),
+            'probeWebGLSupport deve essere invocato dal watchdog');
+        });
         test('computePixelRatioCap: helper puro esposto', () => {
           assertEq(typeof P.computePixelRatioCap, 'function');
         });
@@ -2317,6 +2343,26 @@
           const role = el.getAttribute('role');
           assert(lbl && lbl.length > 0, 'virtual-joystick senza aria-label');
           assertEq(role, 'application', 'virtual-joystick role atteso "application"');
+        });
+        // FIX mobile (iPhone) 2026-09-30 (D33): il joystick era inutile in
+        // cabina (tickPlayer ritorna su state.playerInCabin) ma visibile, e
+        // gli utenti lo toccavano pensando fosse rotto. Ora una regola CSS
+        // `body.cabin-mode #virtual-joystick { display: none }` lo nasconde.
+        // Verifica: la regola CSS esiste, e refreshHudButtons (chiamato ad
+        // ogni cambio di state) imposta le classi body.cabin-mode /
+        // body.corridor-mode coerentemente con state.playerInCabin.
+        test('joystick: CSS lo nasconde in body.cabin-mode', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/body\.cabin-mode\s+#virtual-joystick\s*\{[^}]*display\s*:\s*none/.test(css),
+            'manca la regola body.cabin-mode #virtual-joystick { display: none }');
+        });
+        test('joystick: refreshHudButtons sincronizza body.cabin-mode con playerInCabin', () => {
+          const src = doc.documentElement.innerHTML;
+          // Deve usare add/remove di cabin-mode + corridor-mode in base a
+          // state.playerInCabin (lettura dentro refreshHudButtons). Cerchiamo
+          // i due rami nella stessa funzione.
+          assert(/function\s+refreshHudButtons[\s\S]*?body\.classList\.(add|remove)\(\s*['"]cabin-mode['"]\s*\)[\s\S]*?body\.classList\.(add|remove)\(\s*['"]corridor-mode['"]\s*\)/.test(src),
+            'refreshHudButtons non sincronizza le classi body.cabin-mode / corridor-mode');
         });
         test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
           const skip = get('#tt-skip');

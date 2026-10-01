@@ -1133,6 +1133,17 @@
      tap sullo startBtn anche se fosse sopra di loro. La classe
      body.start-active viene rimossa al click del startBtn. */
   body.start-active #touch-controls { display: none !important; }
+  /* FIX mobile (iPhone) 2026-09-30 (D33): il joystick e' inutile in cabina
+     (tickPlayer ritorna su state.playerInCabin) ma era visibile: gli utenti
+     lo toccavano, il knob si muoveva, ma il personaggio non si muoveva —
+     pensavano fosse rotto. Ora il joystick e' nascosto finche' il giocatore
+     non esce dalla cabina (#hud-exit-btn). Le classi body.cabin-mode /
+     body.corridor-mode sono impostate da refreshHudButtons, che gia' decide
+     quando mostrare l'exit button: aggiungiamo solo lo stato visivo del
+     joystick nello stesso momento, senza un secondo osservatore. I call
+     buttons ▲▼ restano visibili (utili anche in cabina per chiamare un piano
+     dall'interno). */
+  body.cabin-mode #virtual-joystick { display: none !important; }
 
   #mode-badge {
     position: absolute;
@@ -2687,35 +2698,44 @@ function showWebglFallback(reason, probe) {
 // fallire in modo transitorio (pressione di memoria, altre schede che lo
 // richiedono): qualche tentativo ravvicinato e' gratuito e risolve quei casi.
 // Falliti tutti, la fallback spiega la causa reale.
+// FIX mobile (iPhone/Safari) 2026-09-30 (D32): fattorizzata in
+// `tryCreateRenderer()` riusabile sia all'avvio sia dopo un context-lost. Il
+// watchdog ora tenta la RICREAZIONE del renderer (non solo il restore del
+// context) prima di arrendersi alla fallback. Su iOS Safari l'evento
+// `webglcontextrestored` spesso non arriva dopo backgrounding dell'app: il
+// probe successivo mostra WebGL ancora ottenibile, e in quel caso ricreare
+// il renderer e' l'unico modo per tornare operativi senza costringere
+// l'utente a un reload completo.
+const ATTEMPT_ATTRS = [
+  { antialias: !IS_IOS, powerPreference: 'high-performance' },
+  // Secondo tentativo: niente hint sulla GPU, cosi' WebKit non prova a
+  // prenotare risorse dedicate che su iOS possono essere negate.
+  { antialias: !IS_IOS },
+  { antialias: false },
+];
+function tryCreateRenderer(maxAttempts) {
+  const n = (typeof maxAttempts === 'number' && maxAttempts > 0) ? maxAttempts : (IS_IOS ? 4 : 1);
+  let lastErr = null;
+  let r = null;
+  for (let i = 0; i < n; i++) {
+    try {
+      r = new THREE.WebGLRenderer(ATTEMPT_ATTRS[i % ATTEMPT_ATTRS.length]);
+      if (!r.getContext()) { r.dispose(); r = null; throw new Error('WebGL context non disponibile'); }
+      return r;
+    } catch (e) {
+      lastErr = e;
+      if (r) { try { r.dispose(); } catch (_) {} r = null; }
+    }
+  }
+  throw lastErr || new Error('creazione WebGLRenderer fallita');
+}
 let renderer;
 let webglProbe = null;
 try {
-  const ATTEMPTS = IS_IOS ? 4 : 1;
-  const ATTEMPT_ATTRS = [
-    { antialias: !IS_IOS, powerPreference: 'high-performance' },
-    // Secondo tentativo: niente hint sulla GPU, cosi' WebKit non prova a
-    // prenotare risorse dedicate che su iOS possono essere negate.
-    { antialias: !IS_IOS },
-    { antialias: false },
-  ];
-  let lastErr = null;
-  for (let i = 0; i < ATTEMPTS; i++) {
-    try {
-      renderer = new THREE.WebGLRenderer(ATTEMPT_ATTRS[i % ATTEMPT_ATTRS.length]);
-      if (!renderer.getContext()) throw new Error('WebGL context non disponibile');
-      lastErr = null;
-      break;
-    } catch (e) {
-      lastErr = e;
-      renderer = null;
-    }
-  }
-  if (!renderer) {
-    webglProbe = probeWebGLSupport();
-    throw lastErr || new Error('creazione WebGLRenderer fallita');
-  }
+  renderer = tryCreateRenderer();
 } catch (err) {
   console.error('[webgl] creazione context fallita:', err);
+  webglProbe = probeWebGLSupport();
   showWebglFallback(err && err.message, webglProbe);
   throw err;  // aborta il modulo: la fallback resta visibile sullo schermo
 }
@@ -10169,6 +10189,17 @@ function refreshHudButtons() {
   const reBtn = document.getElementById('hud-reenter-btn');
   const badge = document.getElementById('mode-badge');
   const modeText = document.getElementById('modeText');
+  // FIX mobile (iPhone) 2026-09-30 (D33): classi body.cabin-mode /
+  // body.corridor-mode usate dal CSS per nascondere il joystick in cabina
+  // (vedi regola sopra). Sincronizzate QUI, nello stesso punto che gia'
+  // decide la visibilita' dei bottoni Esci/Rientra: nessun secondo osservatore.
+  if (state.playerInCabin) {
+    document.body.classList.add('cabin-mode');
+    document.body.classList.remove('corridor-mode');
+  } else {
+    document.body.classList.remove('cabin-mode');
+    document.body.classList.add('corridor-mode');
+  }
   // Polish Pack V2 Step 8: aggiorna i label dei bottoni HUD con la lingua corrente
   if (exitBtn) exitBtn.textContent = STRINGS[state.lang].exitCabinBtn;
   if (reBtn) reBtn.textContent = STRINGS[state.lang].reenterCabinBtn;
@@ -10535,6 +10566,12 @@ function onClick(e) {
 // (c) forza il re-upload delle risorse, (d) se il context non torna mostra
 // la fallback con il bottone "Ricarica" invece di lasciare lo schermo nero.
 const CTX_WATCHDOG_MS = 6000;
+// FIX mobile (iPhone/Safari) 2026-09-30 (D32): contatore tentativi del watchdog
+// (restore + ricreazione renderer). Dichiarato qui (prima dei listener
+// `_ctxLostHandler`/`_ctxRestoredHandler` che lo resettano) per evitare TDZ,
+// coerente con la lezione D2 sui globali di stato in CONFIGURATION.
+let _watchdogAttempts = 0;
+const CTX_WATCHDOG_MAX_ATTEMPTS = 2;  // restore + ricreazione renderer
 
 // Re-applica stato di rendering + forza il re-upload delle texture/materiali
 // dopo un restore. three.js ricostruisce da solo i programmi, ma le texture
@@ -10559,26 +10596,45 @@ function reviveRendererAfterContextRestore() {
   }
 }
 
-renderer.domElement.addEventListener('webglcontextlost', (e) => {
+// FIX mobile (iPhone/Safari) 2026-09-30 (D32): handler estratti in funzioni
+// nominate per consentire di ri-agganciarli dopo `tryCreateRenderer()` nel
+// watchdog. (se l'handler fosse rimasto anonimo, `addEventListener` chiamato
+// nel watchdog non poteva riferirsi alla stessa funzione.)
+function _ctxLostHandler(e) {
   e.preventDefault();
   console.warn('[webgl] context perso, recupero in corso...');
   state._ctxLost = true;
   state._ctxLostAt = performance.now();
-}, false);
-
-renderer.domElement.addEventListener('webglcontextrestored', () => {
+  _watchdogAttempts = 0;
+}
+function _ctxRestoredHandler() {
   state._ctxLost = false;
   state._ctxLostAt = 0;
+  _watchdogAttempts = 0;
   reviveRendererAfterContextRestore();
-}, false);
+}
+renderer.domElement.addEventListener('webglcontextlost', _ctxLostHandler, false);
+renderer.domElement.addEventListener('webglcontextrestored', _ctxRestoredHandler, false);
 
 // Watchdog: su iOS puo' non arrivare mai l'evento di restore. Se il context
 // resta perso oltre CTX_WATCHDOG_MS proviamo a ripristinarlo; se fallisce
-// ancora, mostriamo la fallback (meglio un messaggio che uno schermo nero).
+// ancora, proviamo la RICREAZIONE del renderer (probe WebGL ancora attivo);
+// solo se anche questa fallisce mostriamo la fallback (meglio un messaggio
+// che uno schermo nero).
+// FIX mobile (iPhone/Safari) 2026-09-30 (D32): ricreazione del renderer
+// aggiunta. Prima: dopo il primo `restoreContext()` fallito si andava subito
+// in fallback anche se `probeWebGLSupport()` confermava che WebGL era ancora
+// ottenibile — situazione esattamente quella riprodotta sull'iPhone 15 Pro.
+// Ora, se il context non torna, proviamo a buttare via il renderer e crearne
+// uno da zero (stessa pipeline `tryCreateRenderer` dell'avvio, ma con 2
+// tentativi per non ciclare all'infinito). `reviveRendererAfterContextRestore`
+// re-invalidisce materiali/texture e resetState. I listener sul vecchio canvas
+// non sopravvivono al DOM removal: li ri-agganciamo sul nuovo `domElement`.
 setInterval(() => {
   if (!state._ctxLost) return;
   const elapsed = performance.now() - state._ctxLostAt;
   if (elapsed < CTX_WATCHDOG_MS) return;
+  // Tentativo 1: restore esplicito del context (puo' funzionare su desktop).
   let restored = false;
   try {
     const gl = renderer.getContext();
@@ -10586,16 +10642,50 @@ setInterval(() => {
     if (ext && ext.restoreContext) { ext.restoreContext(); restored = true; }
   } catch (e) { /* ignore */ }
   if (restored) {
-    // Dai tempo al browser: se il restore fallisce davvero, il prossimo
-    // tick del watchdog (dopo altri CTX_WATCHDOG_MS) mostra la fallback.
     state._ctxLostAt = performance.now();
     return;
   }
+  // Tentativo 2: se il restore non ha funzionato E WebGL e' ancora ottenibile
+  // (probe lo conferma), prova a ricreare il renderer. Su iOS e' la sola
+  // strada per recuperare l'app dopo che Safari non emette l'evento restored.
+  const probe = probeWebGLSupport();
+  if ((probe.webgl2 || probe.webgl) && _watchdogAttempts < CTX_WATCHDOG_MAX_ATTEMPTS - 1) {
+    _watchdogAttempts++;
+    try {
+      const oldCanvas = renderer.domElement;
+      const newRenderer = tryCreateRenderer(2);
+      try { renderer.dispose(); } catch (_) {}
+      renderer = newRenderer;
+      renderer.setPixelRatio(PIXEL_RATIO_CAP);
+      renderer.setSize(innerWidth, innerHeight, false);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      if (oldCanvas && oldCanvas.parentNode) oldCanvas.parentNode.removeChild(oldCanvas);
+      app.appendChild(renderer.domElement);
+      state._ctxLost = false;
+      state._ctxLostAt = 0;
+      _watchdogAttempts = 0;
+      reviveRendererAfterContextRestore();
+      // Ri-aggancia i listener click/contextlost/contextrestored sul nuovo canvas.
+      try { renderer.domElement.addEventListener('webglcontextlost', _ctxLostHandler); } catch (_) {}
+      try { renderer.domElement.addEventListener('webglcontextrestored', _ctxRestoredHandler); } catch (_) {}
+      try { renderer.domElement.addEventListener('click', onClick); } catch (_) {}
+      console.warn('[webgl] renderer ricreato dopo context-lost (iOS Safari no-restored fix)');
+      return;
+    } catch (e) {
+      console.error('[webgl] ricreazione renderer fallita:', e);
+      // Prosegue verso la fallback
+    }
+  }
+  _watchdogAttempts = 0;
   console.error('[webgl] context non recuperabile');
   // Il context e' stato creato e poi perso: il probe serve a dire se ora
   // WebGL e' ancora ottenibile (spesso lo e', dopo che la pressione e' calata)
   // oppure se il browser lo rifiuta ancora del tutto.
-  showWebglFallback('WebGL context perso e non recuperato', probeWebGLSupport());
+  showWebglFallback('WebGL context perso e non recuperato', probe);
 }, CTX_WATCHDOG_MS);
 
 renderer.domElement.addEventListener('click', onClick);
