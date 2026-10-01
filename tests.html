@@ -2364,6 +2364,36 @@
           assert(/function\s+refreshHudButtons[\s\S]*?body\.classList\.(add|remove)\(\s*['"]cabin-mode['"]\s*\)[\s\S]*?body\.classList\.(add|remove)\(\s*['"]corridor-mode['"]\s*\)/.test(src),
             'refreshHudButtons non sincronizza le classi body.cabin-mode / corridor-mode');
         });
+        // FIX mobile (iPhone) 2026-10-01 (D34): inversione joystick dopo
+        // rotazione device. Prima il segno di jz veniva sommato direttamente a
+        // fwd: con dy negativo (drag su schermo) il player andava all'indietro
+        // (in cabina "indietro" = verso la porta della cabina; nel corridoio
+        // "indietro" = verso l'uscita della cabina). L'utente riportava
+        // "stick invertiti quando ruoto lo schermo" — in realta' il bug era
+        // sempre presente, ma e' emerso durante il test cross-orientamento.
+        // Fix: tickPlayer applica fwd -= jz (inversione del segno screen-Y).
+        // Verifica: il sorgente di tickPlayer contiene la sottrazione esplicita
+        // `fwd -= jz` (NON `fwd += jz` che e' la versione buggata). Inoltre,
+        // initTouchControls deve ri-agganciare il centro del joystick su ogni
+        // touchmove (NON solo su touchstart) per gestire il caso in cui il
+        // device ruota mentre l'utente sta tenendo il dito sul knob.
+        test('joystick: tickPlayer applica fwd -= jz (drag su = avanti)', () => {
+          const src = doc.documentElement.innerHTML;
+          // Cerchiamo l'enunciato esatto (con ';' finale, per escludere match
+          // accidentali dentro commenti che menzionano il pattern buggato).
+          assert(/function\s+tickPlayer[\s\S]*?fwd\s*-=\s*jz\s*;/.test(src),
+            'tickPlayer deve contenere l\'enunciato "fwd -= jz;" (FIX D34 inversione joystick)');
+          assert(!/function\s+tickPlayer[\s\S]*?fwd\s*\+=\s*jz\s*;/.test(src),
+            'tickPlayer NON deve piu\' contenere "fwd += jz;" (versione buggata)');
+        });
+        test('joystick: initTouchControls ri-ancora il centro ad ogni touchmove', () => {
+          const src = doc.documentElement.innerHTML;
+          // Cerchiamo la sequenza onMove(...) con getBoundingClientRect() al
+          // suo interno. Se il re-anchor manca, jsCenterX/Y resta quello del
+          // touchstart e la rotazione mid-gesto lascia il joystick "sballato".
+          assert(/const\s+onMove\s*=\s*\([\s\S]*?joystick\.getBoundingClientRect\(\)[\s\S]*?jsCenterX\s*=[\s\S]*?jsCenterY\s*=/.test(src),
+            'initTouchControls.onMove deve ricalcolare jsCenterX/Y con getBoundingClientRect');
+        });
         test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
           const skip = get('#tt-skip');
           const next = get('#tt-next');
