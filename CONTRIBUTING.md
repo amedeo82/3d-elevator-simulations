@@ -45,7 +45,7 @@ node scripts/generate-changelog.js
 
 ## Convenzioni codice (contratti D-key)
 
-Il progetto ha **33 contratti D-key** documentati in `AGENTS.md`. Ogni
+Il progetto ha **34 contratti D-key** documentati in `AGENTS.md`. Ogni
 modifica che li tocca deve aggiornare la documentazione. La tabella completa
 "file → quando aggiornarlo" è in `AGENTS.md`, sezione "Regole di aggiornamento
 della documentazione": leggila prima di committare. Lista rapida:
@@ -72,7 +72,7 @@ della documentazione": leggila prima di committare. Lista rapida:
 | D25 | Helper `mergePlanes` DRY | Clona geometries, no side-effect. |
 | D26 | Open source boilerplate | LICENSE + CHANGELOG + CONTRIBUTING. |
 
-Per la lista completa (D1-D33) vedi `AGENTS.md`.
+Per la lista completa (D1-D34) vedi `AGENTS.md`.
 
 ## Workflow "Polish Pack"
 

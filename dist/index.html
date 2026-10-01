@@ -8974,6 +8974,17 @@ function initTouchControls() {
     };
     const onMove = (clientX, clientY) => {
       if (!jsDragging) return;
+      // FIX mobile (iPhone) 2026-10-01 (D34): ricalcola il centro del joystick
+      // ad ogni touchmove. Cattura il caso "utente tiene il dito sul joystick
+      // mentre ruota il device": jsCenterX/Y erano fissati al touchstart e
+      // dopo orientationchange il joystick si e' spostato (bottom:30px / left:
+      // 30px sono in un contenitore che riflette il viewport corrente). Senza
+      // questo re-anchor, dx/dy verrebbero calcolati rispetto a un centro
+      // ormai nella posizione sbattana e il knob "salta" dall'altra parte
+      // rispetto al dito. getBoundingClientRect sul reflow corrente costa ~0.
+      const curRect = joystick.getBoundingClientRect();
+      jsCenterX = curRect.left + curRect.width / 2;
+      jsCenterY = curRect.top + curRect.height / 2;
       let dx = clientX - jsCenterX;
       let dy = clientY - jsCenterY;
       // Clamp al raggio massimo
@@ -10906,14 +10917,24 @@ function tickPlayer(dt) {
   if (keys['KeyA']) side -= 1;
   if (keys['KeyD']) side += 1;
   // Polish Pack V3 Step 9 (Q9.2): joystick virtuale mobile.
-  // state._joystick.dx = orizzontale [-1..1] (strafe dx)
-  // state._joystick.dz = verticale [-1..1] (fwd, dz positivo = avanti in joystick)
+  // state._joystick.dx = orizzontale [-1..1] (raw screen-X: positivo = dito verso destra)
+  // state._joystick.dz = verticale [-1..1] (raw screen-Y: positivo = dito verso il
+  //   basso del device, negativo = dito verso l'alto). Manteniamo la convenzione
+  //   dello schermo qui: l'inversione "drag su = avanti" viene applicata sotto
+  //   (vedi D34) per separare il gesto fisico dalla direzione di marcia.
   // Mappato analogicamente per movimento smooth (vs WASD binario).
   if (state._joystick) {
     const jx = state._joystick.dx || 0;
     const jz = state._joystick.dz || 0;
     if (Math.abs(jx) > 0.1) side += jx;
-    if (Math.abs(jz) > 0.1) fwd += jz;  // dz positivo (drag su) = fwd (avanti)
+    // FIX mobile (iPhone) 2026-10-01 (D34): inversione joystick. L'utente si
+    // aspetta che "spingere il knob verso l'alto" produca avanzamento, come
+    // qualsiasi joystick mobile. Ma jz e' in coordinate schermo: drag su = jz
+    // negativo. Sommare jz direttamente a fwd farebbe muovere il player
+    // all'indietro quando spinge il knob in avanti. Stesso asse del commento
+    // W/S (W = +1 avanti), quindi drag-su deve sommare fwd positivo: serve
+    // il segno opposto (vedi D34).
+    if (Math.abs(jz) > 0.1) fwd -= jz;
   }
 
   // direzioni nel mondo (yawObj.quaternion dà la rotazione corrente del giocatore)

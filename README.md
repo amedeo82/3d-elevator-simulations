@@ -1,6 +1,6 @@
 ﻿# BOSS HOTEL — Simulatore Ascensore 3D
 
-[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-303%20passing-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Mobile](https://img.shields.io/badge/Mobile-iOS%20%2B%20Android-blue)]() [![Release](https://img.shields.io/badge/Release-v7.0-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-black?logo=three.js)](https://threejs.org) [![Status](https://img.shields.io/badge/Status-Stable-brightgreen)]() [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE) [![Tests](https://img.shields.io/badge/Tests-305%20passing-brightgreen)](./tests.html) [![Single--file](https://img.shields.io/badge/Single--file-HTML-orange)]() [![Italian](https://img.shields.io/badge/i18n-IT%20%2F%20EN-green)]() [![Mobile](https://img.shields.io/badge/Mobile-iOS%20%2B%20Android-blue)]() [![Release](https://img.shields.io/badge/Release-v7.0-green)]() [![Live](https://img.shields.io/badge/GitHub%20Pages-Live-blue)](https://amedeo82.github.io/3d-elevator-simulations/)
 
 > Un simulatore 3D in prima persona dell'interno di un ascensore di lusso, in
 > **un singolo file HTML** di ~507 KB. Nessuna build, nessun bundler, nessuna
@@ -87,7 +87,7 @@ Il catalogo completo, con i tasti per ognuna, è in
 | 🏨 **Personalizzazione** | `HOTEL_CONFIG` con 4 preset, salvataggio locale |
 | 📱 **Mobile** | Touch controls, menu hamburger, separazione architetturale desktop/mobile |
 | 🛠️ **Manutenzione** | Wireframe, teletrasporto, benchmark 5s, log eventi, export JSON |
-| 🧪 **Test** | 303 test automatici in browser, eseguiti anche in CI |
+| 🧪 **Test** | 305 test automatici in browser, eseguiti anche in CI |
 
 ## 🕹️ Comandi
 
@@ -131,7 +131,7 @@ Documenti di progetto:
 
 | File | Contenuto |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 31 contratti D-key, layout del codice ad ancore |
+| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 34 contratti D-key, layout del codice ad ancore |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guida contributor, workflow PR, code style |
 | [`STATE.md`](STATE.md) | Audit completo dello `state` globale |
 | [`STRINGS_REFERENCE.md`](STRINGS_REFERENCE.md) | Mappatura i18n IT/EN |
@@ -161,7 +161,7 @@ Prima di aprire la PR, esegui la sequenza di verifica:
 
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi e bilanciamento
-node scripts/run-tests.js                      # 303 test di logica
+node scripts/run-tests.js                      # 305 test di logica
 node scripts/run-ui-tests.js                   # 20 test di layout e interazione
 cp elevator.html dist/index.html              # la CI ne verifica la parità SHA-256
 ```

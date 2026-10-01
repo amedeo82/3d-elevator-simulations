@@ -165,7 +165,7 @@ jobs:
   # ===========================================================================
   # Test COMPORTAMENTALI di layout e interazione.
   # ===========================================================================
-  # `tests-run` esegue 285 test su funzioni pure dentro un iframe nascosto:
+  # `tests-run` esegue 305 test su funzioni pure dentro un iframe nascosto:
   # nessun layout, nessun rendering. Per questo NON avrebbe beccato i due
   # bug bloccanti chiusi il 2026-09-28, entrambi di CSS:
   #   - #startBtn sotto il bordo inferiore su 1366x768 / 1280x720 / ...
