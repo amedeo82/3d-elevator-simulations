@@ -110,6 +110,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V1 + fase iniziale (2026-08 e precedenti)
 
+- fix(mobile): WebGL context recovery via renderer recreation + hide joystick in cabin (iPhone 15 Pro Safari) (#31) (`aa8aa90`)
 - docs: regole di aggiornamento documentale + ancole al posto dei numeri di riga (#18) (`7f4af39`)
 - docs(readme): promuovi link live preview GitHub Pages in cima (#3) (`1106e79`)
 - Kilo/fix avvio progetto al termine del wizard (#2) (`d54c651`)
@@ -129,6 +130,9 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Altro (infrastruttura, doc, fix)
 
+- fix(mobile): hide call-buttons in corridor + compact landscape HUD (D35, iPhone 15 Pro) (#33) (`eaa57d4`)
+- fix(ui): fix mobile joystick inversion and re-anchor on orientation change (#32) (`8bd487b`)
+- fix(webgl): diagnostica del livello WebGL e retry su iOS (#30) (`11d1fca`)
 - docs(ci): stato aggiornato delle required status check (#28) (`8b9c83e`)
 - docs: conteggio test 285 -> 298 dopo gli helper del movimento (#27) (`69acec5`)
 - fix(movimento): tickMove usava `now` senza averlo ricevuto (#24) (`cf4c55d`)
