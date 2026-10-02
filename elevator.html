@@ -1081,6 +1081,68 @@
     }
   }
 
+  /* FIX mobile (iPhone landscape) 2026-10-02 (D35): HUD compatto per altezze
+     ridotte (iPhone 15 Pro landscape = 852x393, viewport vertical 393px).
+     Problemi rilevati sul root bounding boxes:
+       - #topbar (y=14..49) e #mode-badge (y=50..80): due badge centrati
+         impilati sopra l'header, topbar ridondante col mode-badge.
+       - #floor-strip (x=746..832, y=142..251) e #virtual-call-buttons
+         (x=752..822, y=207..363) si sovrappongono sul lato destro per 44px
+         verticali (3080 sq px di pixel-area).
+     Regole: (a) topbar nascosto in landscape-phone (info duplicata dal
+     mode-badge); (b) floor-strip spostato in alto a destra sotto
+     l'hamburger (no piu' al centro verticale); (c) mode-badge e status
+     compatti; (d) pointerhint nascosto (su mobile si tocca direttamente,
+     non serve il suggerimento "drag per guardare"); (e) hud-action piu'
+     compatto; (f) virtual-call-buttons lasciato dove sta — in cabin mode
+     (l'unico in cui showi, vedi D35) il floor-strip sara' in alto a destra
+     e non collidera' piu'.
+     Trigger: max-height:500px (cattura i telefoni landscape la cui larghezza
+     supera 768px, es. iPhone 15 Pro 852x393, iPhone 14 Pro Max 932x430). */
+  @media (max-height: 500px) {
+    body.mobile-mode #topbar { display: none; }
+    body.mobile-mode #pointerhint { display: none; }
+    /* Floor-strip dal centro all'angolo: niente overlap con virtual-call-buttons */
+    #floor-strip {
+      top: 12px;
+      right: 70px;
+      transform: none;
+      padding: 4px 8px;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #floor-strip .label { display: none; } /* label "PIANO" inutile su phone */
+    #floor-strip .value { font-size: 18px; }
+    #floor-strip .arrow { font-size: 12px; height: 12px; }
+    /* Lang-switch inline, piu' piccolo */
+    .lang-switch { margin-top: 0; padding: 2px 6px; font-size: 10px; }
+    /* Mode badge: sopra al floor-strip, niente overlap */
+    #mode-badge {
+      top: 12px;
+      right: 12px;
+      left: auto;
+      transform: none;
+      font-size: 10px;
+      padding: 3px 10px;
+    }
+    /* Status in basso, piu' compatto */
+    #status {
+      bottom: 14px;
+      padding: 4px 10px;
+    }
+    #statusText {
+      font-size: 11px;
+      padding: 0;
+    }
+    .hud-action {
+      top: 68%;
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+  }
+
   /* FIX mobile bug: start screen + startBtn irraggiungibile su iPhone
      landscape. Su iPhone 15 Pro landscape il viewport CSS e' ~852x393.
      Il contenuto start screen (h1 + descrizione + .keys 15 righe +
@@ -1140,10 +1202,19 @@
      non esce dalla cabina (#hud-exit-btn). Le classi body.cabin-mode /
      body.corridor-mode sono impostate da refreshHudButtons, che gia' decide
      quando mostrare l'exit button: aggiungiamo solo lo stato visivo del
-     joystick nello stesso momento, senza un secondo osservatore. I call
-     buttons ▲▼ restano visibili (utili anche in cabina per chiamare un piano
-     dall'interno). */
+     joystick nello stesso momento, senza un secondo osservatore.
+     FIX mobile (iPhone) 2026-10-02 (D35): i call buttons virtuali ▲▼ sono il
+     complemento simmetrico del joystick: utili solo IN CABINA (per chiamare
+     un piano dall'interno), inutili (e duplicati: ogni corridoio ha gia' la
+     pulsantiera fisica ▲▼ sulla parete) quando il giocatore esplora i
+     corridoi. Senza questo fix i call buttons apparivano sul lato destro
+     anche in corridor, dove andavano in overlap con il #floor-strip (centro
+     verticale destro, ~y=142-251) — su iPhone 15 Pro landscape (852x393) i
+     due elementi collidono per 44px verticali sul lato destro. Ora sono
+     nascosti in corridoio, simmetria joystick/call-buttons: cabina = call
+     buttons, corridoio = joystick. */
   body.cabin-mode #virtual-joystick { display: none !important; }
+  body.corridor-mode #virtual-call-buttons { display: none !important; }
 
   #mode-badge {
     position: absolute;

@@ -15,6 +15,8 @@ Backlog futuro aperto: `ROADMAP_POST_V7.md`.
 Log implementativo: `PIANO_MIGLIORAMENTI.md` (fasi 1–30).
 Audit oggetto `state`: `STATE.md`.
 
+**Fix puntuali del 2026-10-02**: D35 (joystick/call-buttons simmetria in cabina↔corridoio) e ricompattazione layout iPhone 15 Pro landscape (852x393). Vedere decisione D35 nella tabella sotto.
+
 ---
 
 ## Layout del file `elevator.html`
@@ -280,8 +282,8 @@ allineato.
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
-| `node scripts/run-tests.js` | Esegue i 303 test in Chromium headless, exit 1 se uno fallisce |
-| `node scripts/run-ui-tests.js` | 20 test **comportamentali** di layout/interazione (D31), exit 1 se uno fallisce |
+| `node scripts/run-tests.js` | Esegue i 307 test in Chromium headless, exit 1 se uno fallisce |
+| `node scripts/run-ui-tests.js` | 21 test **comportamentali** di layout/interazione (D31), exit 1 se uno fallisce |
 | `cp elevator.html dist/index.html` | Build copy obbligatoria: la CI ne verifica la parità SHA-256 |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
 | `node scripts/generate-changelog.js` | Rigenera `CHANGELOG.md` dai commit (D26) |
@@ -295,8 +297,8 @@ required status checks: sono quelli da copiare in Settings → Branches.
 |---|---|---|
 | 1 | `Sintassi + brace balance + invarianti build` | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe) |
 | 2 | `Test framework (Polish Pack V2 Step 12)` | Validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento di `elevator.html` in `tests.html` |
-| 3 | `Esecuzione test in browser (Chromium headless)` | 303 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
-| 4 | `Test UI layout e interazione (Chromium headless)` | 20 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame. È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
+| 3 | `Esecuzione test in browser (Chromium headless)` | 307 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
+| 4 | `Test UI layout e interazione (Chromium headless)` | 21 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame, sovrapposizioni HUD su iPhone 15 Pro landscape (D31, D35). È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
 
 ### Tutte e 4 devono essere "required status checks"
 
@@ -414,6 +416,7 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D32 | **Recupero del context WebGL: prima restore esplicito, poi ricreazione del renderer (solo se il probe WebGL e' ancora positivo), poi fallback** | Polish Pack fix 2026-09-30 (iPhone 15 Pro Safari). D28 mostrava la fallback anche quando `probeWebGLSupport()` confermava che WebGL era ancora ottenibile: l'unica differenza era che l'evento `webglcontextrestored` non era arrivato. Su iOS Safari questo accade spesso dopo backgrounding dell'app. Pipeline a 3 stadi: (1) `WEBGL_lose_context.restoreContext()` — il piu' veloce, funziona spesso su desktop; (2) `tryCreateRenderer()` — fattorizzato dall'avvio (stessa pipeline con `ATTEMPT_ATTRS`), riusato dal watchdog quando il probe dice che WebGL e' ancora ottenibile: butta via il vecchio renderer, ne crea uno nuovo, sostituisce il canvas in DOM, ri-aggancia i listener (`_ctxLostHandler`, `_ctxRestoredHandler`, `onClick`) sul nuovo `renderer.domElement`, chiama `reviveRendererAfterContextRestore()` per re-invalidare materiali/texture; (3) `showWebglFallback()` — solo se anche la ricreazione fallisce, con il probe che spiega il livello WebGL attuale. Vincoli: (a) `tryCreateRenderer()` deve essere una funzione pura di creazione, non un blocco inline, altrimenti non e' invocabile dal watchdog (vedi D2: niente TDZ sui globali, `renderer` deve restare un `let` module-scoped per consentire la riassegnazione); (b) `_ctxLostHandler`/`_ctxRestoredHandler` devono essere funzioni nominate (non arrow anonime inline) per poter essere ri-agganciate al nuovo canvas; (c) `reviveRendererAfterContextRestore()` resta la fonte unica di resetState/materials.needsUpdate/shadowMap.needsUpdate, anche dopo la ricreazione; (d) `_watchdogAttempts` e `CTX_WATCHDOG_MAX_ATTEMPTS` vanno dichiarati PRIMA dei listener che li resettano (coerente con la lezione D2). |
 | D33 | **Il joystick virtuale e' nascosto in cabina via CSS + classi body.cabin-mode / body.corridor-mode sincronizzate da refreshHudButtons** | Polish Pack fix 2026-09-30. Su iPhone gli utenti toccavano il joystick pensando fosse rotto: in cabina `tickPlayer` ritorna immediatamente su `state.playerInCabin`, il knob si muoveva ma il personaggio no. Soluzione: regola CSS `body.cabin-mode #virtual-joystick { display: none !important; }` — niente osservatore JS, niente secondo state. `refreshHudButtons()` (gia' responsabile di exit/reenter button) aggiunge le classi `body.cabin-mode` / `body.corridor-mode` nello stesso punto in cui decide la visibilita' degli altri bottoni HUD: una sola fonte di verita' per la transizione cabina<->corridoio. I call buttons ▲▼ restano visibili in cabina (servono per chiamare un piano dall'interno). Il joystick riappare automaticamente all'`exitCabin()`. Test: il CSS contiene la regola e la funzione `refreshHudButtons` imposta le classi (regex su innerHTML del doc). |
 | D34 | **Joystick: inversione drag-su/avanti + re-anchor del centro ad ogni touchmove (rotazione mid-gesto)** | Polish Pack fix 2026-10-01 (iPhone 15 Pro). L'utente riportava "stick invertiti quando ruoto lo schermo". La diagnosi corretta era 2 difetti distinti che si sommavano. **Difetto 1 (sempre presente, non legato alla rotazione)**: `state._joystick.dz = clientY - jsCenterY` è in coordinate schermo (Y cresce verso il basso), quindi drag su = dz negativo. In `tickPlayer`, `fwd += jz` rendeva `fwd` negativo quando l'utente spingeva il knob in alto, e il player andava all'indietro. Il commento nel codice ("dz positivo (drag su) = fwd (avanti)") era anch'esso sbagliato: confondeva la direzione dello schermo con quella del player. Fix: in `tickPlayer`, `fwd -= jz` (segno opposto) + aggiornamento del commento per dichiarare esplicitamente la convenzione screen-Y. **Difetto 2 (solo con rotazione mid-gesto)**: `jsCenterX/Y` venivano catturati al `touchstart` e non aggiornati. Se l'utente teneva il dito sul joystick mentre il device ruotava, il joystick si spostava ma il centro no, e i successivi `touchmove` calcolavano `dx/dy` rispetto a coordinate stale → knob che "salta" dall'altra parte. Fix: in `onMove` ricalcolo `jsCenterX/Y` da `getBoundingClientRect()` ad ogni evento (costo ~0 sul reflow corrente). Test: 2 nuovi test in `tests.html` che verificano (a) l'enunciato `fwd -= jz;` è presente in `tickPlayer` e `fwd += jz;` non lo è, (b) `onMove` richiama `getBoundingClientRect()` e ri-assegna `jsCenterX/Y`. La lezione: "è invertito dopo la rotazione" non significa necessariamente "la rotazione causa l'inversione" — può essere un bug costante che diventa sintomatico durante il cross-orientamento test. |
+| D35 | **Call-buttons ▲▼ virtuali nascosti in corridoio + HUD compatto landscape phone** | Polish Pack fix 2026-10-02 (iPhone 15 Pro). L'utente segnalava 2 difetti distinti, ricondotti a una stessa causa. (1) **In cabina i call-buttons ▲▼ restano utili** (chiamano un piano dall'interno); **in corridoio sono ridondanti** (ogni piano ha gia' la pulsantiera fisica ▲▼ sulla parete) e inutili: `tickPlayer` non li consulta, quindi toccarli non sposta il giocatore. Simmetria con D33: joystick nascosto in cabina (`body.cabin-mode #virtual-joystick { display: none }`), call-buttons nascosti in corridoio (`body.corridor-mode #virtual-call-buttons { display: none }`), entrambi commutati dalla stessa `refreshHudButtons`. (2) **Sovrapposizioni HUD su iPhone 15 Pro landscape (852x393)**: bounding boxes pre-fix mostravano `#floor-strip` (centro verticale destro, y=142-251) e `#virtual-call-buttons` (lato destro basso, y=207-363) collidenti per 44px verticali = ~3080 sq px di pixel-area sovrapposti. Aggiunto blocco `@media (max-height: 500px) body.mobile-mode` che: nasconde `#topbar` (info duplicata da `#mode-badge`), nasconde `#pointerhint` (mobile tocca direttamente, niente drag implicito), riposiziona `#floor-strip` da `top:50%` a `top:12px right:70px` (sotto l'hamburger, niente piu' overlap con i call-buttons), comprime `#mode-badge` (top:12px right:12px), `#status` (bottom:14px), `.hud-action` (top:68%, font 12px). Verificato con bounding boxes reali: cabin mode E corridor mode = zero sovrapposizioni su 852x393. Test: +2 in `tests.html` (regole CSS presenti) e +1 in `run-ui-tests.js` (overlap check 852x393 cabin mode, 21/21 UI tests pass). Lezione: **`max-width` da solo non basta** per i viewport phone landscape: serve anche `max-height` (o meglio `aspect-ratio`/`orientation`) per catturare i device 852x393, 932x430 ecc. la cui larghezza supera 768 ma l'altezza e' quella il vero vincolo. |
 
 ---
 
@@ -439,9 +442,9 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 - **Polish Pack V4**: 8/8 step (100%) — chiuso il 2026-09-26.
   Step 1-6 (Test exposure/Routing/A11y/Funzioni lunghe/Helper DRY/Open source)
   + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
-  Contratti D-key totali: **34** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29, D32-D33 fix 2026-09-30 iPhone 15 Pro joystick+context, D34 fix 2026-10-01 inversione joystick).
+  Contratti D-key totali: **35** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29, D32-D33 fix 2026-09-30 iPhone 15 Pro joystick+context, D34 fix 2026-10-01 inversione joystick, D35 fix 2026-10-02 call-buttons simmetria + HUD compatto landscape phone).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
-  Totale test vanilla: **305 test** (285 al 2026-09-28, poi +13 sui helper puri
+  Totale test vanilla: **307 test** (285 al 2026-09-28, poi +13 sui helper puri
   del movimento cabina il 2026-09-29: `computeMoveState`,
   `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`,
   `computeArrivalDirection` — estratti da `tickMove`, che fino a allora non
@@ -450,7 +453,11 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   (`body.cabin-mode` + `refreshHudButtons` + `tryCreateRenderer` invocato dal
   watchdog). **+2 test il 2026-10-01 (D34)**: inversione joystick
   (`fwd -= jz;` presente / `fwd += jz;` assente in `tickPlayer`) e
-  re-anchor del centro ad ogni `touchmove`. 56 → 56 blocchi `describe`.
+  re-anchor del centro ad ogni `touchmove`. **+2 test il 2026-10-02 (D35)**:
+  regola CSS `body.corridor-mode #virtual-call-buttons` + regola
+  `@media (max-height: 500px)` per il layout landscape phone. 56 → 56 blocchi
+  `describe`. Test UI: **21** (era 20, +1 il 2026-10-02 D35: overlap check
+  bounding boxes 852x393 cabin mode = zero sovrapposizioni).
 
 - **Polish Pack V3**: 9/9 step (100%) — chiuso il 2026-09-23 (vedi
   `PIANO_V3.md` storico per roadmap completa).

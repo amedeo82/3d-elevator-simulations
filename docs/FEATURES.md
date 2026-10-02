@@ -268,7 +268,7 @@ Ogni voce elenca i tasti o gli attivatori corrispondenti.
   parità SHA-256 di `dist/index.html`) + `tests` (validazione statica
   presenza namespace + conteggio test) + `tests-run` (**esecuzione reale della
   suite** in Chromium headless via `scripts/run-tests.js`) + `ui-tests`
-  (**20 test UI di layout e interazione** in Chromium headless via
+  (**21 test UI di layout e interazione** in Chromium headless via
   `scripts/run-ui-tests.js`)
 - **`window.BossHotelPure`** — namespace esposto alla fine di `elevator.html` con 62 funzioni pure (V2 Step 12 + V3/V4 Steps). Nessun side-effect, nessuna dipendenza da `state`/`scene`/`THREE`. Include helper `applyLangToDOM`/`setLang`/`applyAriaLabels` (V4 Step 3 test cross-iframe) e `mergePlanes` (V4 Step 5 helper geometry)
 - **`tests.html`** — file standalone che carica `elevator.html` in iframe sandbox (`allow-same-origin allow-scripts`) ed esegue **299 test** su `iframe.contentWindow.BossHotelPure`. Organizzati in 54 sezioni (`describe` block): helper matematici, routing, configur, citofono, accessibility, corner case UX, settings QoL, micro-animazioni, performance, **a11y ARIA attributes** (V4), **mergePlanes helper** (V4)

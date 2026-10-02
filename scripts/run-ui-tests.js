@@ -314,6 +314,56 @@ const fits = (b, vh, vw) => !!b && b.y >= -1 && b.bottom <= vh + 1 && b.x >= -1 
         await m.close();
       });
     }
+
+    // FIX mobile (iPhone landscape) 2026-10-02 (D35): HUD non sovrapposto su
+    // 852x393 (iPhone 15 Pro landscape). Verifica bounding boxes di tutti
+    // gli elementi HUD principali in cabin mode: nessuna coppia con area
+    // di intersezione > 0. Regressione: #floor-strip al 50% verticale
+    // collideva con #virtual-call-buttons (lato destro basso) per 44px
+    // verticali = 3080 sq px di pixel-area sovrapposti.
+    group('HUD non sovrapposto su iPhone 15 Pro landscape (regressione D35)');
+    await test('852x393 cabin mode: HUD privo di sovrapposizioni', async () => {
+      const m = await browser.newContext({
+        viewport: { width: 852, height: 393 },
+        isMobile: true, hasTouch: true, deviceScaleFactor: 3,
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
+          + 'AppleWebKit/605.1.15 Mobile/15E148',
+      });
+      const mp = await m.newPage();
+      await mp.goto(url, { waitUntil: 'load' });
+      await mp.waitForTimeout(RENDER_WAIT);
+      // Avvia
+      await mp.evaluate(() => document.getElementById('startBtn').click());
+      await mp.waitForTimeout(1500);
+      const skipBtn = await mp.$('#tt-skip');
+      if (skipBtn) { await skipBtn.click(); await mp.waitForTimeout(300); }
+
+      const SELS = ['#topbar', '#floor-strip', '#mode-badge', '#status', '#pointerhint',
+                    '#hud-exit-btn', '#hud-reenter-btn', '#virtual-joystick',
+                    '#virtual-call-buttons', '.hamburger-btn'];
+      const visible = (await mp.evaluate((sels) => sels.map(s => {
+        const el = document.querySelector(s);
+        if (!el) return null;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+        const r = el.getBoundingClientRect();
+        return { sel: s, x: r.left, y: r.top, right: r.right, bottom: r.bottom };
+      }), SELS)).filter(Boolean);
+
+      const overlaps = [];
+      for (let i = 0; i < visible.length; i++) {
+        for (let j = i + 1; j < visible.length; j++) {
+          const a = visible[i], b = visible[j];
+          const ix = Math.max(0, Math.min(a.right, b.right) - Math.max(a.x, b.x));
+          const iy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y));
+          if (ix * iy > 0) overlaps.push({ a: a.sel, b: b.sel, area: Math.round(ix * iy) });
+        }
+      }
+      assert(overlaps.length === 0,
+        'sovrapposizioni HUD su 852x393 cabin mode: ' +
+        overlaps.map(o => `${o.a}<->${o.b}=${o.area}sq px`).join('; '));
+      await m.close();
+    });
   } catch (err) {
     fatal = (err && err.message) || String(err);
   } finally {

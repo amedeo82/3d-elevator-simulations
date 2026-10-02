@@ -2394,6 +2394,33 @@
           assert(/const\s+onMove\s*=\s*\([\s\S]*?joystick\.getBoundingClientRect\(\)[\s\S]*?jsCenterX\s*=[\s\S]*?jsCenterY\s*=/.test(src),
             'initTouchControls.onMove deve ricalcolare jsCenterX/Y con getBoundingClientRect');
         });
+        // FIX mobile (iPhone) 2026-10-02 (D35): simmetria joystick/call-buttons.
+        // Il joystick e' inutile in cabina (nascosto via body.cabin-mode); i
+        // call buttons ▲▼ sono il complemento simmetrico e devono essere
+        // nascosti in corridoio (body.corridor-mode). Senza questo, sui
+        // corridoi i call buttons sono duplicati delle pulsantiere fisiche
+        // ▲▼ gia' presenti sulla parete di ogni piano, e vanno in overlap
+        // con il #floor-strip su iPhone 15 Pro landscape (852x393, ~3080
+        // sq px di sovrapposizione lato destro). Verifica: la regola CSS
+        // body.corridor-mode #virtual-call-buttons esiste nel sorgente.
+        test('call-buttons ▲▼: CSS li nasconde in body.corridor-mode (D35)', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/body\.corridor-mode\s+#virtual-call-buttons\s*\{[^}]*display\s*:\s*none/.test(css),
+            'manca la regola body.corridor-mode #virtual-call-buttons { display: none }');
+        });
+        // FIX mobile (iPhone landscape) 2026-10-02 (D35): HUD compatto su
+        // altezze <500px (cattura iPhone 15 Pro landscape 852x393, ecc.).
+        // La regola CSS @media (max-height: 500px) deve esistere e deve
+        // (a) nascondere #topbar, (b) riposizionare #floor-strip in alto
+        // (no piu' al centro verticale dove colliderebbe con i call
+        // buttons), (c) nascondere #pointerhint.
+        test('landscape phone: @media (max-height: 500px) ricompone il HUD', () => {
+          const css = doc.querySelector('style').textContent;
+          assert(/@media\s*\(\s*max-height\s*:\s*500px\s*\)/.test(css),
+            'manca la regola @media (max-height: 500px) per il layout landscape phone');
+          assert(/@media\s*\(\s*max-height\s*:\s*500px\s*\)\s*\{[\s\S]*?(#topbar|#floor-strip)\b[\s\S]*?\}/.test(css),
+            'la regola landscape phone deve toccare topbar / floor-strip');
+        });
         test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
           const skip = get('#tt-skip');
           const next = get('#tt-next');
