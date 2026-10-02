@@ -27,7 +27,7 @@ node -e "const http=require('http'),fs=require('fs'),path=require('path');const 
 
 # 3. Esegui la test suite
 # Apri http://localhost:8765/tests.html
-# Aspettati: tutti i test verdi (target 303 test, 380+ assert).
+# Aspettati: tutti i test verdi (target 307 test, 380+ assert).
 
 # 4. (Opzionale) Genera CHANGELOG.md dalla history
 node scripts/generate-changelog.js
@@ -45,7 +45,7 @@ node scripts/generate-changelog.js
 
 ## Convenzioni codice (contratti D-key)
 
-Il progetto ha **34 contratti D-key** documentati in `AGENTS.md`. Ogni
+Il progetto ha **35 contratti D-key** documentati in `AGENTS.md`. Ogni
 modifica che li tocca deve aggiornare la documentazione. La tabella completa
 "file → quando aggiornarlo" è in `AGENTS.md`, sezione "Regole di aggiornamento
 della documentazione": leggila prima di committare. Lista rapida:
@@ -72,7 +72,7 @@ della documentazione": leggila prima di committare. Lista rapida:
 | D25 | Helper `mergePlanes` DRY | Clona geometries, no side-effect. |
 | D26 | Open source boilerplate | LICENSE + CHANGELOG + CONTRIBUTING. |
 
-Per la lista completa (D1-D34) vedi `AGENTS.md`.
+Per la lista completa (D1-D35) vedi `AGENTS.md`.
 
 ## Workflow "Polish Pack"
 
@@ -87,8 +87,8 @@ V3 T2 = Tier 2 manutenibilita, ecc.).
 3. **Implementa** seguendo i pattern esistenti (vedi D9 per helper puri)
 4. **Aggiungi test** in `tests.html` (assert vanilla, no dipendenze)
 5. **Verifica**: `node scripts/check-balance.js elevator.html` +
-   `node scripts/run-tests.js` (303 test di logica) +
-   `node scripts/run-ui-tests.js` (20 test di layout e interazione).
+   `node scripts/run-tests.js` (307 test di logica) +
+   `node scripts/run-ui-tests.js` (21 test di layout e interazione).
    Entrambi i runner escono con codice 1 se un test fallisce
 6. **Aggiorna** `AGENTS.md` se introduci un nuovo D-key, e i documenti
    elencati nella tabella "Regole di aggiornamento della documentazione"

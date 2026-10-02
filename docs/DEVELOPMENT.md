@@ -27,11 +27,11 @@ qui nulla: ogni file è la fonte autorevole del suo argomento.
 .
 ├── elevator.html          # File principale (~507 KB, ~12.000 righe) — tutta la simulazione
 ├── index.html             # Redirect a elevator.html (entry point per deploy)
-├── tests.html             # Test framework (305 test su window.BossHotelPure)
+├── tests.html             # Test framework (307 test su window.BossHotelPure)
 ├── scripts/
 │   ├── check-balance.js   # Verifica sintassi JS + brace balance (autorevole)
-│   ├── run-tests.js       # Esegue i 305 test di logica in Chromium headless
-│   ├── run-ui-tests.js    # Esegue i 20 test UI di layout/interazione in Chromium headless
+│   ├── run-tests.js       # Esegue i 307 test di logica in Chromium headless
+│   ├── run-ui-tests.js    # Esegue i 21 test UI di layout/interazione in Chromium headless
 │   ├── find-long-fns.js   # Helper per audit D24 (funzioni >=150 righe)
 │   ├── generate-changelog.js  # Auto-genera CHANGELOG.md dalla history git (D26)
 │   ├── extract-strings.js # Estrae chiavi STRINGS per audit i18n
@@ -55,8 +55,8 @@ I 4 job della CI (`.github/workflows/ci.yml`), in parallelo:
 |---|---|---|
 | `check` | Sintassi + brace balance + invarianti build | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 |
 | `tests` | Test framework (Polish Pack V2 Step 12) | Validazione statica: presenza `window.BossHotelPure`, presenza `tests.html`, conteggio test |
-| `tests-run` | Esecuzione test in browser (Chromium headless) | I 305 test reali via `scripts/run-tests.js` |
-| `ui-tests` | Test UI layout e interazione (Chromium headless) | I 20 test comportamentali via `scripts/run-ui-tests.js` |
+| `tests-run` | Esecuzione test in browser (Chromium headless) | I 307 test reali via `scripts/run-tests.js` |
+| `ui-tests` | Test UI layout e interazione (Chromium headless) | I 21 test comportamentali via `scripts/run-ui-tests.js` |
 
 ## 💻 Sviluppo locale
 
@@ -96,9 +96,9 @@ php -S localhost:8000
 
 Il progetto include due suite:
 
-- **305 test di logica** in `tests.html`, su funzioni pure esposte in
+- **307 test di logica** in `tests.html`, su funzioni pure esposte in
   `window.BossHotelPure` (56 blocchi `describe`), eseguiti da `scripts/run-tests.js`.
-- **20 test UI** in `scripts/run-ui-tests.js`: aprono l'app in viewport reali
+- **21 test UI** in `scripts/run-ui-tests.js`: aprono l'app in viewport reali
   (desktop e mobile) e verificano layout e interazione (raggiungibilità di
   `#startBtn`, tap che non finiscono su un overlay, frame 3D non vuoto). Coprono
   ciò che i test di logica non vedono: nessuno dei due gira in un iframe nascosto.
@@ -107,8 +107,8 @@ Il progetto include due suite:
 # Opzione A — runner headless, identico a quello della CI
 npm install --no-save --no-audit --no-fund playwright@1.56.0
 npx playwright install chromium
-node scripts/run-tests.js      # stampa "OK: 305/305 test passati", exit 1 se uno fallisce
-node scripts/run-ui-tests.js   # stampa "OK: 20/20 test UI passati", exit 1 se uno fallisce
+node scripts/run-tests.js      # stampa "OK: 307/307 test passati", exit 1 se uno fallisce
+node scripts/run-ui-tests.js   # stampa "OK: 21/21 test UI passati", exit 1 se uno fallisce
 
 # Opzione B — ispezione manuale nel browser
 python3 -m http.server 8000
