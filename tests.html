@@ -109,7 +109,7 @@
   <!--
     Carichiamo elevator.html come modulo in un iframe nascosto. Quando il
     modulo inizializza three.js e popola window.BossHotelPure, estraiamo
-    le funzioni pure. La simulazione 3D non viene visualizzata (iframe
+    le funzioni P. La simulazione 3D non viene visualizzata (iframe
     hidden) ma le funzioni pure sono disponibili immediatamente.
   -->
   <iframe id="src" src="elevator.html"
@@ -2420,6 +2420,126 @@
             'manca la regola @media (max-height: 500px) per il layout landscape phone');
           assert(/@media\s*\(\s*max-height\s*:\s*500px\s*\)\s*\{[\s\S]*?(#topbar|#floor-strip)\b[\s\S]*?\}/.test(css),
             'la regola landscape phone deve toccare topbar / floor-strip');
+        });
+        // FIX mobile (iPhone) 2026-10-05 (D36): pool di materiali e
+        // PointLight per evitare la ricompilazione shader sincrona al
+        // cambio piano (vedi docs/SAFARI_IOS_COMPAT.md, three.js #22254).
+        // Senza questo, ad ogni arrivo a un nuovo piano buildCorridor
+        // ricreava 4-7 PointLight + ~30 materiali, e three.js
+        // ricompilava 1-8 programmi shader bloccando il main thread
+        // 0.3-2.4 secondi su iOS Safari. La fix pooled (1) materiali
+        // shell per tema, (2) 7 PointLight fisse, (3) getOrCreateMat
+        // per ogni materiale furniture, e (4) pre-warm async.
+        test('D36: corridorLightPool ha 7 PointLight pre-create (4 ceiling + 3 furniture)', () => {
+          const pool = P.corridorLightPool;
+          assert(Array.isArray(pool), 'corridorLightPool deve essere un array');
+          assertEq(pool.length, 7, 'corridorLightPool deve avere 7 elementi');
+          pool.forEach((pl, i) => {
+            assert(pl && pl.isPointLight, 'elemento ' + i + ' deve essere PointLight');
+          });
+          // Dopo buildCorridor(0) (lobby), le 4 ceiling lamps sono attive
+          // (intensity 0.5) e le 3 furniture slot sono spente (0). Le
+          // ceiling sono le prime 4 posizioni del pool.
+          for (let i = 0; i < 4; i++) {
+            assert(pool[i].intensity > 0, 'ceiling lamp ' + i + ' deve essere attiva (intensity > 0)');
+          }
+          for (let i = 4; i < 7; i++) {
+            assertEq(pool[i].intensity, 0, 'furniture slot ' + i + ' deve essere spento');
+          }
+        });
+        test('D36: themeMaterialPool ha shell materials per lobby dopo boot', () => {
+          const pool = P.themeMaterialPool;
+          assert(pool && typeof pool === 'object', 'themeMaterialPool deve esistere');
+          assert(pool.lobby, 'themeMaterialPool.lobby deve esistere dopo boot');
+          assert(pool.lobby._shell, 'themeMaterialPool.lobby._shell deve esistere (creato da getThemeMaterials)');
+          const shell = pool.lobby._shell;
+          assert(shell.floor, 'shell.floor deve esistere');
+          assert(shell.ceiling, 'shell.ceiling deve esistere');
+          assert(shell.wall, 'shell.wall deve esistere');
+          assert(shell.led, 'shell.led deve esistere');
+          assert(shell.frame, 'shell.frame deve esistere');
+          // Ogni materiale shell e' un'istanza di THREE.Material: verifichiamo
+          // che abbia i metodi/ proprietà tipici (.isMaterial, .color).
+          assert(shell.floor.isMaterial === true, 'shell.floor deve essere un THREE.Material');
+          assert(shell.floor.color && typeof shell.floor.color.getHex === 'function',
+            'shell.floor deve avere .color.getHex()');
+        });
+        test('D36: getOrCreateMat crea al primo uso e riusa al secondo', () => {
+          const assets = {};
+          let calls = 0;
+          const m1 = P.getOrCreateMat(assets, 'test_key', () => {
+            calls++;
+            return { isMaterial: true, tag: 'first' };
+          });
+          const m2 = P.getOrCreateMat(assets, 'test_key', () => {
+            calls++;
+            return { isMaterial: true, tag: 'second' };
+          });
+          assertEq(m1, m2, 'seconda chiamata deve ritornare la stessa istanza');
+          assertEq(m1.tag, 'first', 'la seconda factory non deve essere chiamata');
+          assertEq(calls, 1, 'la factory deve essere chiamata 1 volta sola');
+        });
+        test('D36: isPooledMaterial riconosce i materiali shell del pool', () => {
+          const pool = P.themeMaterialPool;
+          assert(pool.lobby, 'serve lobby nel pool');
+          const floorMat = pool.lobby._shell.floor;
+          assert(P.isPooledMaterial(floorMat),
+            'il floor material di lobby deve essere riconosciuto come pooled');
+          const fakeMat = { isMaterial: true };
+          assert(!P.isPooledMaterial(fakeMat),
+            'un materiale esterno non deve essere riconosciuto come pooled');
+        });
+        test('D36: sorgente ha zero `new THREE.PointLight` nei furniture helper (D36)', () => {
+          // Il refactor D36 ha spostato la creazione delle 3 luci arredi
+          // (addWallLamp, addFloorLamp, addSkylineWindow) da `new
+          // THREE.PointLight(...)` inline a poolLightForFurniture(). Se
+          // qualcuno reintrodurrà un `new THREE.PointLight` nei furniture
+          // helper, questo test fallisce e il contratto D36 si rompe.
+          const src = doc.documentElement.innerHTML;
+          for (const fn of ['addWallLamp', 'addFloorLamp', 'addSkylineWindow']) {
+            const m = src.match(new RegExp('function\\s+' + fn + '[\\s\\S]*?^\\}', 'm'));
+            assert(m, 'funzione ' + fn + ' non trovata nel sorgente');
+            assert(!/new\s+THREE\.PointLight/.test(m[0]),
+              fn + ': non deve piu\' contenere `new THREE.PointLight` (usa poolLightForFurniture)');
+          }
+        });
+        test('D36: sorgente ha chiamate a getOrCreateMat nei furniture helper (refactor applicato)', () => {
+          // Contromisura del test sopra: se il refactor e' stato fatto,
+          // ogni helper arredi deve usare getOrCreateMat invece di creare
+          // materiali ex-novo. Cerchiamo almeno 8 funzioni che lo usano.
+          // NOTA: la regex non usa `m` flag e si ferma al primo `}` non
+          // annidato; per funzioni corte va bene. Le funzioni piu' lunghe
+          // (addRoomDoor) hanno blocchi annidati ma li marchiamo solo come
+          // "contengono getOrCreateMat" se trovato nelle prime ~200 righe.
+          const src = doc.documentElement.innerHTML;
+          const helpers = ['addPlant', 'addSofa', 'addDesignerSofa', 'addCoffeeTable',
+            'addReception', 'addDesk', 'addRoomDoor', 'addPainting',
+            'addWallLamp', 'addWaterCooler', 'addFloorLamp', 'addSkylineWindow',
+            'addExternalCallPanel'];
+          let count = 0;
+          const found = [];
+          for (const fn of helpers) {
+            // Prendi fino a 4000 caratteri dopo la dichiarazione della
+            // funzione, cosi' addRoomDoor (le cui sub-funzioni annidano
+            // graffe) viene catturato correttamente.
+            const re = new RegExp('function\\s+' + fn + '\\b[\\s\\S]{0,4000}');
+            const m = src.match(re);
+            if (m && m[0].indexOf('getOrCreateMat') !== -1) { count++; found.push(fn); }
+          }
+          assert(count >= 8,
+            'almeno 8 helper arredi devono usare getOrCreateMat, trovati ' + count + ': ' + found.join(','));
+        });
+        test('D36: sorgente ha funzione prewarmCorridorShaders con compileAsync (pre-warm attivo)', () => {
+          // Il pre-warm async dei 4 temi elimina anche il primo freeze.
+          // Se qualcuno disabilita il pre-warm (es. lasciando return
+          // Promise.resolve()), questo test fallisce.
+          const src = doc.documentElement.innerHTML;
+          assert(/function\s+prewarmCorridorShaders/.test(src),
+            'manca la funzione prewarmCorridorShaders');
+          assert(/compileAsync/.test(src),
+            'prewarmCorridorShaders deve usare renderer.compileAsync');
+          assert(/themeFloors\s*=\s*\[\s*0\s*,\s*1\s*,\s*4\s*,\s*7\s*\]/.test(src),
+            'prewarmCorridorShaders deve coprire i 4 temi (lobby/office/hotel/penthouse)');
         });
         test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
           const skip = get('#tt-skip');

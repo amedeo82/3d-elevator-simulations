@@ -89,3 +89,11 @@ browser-test/
 # carica come artefatto su fallimento. Non va committato.
 test-output.json
 ui-test-output.json
+
+# ---- Artefatti diagnostica Safari/iOS (scripts/diagnose-*.js) ----
+# Generati dai runner diagnostici in scripts/diagnose-safari-ios.js,
+# scripts/diagnose-rumore.js, scripts/diagnose-freeze.js,
+# scripts/diagnose-shader.js, scripts/diagnose-prewarm.js,
+# scripts/diagnose-ab-sombra.js. Non vanno committati: sono misure
+# riproducibili a comando e occupano ~20 KB inutili in git.
+safari-ios-*.json
