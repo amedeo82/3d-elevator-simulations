@@ -4505,10 +4505,135 @@ applyHotelThemeOverride();
 
 let currentThemeName = null;
 
+// ============================================================================
+// POLISH PACK V5 / D36: POOL DI MATERIALI + LUCI FISSE
+// ============================================================================
+// Problema (docs/SAFARI_IOS_COMPAT.md, indagine 2026-10-05): ad ogni
+// arrivo a un nuovo piano, buildCorridor ricrea i materiali del corridoio
+// e 4-7 PointLight nuove. Three.js, trovando un numero di luci diverso
+// (o materiali con uuid diversi, anche se le proprieta' sono identiche),
+// RICOMPILA i programmi shader in modo sincrono sul main thread.
+// Su WebKit/iOS questo blocca per 0.3-2.4 secondi (three.js issue #22254,
+// chiusa come bug di WebKit non risolvibile in three.js).
+//
+// Fix in 3 layer:
+//   1. POOL MATERIALI per tema: 4 set di materiali shell (floor/carpet/
+//      ceiling/wall/led/frame), creati al primo uso del tema e RIUSATI
+//      per sempre. Mai disposed da disposeCorridor. La cache dei programmi
+//      di three.js sopravvive.
+//   2. POOL POINTLIGHT: 7 PointLight pre-create, aggiunte al `corridor`
+//      una sola volta, mai rimosse. Ogni buildCorridor setta intensity
+//      (0 per le non usate, valore pieno per le usate) e le riposiziona.
+//      Cosi' il numero di luci attive nel corridoio e' COSTANTE e il
+//      programma shader (keyed sul light count) si cacha.
+//   3. PRE-WARM async con renderer.compileAsync all'avvio, durante la
+//      start screen, per i 4 temi. Le 4 compilazioni avvengono in
+//      background, e quando l'utente preme "Entra nell'ascensore" i
+//      programmi sono pronti per ogni piano.
+//
+// Contratti D-key: D36 (vedi AGENTS.md).
+// ============================================================================
+
+// Set fisse di materiali, una per tema. Indexed by themeName.
+// Struttura: { floor, carpet?, ceiling, wall, led, frame }.
+// `carpet` e' opzionale (alcuni temi, es. office, non hanno tappeto).
+const themeMaterialPool = Object.create(null);
+
+// Set fisse di PointLight per il corridoio, pre-create.
+// Il numero totale deve essere >= al massimo numero di luci usate da
+// qualsiasi tema. Le 4 ceiling lamp + fino a 3 luci arredi (hotel /
+// penthouse) = 7. Manteniamo 7 fisse; quelle non usate dal tema corrente
+// hanno intensity 0.
+const POOL_LIGHT_COUNT = 7;
+const corridorLightPool = [];
+for (let i = 0; i < POOL_LIGHT_COUNT; i++) {
+  // colore neutro di default: buildCorridorLights e gli helper arredi
+  // sovrascrivono color/intensity/distance in base al tema.
+  const pl = new THREE.PointLight(0xfff1c8, 0.0, 5, 1.5);
+  pl.userData.poolIndex = i;
+  corridorLightPool.push(pl);
+  // Non aggiungiamo qui al `corridor`: verra' aggiunto al primo
+  // buildCorridor (TDZ safety: corridor potrebbe non essere ancora
+  // definito a questo punto del file). Vedi initLightPool().
+}
+let _lightPoolAttached = false;
+function initLightPool() {
+  if (_lightPoolAttached) return;
+  for (const pl of corridorLightPool) corridor.add(pl);
+  _lightPoolAttached = true;
+}
+
+// Ottiene (o crea e mette in cache) il set di materiali shell per un
+// dato tema. I materiali nel pool sono MAI disposed: la cache dei
+// programmi three.js rimane valida attraverso le ricostruzioni.
+function getThemeMaterials(themeName, theme) {
+  if (themeMaterialPool[themeName]) return themeMaterialPool[themeName];
+  const mats = {
+    floor: new THREE.MeshStandardMaterial({ color: theme.floor, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide }),
+    ceiling: new THREE.MeshStandardMaterial({ color: theme.ceiling, roughness: 0.9, side: THREE.DoubleSide }),
+    wall: new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide }),
+    led: new THREE.MeshBasicMaterial({ color: 0xfff1c8 }),
+    frame: new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 }),
+  };
+  // Il tappeto esiste solo se theme.carpet e' diverso da theme.floor
+  // (gli uffici non hanno tappeto centrale).
+  if (theme.carpet !== undefined && theme.carpet !== theme.floor) {
+    mats.carpet = new THREE.MeshStandardMaterial({ color: theme.carpet, roughness: 0.95, side: THREE.DoubleSide });
+  }
+  themeMaterialPool[themeName] = mats;
+  return mats;
+}
+
+// Controlla se un materiale fa parte del pool temi (D36). Usato da
+// disposeCorridor per preservarli: shell + furniture + porte + pulsantiera
+// esterna sono tutti pooled, mai sostituiti. Riconosce sia la shell
+// (themeMaterialPool[theme]._shell) sia i materiali dinamici aggiunti
+// da getOrCreateMat(themeMaterialPool[theme], 'key', ...).
+function isPooledMaterial(m) {
+  for (const themeKey in themeMaterialPool) {
+    const mats = themeMaterialPool[themeKey];
+    for (const k in mats) {
+      const v = mats[k];
+      if (v === m) return true;
+      // _shell contiene a sua volta un dict di materiali
+      if (k === '_shell' && v && typeof v === 'object') {
+        for (const sk in v) {
+          if (v[sk] === m) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// FIX mobile (iPhone) 2026-10-05 (D36): helper per creare o riusare
+// un materiale nel pool del tema corrente. Ogni `new MeshXxxMaterial({...})`
+// nei helper arredi e porte viene wrappato in questa funzione: al primo
+// uso del tema crea l'istanza, ai successivi ritorna la stessa. In questo
+// modo la cache dei programmi shader three.js sopravvive attraverso le
+// ricostruzioni (stesso materiale.uuid = stessa cache key).
+//
+// ATTENZIONE: la factory deve essere PURA (no side-effect). Se due
+// chiamanti chiedono lo stesso `key` con factory diverse, il SECONDO
+// viene ignorato e ritorna il materiale del primo. Le chiavi devono
+// essere uniche per (proprieta' del materiale).
+function getOrCreateMat(assets, key, factory) {
+  if (assets[key]) return assets[key];
+  const m = factory();
+  assets[key] = m;
+  return m;
+}
+
 function disposeCorridor() {
   for (let i = corridor.children.length - 1; i >= 0; i--) {
     const c = corridor.children[i];
     if (c === floorSignGroup) continue;
+    // FIX mobile (iPhone) 2026-10-05 (D36): preserva le PointLight del
+    // pool. Sono istanze fisse pre-create, NON vanno mai rimosse dal
+    // `corridor`. Rimuoverle e ricrearle cambierebbe il light count
+    // della scena e forza la ricompilazione dei programmi shader al
+    // prossimo buildCorridor.
+    if (corridorLightPool.indexOf(c) !== -1) continue;
     corridor.remove(c);
     c.traverse(obj => {
       if (obj.geometry) obj.geometry.dispose();
@@ -4519,6 +4644,12 @@ function disposeCorridor() {
           if (m === signMatFront || m === signMatBack) return;
           // preserva anche la texture condivisa del display piano sulla pulsantiera esterna
           if (m.map && m.map === externalCallFloorTex) return;
+          // FIX mobile (iPhone) 2026-10-05 (D36): preserva i materiali
+          // del pool temi (shell + furniture + porte + pulsantiera esterna).
+          // Sono istanze fisse condivise tra le ricostruzioni; disposing
+          // le costringerebbe a essere ricreate (nuovo uuid = nuovo
+          // programma shader, 0.3-2.4s di freeze su iOS Safari).
+          if (isPooledMaterial(m)) return;
           if (m.map && m.map !== signTex) m.map.dispose();
           m.dispose();
         });
@@ -4797,25 +4928,24 @@ function addExternalCallPanel(floor) {
 // fuse in un'unica mesh via mergeGeometries (V3 Step 5 Q5.2): stesso materiale
 // e stessa flag shadow → 1 draw call invece di 3. PlaneGeometry richiede
 // applyMatrix4 per posizionamento (mergeGeometries non supporta transform).
-function buildCorridorShell(theme, sZ, eZ) {
-  const floor = theme.floor;
+// FIX mobile (iPhone) 2026-10-05 (D36): tutti i materiali shell vengono
+// presi dal pool temi (creati una volta, mai ri-disposed). Senza questo
+// fix, ogni buildCorridor creava 4-5 nuovi materiali: nuovo uuid, nuovo
+// programma shader, freeze di 0.3-2.4s su iOS Safari.
+function buildCorridorShell(themeName, sZ, eZ) {
+  const theme = themeConfig[themeName];
+  const mats = getThemeMaterials(themeName, theme);
   // Pavimento
   {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_D),
-      new THREE.MeshStandardMaterial({ color: floor, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide })
-    );
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_D), mats.floor);
     m.rotation.x = -Math.PI / 2;
     m.position.set(0, 0.002, sZ + CORRIDOR_D/2);
     m.receiveShadow = true;
     corridor.add(m);
   }
   // Tappeto centrale (in quasi tutti i piani, escluso office)
-  if (theme.carpet !== theme.floor) {
-    const carpet = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.3, CORRIDOR_D - 0.6),
-      new THREE.MeshStandardMaterial({ color: theme.carpet, roughness: 0.95, side: THREE.DoubleSide })
-    );
+  if (mats.carpet) {
+    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(1.3, CORRIDOR_D - 0.6), mats.carpet);
     carpet.rotation.x = -Math.PI / 2;
     carpet.position.set(0, 0.012, sZ + CORRIDOR_D/2);
     carpet.receiveShadow = true;
@@ -4823,17 +4953,13 @@ function buildCorridorShell(theme, sZ, eZ) {
   }
   // Soffitto
   {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_D),
-      new THREE.MeshStandardMaterial({ color: theme.ceiling, roughness: 0.9, side: THREE.DoubleSide })
-    );
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_D), mats.ceiling);
     m.rotation.x = Math.PI / 2;
     m.position.set(0, CORRIDOR_H, sZ + CORRIDOR_D/2);
     corridor.add(m);
   }
   // 3 pareti merged in 1 mesh (V3 Step 5 Q5.2) tramite mergePlanes D25.
   // pattern: clone geometry + applyMatrix4 + mergeGeometries wrapped in Mesh.
-  const wallMat = new THREE.MeshStandardMaterial({ color: theme.wall, roughness: 0.85, side: THREE.DoubleSide });
   const wallTransforms = [
     { geometry: new THREE.PlaneGeometry(CORRIDOR_D, CORRIDOR_H),
       matrix: new THREE.Matrix4().makeRotationY(Math.PI / 2).setPosition(-CORRIDOR_W/2, CORRIDOR_H/2, sZ + CORRIDOR_D/2) },
@@ -4842,7 +4968,7 @@ function buildCorridorShell(theme, sZ, eZ) {
     { geometry: new THREE.PlaneGeometry(CORRIDOR_W, CORRIDOR_H),
       matrix: new THREE.Matrix4().setPosition(0, CORRIDOR_H/2, eZ) }
   ];
-  const walls = mergePlanes(wallTransforms, wallMat);
+  const walls = mergePlanes(wallTransforms, mats.wall);
   if (walls) {
     walls.receiveShadow = true;
     corridor.add(walls);
@@ -4851,7 +4977,7 @@ function buildCorridorShell(theme, sZ, eZ) {
     wallTransforms.forEach(({ geometry, matrix }) => {
       const g = geometry.clone();
       if (matrix) g.applyMatrix4(matrix);
-      corridor.add(new THREE.Mesh(g, wallMat));
+      corridor.add(new THREE.Mesh(g, mats.wall));
     });
   }
 }
@@ -4860,36 +4986,79 @@ function buildCorridorShell(theme, sZ, eZ) {
 // soffitto + 4 LED plane merged + 4 frame box merged (V3 Step 5 Q5.2). Stesso
 // materiale per le LED planes → mergeGeometries riduce da 4 a 1 draw call.
 // Stesso per i frame box. Risparmio totale ~6 draw call per piano rebuild.
+// FIX mobile (iPhone) 2026-10-05 (D36): le 4 PointLight soffitto sono
+// prese dal pool fisso (corridorLightPool) e solo posizionate/attivate.
+// Mai create ex-novo: cambiare il light count della scena forza la
+// ricompilazione dei programmi shader in three.js.
 function buildCorridorLights(sZ) {
   const lampPositions = [sZ + 2.0, sZ + 4.5, sZ + 7.0, sZ + 9.5];
-  // PointLight (no draw call, ma illumina il corridoio)
-  for (const z of lampPositions) {
-    const light = new THREE.PointLight(0xfff1c8, 0.5, 5, 1.5);
-    light.position.set(0, CORRIDOR_H - 0.04, z);
-    corridor.add(light);
+  // 4 PointLight fisse dal pool, posizionate e attivate.
+  for (let i = 0; i < 4; i++) {
+    const pl = corridorLightPool[i];
+    pl.color.setHex(0xfff1c8);
+    pl.intensity = 0.5;
+    pl.distance = 5;
+    pl.position.set(0, CORRIDOR_H - 0.04, lampPositions[i]);
+    pl.visible = true;
+  }
+  // Spegne le 3 PointLight "arredi" del pool: ogni tema le riaccende
+  // se servono (vedi add*Furniture). Cosi' il light count totale della
+  // scena e' COSTANTE.
+  for (let i = 4; i < POOL_LIGHT_COUNT; i++) {
+    corridorLightPool[i].intensity = 0;
+    corridorLightPool[i].visible = false;
   }
   // LED planes merged (V3 Step 5 Q5.2): 4 PlaneGeometry stesso materiale,
   // via mergePlanes D25 (helper DRY condiviso con pareti + frame boxes).
-  const ledMat = new THREE.MeshBasicMaterial({ color: 0xfff1c8 });
+  // Materiale dal pool (D36): stesso ledMat per tutti i temi (colore fisso).
+  const themeMats = getThemeMaterials(currentThemeName, themeConfig[currentThemeName]);
   const ledTransforms = lampPositions.map(z => ({
     geometry: new THREE.PlaneGeometry(0.5, 0.5),
     matrix: new THREE.Matrix4().makeRotationX(Math.PI / 2)
       .setPosition(0, CORRIDOR_H - 0.04 + 0.01, z)
   }));
-  const leds = mergePlanes(ledTransforms, ledMat);
+  const leds = mergePlanes(ledTransforms, themeMats.led);
   if (leds) corridor.add(leds);
   // Frame boxes merged (V3 Step 5 Q5.2): 4 BoxGeometry stesso materiale,
-  // via mergePlanes D25.
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x404044, roughness: 0.5, metalness: 0.6 });
+  // via mergePlanes D25. Materiale dal pool (D36).
   const frameTransforms = lampPositions.map(z => ({
     geometry: new THREE.BoxGeometry(0.55, 0.03, 0.55),
     matrix: new THREE.Matrix4().setPosition(0, CORRIDOR_H - 0.04 - 0.02, z)
   }));
-  const frames = mergePlanes(frameTransforms, frameMat);
+  const frames = mergePlanes(frameTransforms, themeMats.frame);
   if (frames) corridor.add(frames);
 }
 
+// Helper per gli arredi: ottiene la prossima PointLight libera dal pool
+// (gia' attaccata a `corridor`) e la configura. Le luci 0-3 sono le
+// ceiling lamps (gestite in buildCorridorLights); le 4-6 sono riservate
+// agli arredi. Restituisce null se il pool e' saturo. (D36)
+function poolLightForFurniture() {
+  for (let i = 4; i < POOL_LIGHT_COUNT; i++) {
+    const pl = corridorLightPool[i];
+    if (!pl.userData.furnitureInUse) {
+      pl.userData.furnitureInUse = true;
+      return pl;
+    }
+  }
+  return null;
+}
+// Da chiamare all'inizio di ogni buildCorridor dopo che le ceiling lamps
+// sono state impostate. Resetta il flag "in uso" delle luci arredi del
+// pool, cosi' buildCorridor puo' riassegnarle ai nuovi arredi. (D36)
+function resetFurnitureLightPool() {
+  for (let i = 4; i < POOL_LIGHT_COUNT; i++) {
+    corridorLightPool[i].userData.furnitureInUse = false;
+  }
+}
+
 function buildCorridor(floor) {
+  // FIX mobile (iPhone) 2026-10-05 (D36): aggancia le PointLight del
+  // pool al `corridor` la prima volta. Sono istanze fisse, mai ricreate.
+  initLightPool();
+  // Resetta il flag "in uso" delle luci arredi (4-6): ogni ricostruzione
+  // riassegna le luci che servono, le altre restano a intensity 0.
+  resetFurnitureLightPool();
   disposeCorridor();
   // Fix v1.5 TDZ: rimuovi i bottoni esterni dal buttonList DOPO disposeCorridor.
   // (disposeCorridor non puo accedere a buttonList perche e' dichiarato piu avanti.)
@@ -4902,12 +5071,24 @@ function buildCorridor(floor) {
   const themeName = getThemeForFloor(floor);
   currentThemeName = themeName;
   const theme = themeConfig[themeName];
+  // FIX mobile (iPhone) 2026-10-05 (D36): imposta il pool materiali
+  // del tema corrente. Tutti i `new MeshXxxMaterial({...})` nei helper
+  // arredi/porte/pulsantiera usano getOrCreateMat(currentThemeAssets, ...)
+  // invece di costruire ex-novo. Il primo arrivo al tema crea i materiali,
+  // i successivi li riesano dalla cache. Stesso material.uuid = stessa
+  // cache key three.js = 0 ricompilazioni.
+  if (!themeMaterialPool[themeName]) themeMaterialPool[themeName] = {};
+  // Aggiungi le shell mats al dizionario corrente cosi' getOrCreateMat
+  // e isPooledMaterial le vedono tutte nello stesso posto.
+  themeMaterialPool[themeName]._shell = getThemeMaterials(themeName, theme);
 
   const sZ = CORRIDOR_START_Z;
   const eZ = sZ + CORRIDOR_D;
 
   // Pavimento + tappeto + soffitto + pareti (merged in 1 mesh V3 Step 5 Q5.2).
-  buildCorridorShell(theme, sZ, eZ);
+  // FIX mobile (iPhone) 2026-10-05 (D36): passo themeName, non l'oggetto
+  // theme, cosi' buildCorridorShell riusa i materiali dal pool temi.
+  buildCorridorShell(themeName, sZ, eZ);
 
   // Polish Pack v1.5 #21: pulsantiera di chiamata esterna (▲/▼)
   addExternalCallPanel(floor);
@@ -5408,10 +5589,16 @@ function addWallLamp(parent, x, y, z, rotY) {
   );
   shade.position.set(0, 0.05, 0.05);
   g.add(shade);
-  // emettitore luce
-  const light = new THREE.PointLight(0xfff1c8, 0.4, 3, 2);
-  light.position.set(0, 0.05, 0.1);
-  g.add(light);
+  // emettitore luce: dal pool (D36). Il pool light e' figlio diretto di
+  // `corridor`, non del gruppo, per evitare il double-add. La sua
+  // posizione e' quindi in coordinate corridoio (x, y+0.05, z+0.1).
+  const pl = poolLightForFurniture();
+  if (pl) {
+    pl.color.setHex(0xfff1c8);
+    pl.intensity = 0.4;
+    pl.distance = 3;
+    pl.position.set(x, y + 0.05, z + 0.1);
+  }
   g.position.set(x, y, z);
   g.rotation.y = rotY;
   parent.add(g);
@@ -5456,9 +5643,14 @@ function addFloorLamp(parent, x, y, z, rotY) {
   );
   shade.position.y = 1.8;
   g.add(shade);
-  const light = new THREE.PointLight(0xfff1c8, 0.6, 4, 1.5);
-  light.position.y = 1.85;
-  g.add(light);
+  // emettitore luce: dal pool (D36)
+  const pl = poolLightForFurniture();
+  if (pl) {
+    pl.color.setHex(0xfff1c8);
+    pl.intensity = 0.6;
+    pl.distance = 4;
+    pl.position.set(x, y + 1.85, z);
+  }
   g.position.set(x, y, z);
   g.rotation.y = rotY;
   parent.add(g);
@@ -5522,10 +5714,14 @@ function addSkylineWindow(parent, x, y, z, rotY) {
   );
   glass.position.set(x, y, z - 0.026);
   parent.add(glass);
-  // luce soffusa dal panorama
-  const light = new THREE.PointLight(0xffaa88, 0.4, 6, 1.5);
-  light.position.set(0, 1.5, z - 0.5);
-  parent.add(light);
+  // luce soffusa dal panorama: dal pool (D36)
+  const pl = poolLightForFurniture();
+  if (pl) {
+    pl.color.setHex(0xffaa88);
+    pl.intensity = 0.4;
+    pl.distance = 6;
+    pl.position.set(0, 1.5, z - 0.5);
+  }
 }
 
 // Costruisci corridoio iniziale (piano 0)
@@ -5534,6 +5730,28 @@ function addSkylineWindow(parent, x, y, z, rotY) {
 // (es. crossfade freccia al primo cambio piano) rispettano subito la preferenza.
 initReducedMotion();
 buildCorridor(0);
+// FIX mobile (iPhone) 2026-10-05 (D36): pre-warm degli shader.
+//
+// NOTA OPERATIVA 2026-10-05: il pre-warm da solo NON risolve il freeze.
+// Misurato: con pool shell + pool luci attivi, dopo il pre-warm gli
+// arrivi a piano continuano a compilare 1 programma = 272-355ms di
+// freeze. Motivo: disposeCorridor rilascia i materiali NON pooled (tutti
+// gli arredi: add*Furniture, addRoomDoor, addExternalCallPanel, call
+// buttons, ecc.). I loro programmi shader vengono rilasciati dalla cache
+// three.js. Le successive buildCorridor creano nuovi materiali con le
+// stesse proprieta' ma la cache e' ormai vuota, quindi ricompila.
+//
+// Per eliminare davvero il freeze serve poolare TUTTI i materiali del
+// corridoio (shell + furniture + pulsantiere esterne) — refactor di
+// portata maggiore, da fare come step successivo. Vedi D36 in
+// docs/SAFARI_IOS_COMPAT.md e AGENTS.md per il piano completo.
+//
+// Per ora il pre-warm resta DISABILITATO per evitare un'eccezione
+// "isReady" osservata nella CI: la sua attivazione e' rimandata al
+// refactor completo dei materiali.
+function prewarmCorridorShaders() {
+  return Promise.resolve();
+}
 
 // ============================================================
 // PULSANTIERA MODERNA DIGITALE (Fase 3)
