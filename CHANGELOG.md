@@ -9,6 +9,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- docs: sync post-merge — numeri correnti, mappa documentale, CHANGELOG PR #41/#42 (#44) (`8492d8c`)
 - docs: sync numeri correnti e voci ROADMAP dopo PR #38/#39 (#42) (`5348b2e`)
 - docs(visibility): GIF hero, Live Demo button, galleria aggiornata + checklist repo (#41) (`cee12d2`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #38 (#40) (`9960673`)
@@ -136,6 +137,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Altro (infrastruttura, doc, fix)
 
+- ci: runner pinnato ubuntu-24.04 + actions/cache v5 (runtime Node 24) (#43) (`140a432`)
 - ci: ottimizzazione tempi pipeline (cache, concurrency, three.js da buffer locale) (#38) (`1483b84`)
 - docs(agents): aggiungere linee guida per la visibilità del repository e la demo live (#36) (`b0b16b0`)
 - Fix/d36 shader program cache pool (#35) (`516abc4`)
