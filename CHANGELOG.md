@@ -9,6 +9,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- docs(changelog): rigenera CHANGELOG.md dopo merge PR #33 (D35) (#34) (`243449f`)
 - refactor(movimento): tickMove 135 -> 63 righe, logica resa testabile (#26) (`c3394ed`)
 - refactor(corridoio): addRoomDoor da 137 righe a orchestratore + 4 costruttori (#25) (`f627e42`)
 - refactor(meteo): drawWeatherIconBig da catena if/else a mappa di pittori + D24 a due livelli (#23) (`6c20ec4`)
@@ -130,6 +131,8 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Altro (infrastruttura, doc, fix)
 
+- docs(agents): aggiungere linee guida per la visibilità del repository e la demo live (#36) (`b0b16b0`)
+- Fix/d36 shader program cache pool (#35) (`516abc4`)
 - fix(mobile): hide call-buttons in corridor + compact landscape HUD (D35, iPhone 15 Pro) (#33) (`eaa57d4`)
 - fix(ui): fix mobile joystick inversion and re-anchor on orientation change (#32) (`8bd487b`)
 - fix(webgl): diagnostica del livello WebGL e retry su iOS (#30) (`11d1fca`)
