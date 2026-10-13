@@ -352,7 +352,7 @@ statica quando serve.
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
-| `node scripts/run-tests.js` | Esegue i 314 test in Chromium headless, exit 1 se uno fallisce |
+| `node scripts/run-tests.js` | Esegue i 321 test in Chromium headless, exit 1 se uno fallisce |
 | `node scripts/run-ui-tests.js` | 21 test **comportamentali** di layout/interazione (D31), exit 1 se uno fallisce |
 | `cp elevator.html dist/index.html` | Build copy obbligatoria: la CI ne verifica la parità SHA-256 |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
@@ -367,7 +367,7 @@ required status checks: sono quelli da copiare in Settings → Branches.
 |---|---|---|
 | 1 | `Sintassi + brace balance + invarianti build` | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe) |
 | 2 | `Test framework (Polish Pack V2 Step 12)` | Validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento di `elevator.html` in `tests.html` |
-| 3 | `Esecuzione test in browser (Chromium headless)` | 314 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
+| 3 | `Esecuzione test in browser (Chromium headless)` | 321 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
 | 4 | `Test UI layout e interazione (Chromium headless)` | 21 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame, sovrapposizioni HUD su iPhone 15 Pro landscape (D31, D35). È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
 
 ### Tutte e 4 devono essere "required status checks"
@@ -515,7 +515,7 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
   Contratti D-key totali: **36** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29, D32-D33 fix 2026-09-30 iPhone 15 Pro joystick+context, D34 fix 2026-10-01 inversione joystick, D35 fix 2026-10-02 call-buttons simmetria + HUD compatto landscape phone, D36 fix 2026-10-05 pool materiali+luci+pre-warm per eliminare blocchi shader su iOS Safari).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
-  Totale test vanilla: **314 test** (285 al 2026-09-28, poi +13 sui helper puri
+  Totale test vanilla: **321 test** (285 al 2026-09-28, poi +13 sui helper puri
   del movimento cabina il 2026-09-29: `computeMoveState`,
   `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`,
   `computeArrivalDirection` — estratti da `tickMove`, che fino a allora non
@@ -533,7 +533,15 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   `isPooledMaterial` riconosce i materiali shell, sorgente senza
   `new THREE.PointLight` nei furniture helper (3 funzioni verificate),
   sorgente con `getOrCreateMat` in almeno 8 helper su 13, sorgente con
-  `prewarmCorridorShaders` che chiama `compileAsync`. 56 → 56 blocchi
+  `prewarmCorridorShaders` che chiama `compileAsync`.
+  **+7 test il 2026-10-13 (fix 5 bug)**: `actuallyStartMove` ripristina
+  `movePaused` (tasto STOP reversibile), ramo STOP riporta la cabina al piano
+  di partenza, `tickMove` gated da `state._prewarmInProgress` (no arrivo
+  fantasma), `prewarmCorridorShaders` non tocca più `state.isMoving`,
+  `initTouchControls` idempotente (no stacking listener touch),
+  `startMoveTo` allinea `doorsOpen`/`doorsTarget` alla chiusura di partenza,
+  watchdog D32 ri-aggancia i listener touch sul canvas ricreato.
+  56 → 56 blocchi
   `describe`. Test UI: **21** (era 20, +1 il 2026-10-02 D35: overlap check
   bounding boxes 852x393 cabin mode = zero sovrapposizioni).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
