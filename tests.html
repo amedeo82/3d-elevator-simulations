@@ -2541,6 +2541,105 @@
           assert(/themeFloors\s*=\s*\[\s*0\s*,\s*1\s*,\s*4\s*,\s*7\s*\]/.test(src),
             'prewarmCorridorShaders deve coprire i 4 temi (lobby/office/hotel/penthouse)');
         });
+        // FIX 2026-10-13 (5 bug): regression test sorgente, stessa tecnica dei
+        // fix D34/D35 (comportamenti non copribili da test puri: dipendono da
+        // scene 3D, RAF loop e timer).
+        //
+        // Bug 1: il tasto STOP (pressButton ramo 'stop') settava movePaused=true
+        // senza alcun percorso di reset alla ripartenza: tickMove esce presto
+        // sul gate movePaused, quindi ogni requestFloor successivo metteva
+        // isMoving=true ma la cabina NON si muoveva piu' ("ascensore morto"
+        // finche' l'utente non attivava/disattivava a caso OOO o SOS). Fix:
+        // actuallyStartMove (unico punto di ingresso di ogni nuovo viaggio)
+        // ripristina movePaused=false; il ramo STOP inoltre riporta la cabina
+        // al piano di partenza (prima restava appesa a meta' shaft).
+        test('movimento: actuallyStartMove ripristina movePaused (STOP reversibile)', () => {
+          const src = doc.documentElement.innerHTML;
+          const m = src.match(/function\s+actuallyStartMove[\s\S]*?^\}/m);
+          assert(m, 'funzione actuallyStartMove non trovata nel sorgente');
+          assert(/movePaused\s*=\s*false\s*;/.test(m[0]),
+            'actuallyStartMove deve ripristinare movePaused=false (altrimenti il tasto STOP blocca l\'ascensore per sempre)');
+        });
+        test('movimento: il ramo STOP riporta la cabina al piano di partenza', () => {
+          const src = doc.documentElement.innerHTML;
+          const m = src.match(/function\s+pressButton[\s\S]*?^\}/m);
+          assert(m, 'funzione pressButton non trovata nel sorgente');
+          assert(/cabin\.position\.y\s*=\s*state\.currentFloor\s*\*\s*FLOOR_HEIGHT\s*;/.test(m[0]),
+            'il ramo STOP di pressButton deve riportare cabin.position.y al piano corrente (no cabina appesa a meta\' shaft)');
+        });
+        // Bug 2: il pre-warm shader (D36) forzava state.isMoving=true credendo
+        // di disabilitare tickMove, ma il gate di tickMove e' positivo: al
+        // primo frame RAF durante l'await di compileAsync, con moveDuration=0
+        // al boot, moveT arrivava a 1 e scattava handleFloorArrival(0) —
+        // arrivo "fantasma" al Terra (annuncio vocale + NPC + coda) gia' dalla
+        // start screen, e perdita del lock per le iterazioni restanti. Fix:
+        // flag dedicato state._prewarmInProgress letto da tickMove, dichiarato
+        // in CONFIGURAZIONE (vincolo D2); isMoving non viene piu' toccato.
+        test('pre-warm: tickMove gated da _prewarmInProgress (no arrivo fantasma)', () => {
+          const src = doc.documentElement.innerHTML;
+          const tm = src.match(/function\s+tickMove[\s\S]*?^\}/m);
+          assert(tm, 'funzione tickMove non trovata nel sorgente');
+          assert(/state\._prewarmInProgress/.test(tm[0]),
+            'tickMove deve uscire presto anche quando state._prewarmInProgress e\' attivo');
+          const st = src.match(/const\s+state\s*=\s*\{[\s\S]*?\n\};/);
+          assert(st && /_prewarmInProgress\s*:\s*false/.test(st[0]),
+            'state._prewarmInProgress va dichiarato in CONFIGURAZIONE (vincolo D2)');
+        });
+        test('pre-warm: prewarmCorridorShaders non tocca piu\' state.isMoving', () => {
+          const src = doc.documentElement.innerHTML;
+          const m = src.match(/function\s+prewarmCorridorShaders[\s\S]*?^\}/m);
+          assert(m, 'funzione prewarmCorridorShaders non trovata nel sorgente');
+          assert(/state\._prewarmInProgress\s*=\s*true\s*;/.test(m[0]),
+            'prewarmCorridorShaders deve attivare il flag dedicato _prewarmInProgress');
+          assert(!/state\.isMoving\s*=\s*true\s*;/.test(m[0]),
+            'prewarmCorridorShaders NON deve piu\' forzare state.isMoving=true (causa arrivo fantasma)');
+        });
+        // Bug 3: initTouchControls veniva richiamata a ogni transizione
+        // desktop<->mobile di recheck() senza guard: dopo N transizioni un
+        // singolo drag applicava il delta yaw/pitch N volte (camera
+        // "fulminea") e un tap su un call-button invocava requestFloor N
+        // volte. Fix: listener canvas estratti in bindCanvasTouchListeners
+        // (idempotente sul canvas gia' bindato) + guard touchDomBound per i
+        // nodi DOM statici (joystick, call-buttons).
+        test('touch: initTouchControls idempotente (no stacking listener)', () => {
+          const src = doc.documentElement.innerHTML;
+          const m = src.match(/function\s+initTouchControls[\s\S]*?^\}/m);
+          assert(m, 'funzione initTouchControls non trovata nel sorgente');
+          assert(/if\s*\(\s*touchDomBound\s*\)\s*return\s*;/.test(m[0]),
+            'initTouchControls deve avere il guard touchDomBound (no re-bind ripetuto)');
+          assert(/function\s+bindCanvasTouchListeners/.test(src),
+            'manca bindCanvasTouchListeners (listener canvas idempotenti)');
+          assert(!/touchDomBound\s*=\s*true[\s\S]{0,200}touchDomBound\s*=\s*true/.test(src),
+            'il guard touchDomBound non deve essere violato piu\' volte');
+        });
+        // Bug 4: startMoveTo chiamava animateDoorsTo(0) senza allineare i
+        // flag: doorsOpen restava true e doorsTarget 1 durante tutta la
+        // chiusura e il viaggio. Conseguenze: tickDoors non emetteva mai
+        // 'door:closed', il display touch mostrava "PORTE APERTE" a porte
+        // chiuse e exitCabin (guard su doorsOpen) permetteva di uscire
+        // attraverso porte visivamente chiuse (in combo col tasto STOP).
+        test('porte: startMoveTo allinea doorsOpen/doorsTarget alla chiusura di partenza', () => {
+          const src = doc.documentElement.innerHTML;
+          const m = src.match(/function\s+startMoveTo[\s\S]*?^\}/m);
+          assert(m, 'funzione startMoveTo non trovata nel sorgente');
+          assert(/state\.doorsOpen\s*=\s*false\s*;/.test(m[0]),
+            'startMoveTo deve settare doorsOpen=false prima della chiusura di partenza');
+          assert(/state\.doorsTarget\s*=\s*0\s*;/.test(m[0]),
+            'startMoveTo deve settare doorsTarget=0 prima della chiusura di partenza');
+          assert(/animateDoorsTo\(0\s*,\s*0\.8\)/.test(m[0]),
+            'startMoveTo deve chiudere le porte con animateDoorsTo(0, 0.8)');
+        });
+        // Bug 5: il watchdog D32, dopo la ricreazione del renderer, ri-agganciava
+        // solo contextlost/restored/click sul nuovo canvas: i listener touch del
+        // drag-look (bindati sul vecchio canvas in initTouchControls) morivano
+        // con la rimozione dal DOM e su iOS Safari il touch-look restava morto
+        // dopo il recovery. Fix: bindCanvasTouchListeners(renderer.domElement)
+        // nel watchdog (la funzione e' idempotente sul canvas gia' bindato).
+        test('watchdog: ricreazione renderer ri-aggancia i listener touch', () => {
+          const src = doc.documentElement.innerHTML;
+          assert(/bindCanvasTouchListeners\s*\(\s*renderer\.domElement\s*\)/.test(src),
+            'il watchdog D32 deve richiamare bindCanvasTouchListeners(renderer.domElement) dopo la ricreazione');
+        });
         test('bottoni tutorial (tt-skip + tt-next) hanno aria-label', () => {
           const skip = get('#tt-skip');
           const next = get('#tt-next');

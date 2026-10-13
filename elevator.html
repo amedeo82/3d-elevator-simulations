@@ -2593,7 +2593,17 @@ const state = {
   // contextlost/restored e dal watchdog, che girano ben prima di qualunque
   // dichiarazione tardiva nel file.
   _ctxLost: false,
-  _ctxLostAt: 0
+  _ctxLostAt: 0,
+  // FIX 2026-10-13: gate del pre-warm shader (D36). Durante il pre-warm si
+  // chiama buildCorridor per temi diversi da quello corrente: il vecchio hack
+  // `state.isMoving = true` NON bloccava tickMove (il cui gate entra nel ramo
+  // movimento quando isMoving è true) e al primo frame RAF, con moveDuration=0
+  // al boot, scattava handleFloorArrival(0): arrivo "fantasma" al Terra
+  // (annuncio vocale+subtito, NPC, processing coda) già dalla start screen,
+  // oltre alla perdita del lock per le iterazioni restanti (handleFloorArrival
+  // rimette isMoving=false). Flag dedicato, dichiarato in CONFIGURAZIONE
+  // (vincolo D2) perché letto da tickMove nel loop.
+  _prewarmInProgress: false
 };
 
 // Polish Pack V3 Step 4 (Q4.2): movePaused dichiarato in CONFIGURATION
@@ -5790,12 +5800,19 @@ buildCorridor(0);
 // primo arrivo = 0 programmi dopo il pre-warm; arrivi successivi = 0.
 function prewarmCorridorShaders() {
   if (typeof renderer === 'undefined' || !renderer.compileAsync) return Promise.resolve();
+  if (state._prewarmInProgress) return Promise.resolve(); // guard anti ri-entrancy
   // 4 temi: lobby (piano 0), office (1), hotel (4), penthouse (7).
   const themeFloors = [0, 1, 4, 7];
   const savedFloor = state.currentFloor;
-  const wasMoving = state.isMoving;
   const run = async () => {
-    state.isMoving = true; // disabilita tickMove che chiama buildCorridor
+    // FIX 2026-10-13: gate dedicato al posto di `state.isMoving = true`.
+    // Il vecchio hack non disabilitava tickMove (guard positivo su isMoving)
+    // e produceva un arrivo fantasma al piano 0 al primo frame RAF durante
+    // l'await di compileAsync (vedi commento su state._prewarmInProgress).
+    // Con il flag, tickMove esce prima del ramo movimento e state.isMoving
+    // non viene toccato: una eventuale requestFloor reale durante il
+    // pre-warm resta gestita dal suo percorso normale.
+    state._prewarmInProgress = true;
     try {
       for (const f of themeFloors) {
         try {
@@ -5814,7 +5831,7 @@ function prewarmCorridorShaders() {
       }
     } finally {
       try { buildCorridor(savedFloor); } catch (_) { /* ignora */ }
-      state.isMoving = wasMoving;
+      state._prewarmInProgress = false;
     }
   };
   return run();
@@ -9292,45 +9309,66 @@ function initMobileDetection() {
 //
 // Contratti D-key: D23 (aria-label + role=application sul joystick).
 // Performance: ~110 righe. Bind una volta all'avvio; no-op se non mobile.
+// FIX 2026-10-13 (stacking listener): initTouchControls veniva richiamata sia
+// dall'AVVIO sia a ogni transizione desktop<->mobile di recheck() (resize/
+// orientationchange/matchMedia). Senza guard, ogni chiamata ri-aggiungeva
+// touchstart/touchmove/touchend sul canvas e 'click' su ogni .virtual-call-btn:
+// dopo N transizioni un singolo drag applicava il delta yaw/pitch N volte
+// (camera "fulminea") e un tap su ▲▼ invocava requestFloor N volte.
+// Soluzione: (a) i listener canvas vivono in bindCanvasTouchListeners, che
+// tiene traccia del canvas già bindato (e viene riusata dal watchdog D32 dopo
+// la ricreazione del renderer, quando il vecchio canvas muore con i listener);
+// (b) joystick e call-buttons sono nodi DOM statici: si legano una volta sola.
+let touchDomBound = false;
+let _touchCanvasEl = null;
+function bindCanvasTouchListeners(el) {
+  if (!el || el === _touchCanvasEl) return;
+  _touchCanvasEl = el;
+  let lastX = 0, lastY = 0, dragging = false;
+  el.addEventListener('touchstart', (e) => {
+    // Ignora touch sul joystick virtuale o pulsanti call (propagano qui)
+    if (e.target.closest('#touch-controls')) return;
+    if (e.touches.length !== 1) return;
+    dragging = true;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchmove', (e) => {
+    if (!dragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - lastX;
+    const dy = touch.clientY - lastY;
+    lastX = touch.clientX;
+    lastY = touch.clientY;
+    // Converti a yaw/pitch. Stessa logica del mouse-look desktop.
+    // yaw = -dx * 0.0035 (sinistra = guarda sinistra)
+    // pitch = -dy * 0.0035 (su = guarda su)
+    const yawDelta = -dx * 0.0035;
+    const pitchDelta = -dy * 0.0035;
+    if (typeof yawObj !== 'undefined' && yawObj) {
+      yawObj.rotation.y += yawDelta;
+      pitchObj.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitchObj.rotation.x + pitchDelta));
+    }
+    e.preventDefault();
+  }, { passive: false });
+  const endDrag = () => { dragging = false; };
+  el.addEventListener('touchend', endDrag);
+  el.addEventListener('touchcancel', endDrag);
+}
 function initTouchControls() {
   if (!state.isMobile) return;
   // Aggiungi classe al body per attivare CSS mobile
   document.body.classList.add('mobile-mode');
-  // Touch drag = mouse-look (yaw + pitch). Solo se playerInCabin (match mouse-look).
-  const rendererEl = document.querySelector('canvas');
-  if (rendererEl) {
-    let lastX = 0, lastY = 0, dragging = false;
-    rendererEl.addEventListener('touchstart', (e) => {
-      // Ignora touch sul joystick virtuale o pulsanti call (propagano qui)
-      if (e.target.closest('#touch-controls')) return;
-      if (e.touches.length !== 1) return;
-      dragging = true;
-      lastX = e.touches[0].clientX;
-      lastY = e.touches[0].clientY;
-      e.preventDefault();
-    }, { passive: false });
-    rendererEl.addEventListener('touchmove', (e) => {
-      if (!dragging || e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - lastX;
-      const dy = touch.clientY - lastY;
-      lastX = touch.clientX;
-      lastY = touch.clientY;
-      // Converti a yaw/pitch. Stessa logica del mouse-look desktop.
-      // yaw = -dx * 0.0035 (sinistra = guarda sinistra)
-      // pitch = -dy * 0.0035 (su = guarda su)
-      const yawDelta = -dx * 0.0035;
-      const pitchDelta = -dy * 0.0035;
-      if (typeof yawObj !== 'undefined' && yawObj) {
-        yawObj.rotation.y += yawDelta;
-        pitchObj.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitchObj.rotation.x + pitchDelta));
-      }
-      e.preventDefault();
-    }, { passive: false });
-    const endDrag = () => { dragging = false; };
-    rendererEl.addEventListener('touchend', endDrag);
-    rendererEl.addEventListener('touchcancel', endDrag);
+  bindCanvasTouchListeners(document.querySelector('canvas'));
+  // Nascondi pointer hint desktop (mobile non ha mouse-look). Idempotente.
+  const hintEl = document.getElementById('pointerhint');
+  if (hintEl) {
+    hintEl.textContent = 'Tap + drag per guardare. Usa il joystick per muoverti.';
   }
+  // Joystick e call-buttons: bind una volta sola (vedi nota stacking sopra).
+  if (touchDomBound) return;
+  touchDomBound = true;
   // Joystick virtuale (analogico) - drag in basso a sinistra.
   const joystick = document.getElementById('virtual-joystick');
   if (joystick) {
@@ -9408,11 +9446,6 @@ function initTouchControls() {
       }
     });
   });
-  // Nascondi pointer hint desktop (mobile non ha mouse-look).
-  const hintEl = document.getElementById('pointerhint');
-  if (hintEl) {
-    hintEl.textContent = 'Tap + drag per guardare. Usa il joystick per muoverti.';
-  }
 }
 
 // Polish Pack V3 Step 9 (Q9.2): refresh UI quando isMobile cambia runtime
@@ -9941,13 +9974,36 @@ function startMoveTo(floor, directionHint) {
   // tipi di movimento: digit keys, pulsantiera ▲/▼, prenotazione lobby,
   // manutentore teleporte, coda FIFO (Q9.5=C).
   // chiudi le porte prima di partire (se non sono già chiuse)
+  // FIX 2026-10-13: animateDoorsTo aggiorna solo doorsActual; senza
+  // allineare i flag, doorsOpen restava true e doorsTarget 1 durante
+  // tutta la chiusura e il viaggio. Conseguenze: tickDoors non emetteva
+  // mai 'door:closed' (entrambe le condizioni su doorsOpen fallivano),
+  // il display touch mostrava "PORTE APERTE" a porte chiuse e
+  // refreshHudButtons continuava a proporre "Esci" mentre exitCabin
+  // (il cui guard legge doorsOpen) avrebbe permesso di uscire attraverso
+  // porte visivamente chiuse. La chiusura di partenza resta silenziosa
+  // (nessun annuncio/countdown): qui si corregge solo lo stato.
   if (state.doorsActual > 0.05) {
+    state.doorsOpen = false;
+    state.doorsTarget = 0;
+    refreshHudButtons();
     animateDoorsTo(0, 0.8).then(() => actuallyStartMove());
   } else {
     actuallyStartMove();
   }
 }
 function actuallyStartMove() {
+  // FIX 2026-10-13: ogni nuovo viaggio riparte dallo stato "in moto". Il tasto
+  // STOP (pressButton ramo 'stop') setta movePaused=true senza alcun percorso
+  // di reset collegato alla ripartenza: requestFloor successivo rimetteva
+  // isMoving=true ma tickMove ritornava subito (gate movePaused) e la cabina
+  // restava ferma per sempre pur mostrando "Diretto al piano X" — finché
+  // l'utente non attivava e disattivava a caso OOO o SOS (gli unici due punti
+  // che azzerrano movePaused). Qui è l'unico punto di ingresso di ogni nuovo
+  // viaggio (unica chiamante: startMoveTo <- requestFloor), quindi il reset
+  // copre tutti i path senza violare l'invariante 8 (requestFloor è già
+  // bloccato se alarmOn, e toggleAlarm ON rimette movePaused=true).
+  movePaused = false;
   playBeep(700, 0.1, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 120);
   moveT = 0; moveElapsed = 0;
@@ -10055,7 +10111,7 @@ function tickMove(dt, now) {
   if (state.isMoving && !movePaused && !whooshNode) startWhoosh();
   if ((!state.isMoving || movePaused) && whooshNode) stopWhoosh();
   // decay dello shake quando la cabina è ferma
-  if (!state.isMoving || movePaused) {
+  if (!state.isMoving || movePaused || state._prewarmInProgress) {
     // Polish Pack V3 Step 4 (Q4.5): curva bounce-out per vibrazione residua.
     // Prima: `*= 0.85` decay esponenziale puro (troppo 'flat').
     // Ora: oscilla damped (exp(-3t) * cos(8π t)) per ~1.5s dopo l'arrivo,
@@ -10782,6 +10838,12 @@ function pressButton(btn) {
       state.isMoving = false;
       movePaused = true;
       moveT = 0; moveElapsed = 0;
+      // FIX 2026-10-13: riporta la cabina al piano di partenza. Fermata a metà
+      // shaft, currentFloor resta il piano di origine mentre cabin.position.y
+      // era a metà viaggio: la cabina restava appesa tra due piani (visibile
+      // dal giocatore in cabina) e il viaggio successivo teleportava al primo
+      // frame tickMove (moveFrom = state.currentFloor).
+      cabin.position.y = state.currentFloor * FLOOR_HEIGHT;
       lightFloorButton(state.targetFloor, false);
       queueClear();
       updateFloorDisplay();
@@ -11057,6 +11119,13 @@ setInterval(() => {
       try { renderer.domElement.addEventListener('webglcontextlost', _ctxLostHandler); } catch (_) {}
       try { renderer.domElement.addEventListener('webglcontextrestored', _ctxRestoredHandler); } catch (_) {}
       try { renderer.domElement.addEventListener('click', onClick); } catch (_) {}
+      // FIX 2026-10-13: il drag-look touch era bindato sul VECCHIO canvas in
+      // initTouchControls e moriva con la sua rimozione dal DOM. Dopo la
+      // ricreazione (scenario D32, iOS Safari) il joystick DOM sopravviveva
+      // ma ruotare la camera a dito non funzionava più. bindCanvasTouchListeners
+      // tiene traccia del canvas già bindato: qui il nuovo canvas è diverso,
+      // quindi viene effettivamente ri-bindato. No-op su desktop.
+      try { if (state.isMobile) bindCanvasTouchListeners(renderer.domElement); } catch (_) {}
       console.warn('[webgl] renderer ricreato dopo context-lost (iOS Safari no-restored fix)');
       return;
     } catch (e) {

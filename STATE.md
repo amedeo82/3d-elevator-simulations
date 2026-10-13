@@ -97,6 +97,7 @@ l'audit fermo alla fase V2.
 | `_joystick` | `{active: bool, dx: float -1..1, dz: float -1..1}` | handler touchstart/touchmove/touchend del joystick | `tickPlayer` (movimento nel corridoio su mobile) | `dx`/`dz` normalizzati per `JS_MAX`. Azzerati a `{0,0}` al rilascio del dito. D26est. |
 | `_ctxLost` | bool | listener `webglcontextlost` (=true), `webglcontextrestored` (=false) | `loop()` (salta `renderer.render()`), watchdog `CTX_WATCHDOG_MS` | Dichiarato in CONFIGURAZIONE per non incappare in TDZ (D2). **Prima del 2026-09-28 era scritto ma mai letto**: nessun recupero del context. D28. |
 | `_ctxLostAt` | float (ms) | `webglcontextlost` (=`performance.now()`), restored (=0), watchdog (=`performance.now()` quando ritenta) | watchdog (calcola elapsed vs `CTX_WATCHDOG_MS`) | Timestamp della perdita corrente. Se `!_ctxLost`, il valore non è significativo. D28. |
+| `_prewarmInProgress` | bool | `prewarmCorridorShaders` (=true durante il pre-warm, =false nel `finally`) | `tickMove` (early-return: nessun movimento/arrivo durante il pre-warm) | Gate dedicato del pre-warm shader (D36). **Prima del 2026-10-13 il pre-warm forzava `isMoving=true`**: il gate positivo di `tickMove` faceva scattare un arrivo fantasma al piano 0 al primo frame RAF. Dichiarato in CONFIGURAZIONE per non incappare in TDZ (D2). |
 
 > **Nota D28**: su iOS il context WebGL viene ucciso dal sistema
 > (backgrounding dell'app, pressione di memoria) e Safari non emette sempre
