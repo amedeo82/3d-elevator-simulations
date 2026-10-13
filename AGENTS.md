@@ -242,6 +242,8 @@ tabella layout era fuori di ~2.500 righe.
 | Il numero di contratti D-key | `AGENTS.md` (tabella D-key + "Contratti D-key totali"), `CONTRIBUTING.md`, `ROADMAP_POST_V7.md` — **tutti e tre insieme** |
 | Il workflow di un Polish Pack | `PIANO_VN.md` (step ✅ + log decisioni), `PIANO_MIGLIORAMENTI.md` (Fase NN) e `docs/ROADMAP.md` |
 | Un contratto D-key nuovo o modificato | `AGENTS.md` (riga della tabella) **e** `CONTRIBUTING.md` (checklist PR, step 6) |
+| L'aspetto della UI in modo visibile (feature nuova, restyle, nuova schermata) | `docs/images/` (screenshot aggiornati) **e** README § hero: GIF/video + screenshot devono mostrare il look corrente, non quello di 3 release fa |
+| L'URL della demo (rename repo, migrazione GitHub Pages ↔ Vercel/Netlify) | Campo **Website** dell'About GitHub (a mano: nessuno script può verificarlo), badge "Live Demo" del README, eventuali link demo in `docs/` — **tutto nello stesso commit** |
 | Il comportamento di build/CI | `AGENTS.md` sezione "Comandi build / verifica" + la **tabella dei 4 job e dei loro `name:` esatti**, e segna la job nuova come required in Settings → Branches |
 | Qualsiasi cosa, al merge | `node scripts/generate-changelog.js` (D26) |
 
@@ -274,6 +276,74 @@ log dei singoli step di `README.md`/`PIANO_*.md` (es. *"134 → 206 test,
 V3 Step 8"*). Sono il record di cosa è successo al tempo: correggerli
 falsificherebbe la storia del progetto. Solo lo stato corrente va tenuto
 allineato.
+
+---
+
+## Visibilità dei repository (la base di partenza prima del traffico esterno)
+
+Prima di portare traffico esterno (social, forum, articoli), assicurati che
+chi atterra sul repo capisca **subito** il valore del progetto e possa
+provarlo **senza clonare il codice**. Ogni repo deve superare il "test dei
+10 secondi". Vale per tutti i progetti front-end di questo workspace
+(simulatore ascensore, elicottero, ecc.).
+
+### 1. Demo Live (FONDAMENTALE)
+
+- Ogni repo deve avere il link demo **in alto a destra nella pagina GitHub**,
+  cioè nel campo **Website** della sezione "About" (sidebar destra, gear
+  accanto a "About"). È il posto che si vede da mobile, dalla lista repo del
+  profilo e nei risultati di ricerca GitHub: non basta averlo solo nel README.
+- Destinazione: **GitHub Pages** (zero setup per progetti statici), oppure
+  Vercel/Netlify se serve un dominio custom o preview per branch.
+- Per questo repo: GitHub Pages che serve `dist/index.html` — la build copy è
+  già mantenuta dalla CI (parità SHA-256 con `elevator.html`), quindi la demo
+  pubblicata coincide sempre con il sorgente verificato.
+- Verifica obbligatoria dopo ogni deploy: apri il link in finestra incognito →
+  la demo parte senza errori in console e lo start screen è raggiungibile
+  (i test UI di D29/D31 coprono quest'ultimo punto solo in locale).
+
+### 2. README visivo
+
+Il README è una vetrina, non documentazione tecnica. In cima, in quest'ordine:
+
+1. **GIF animata o breve video (MP4/WebM) di 10-15 secondi** che mostri il
+   simulatore in azione (una sequenza completa: chiamata piano → porte →
+   movimento → arrivo). Su GitHub le GIF attirano l'occhio in modo pazzesco.
+   Se la GIF pesa troppo (> ~10 MB), usa il pattern video con thumbnail
+   cliccabile: `<a href="video.mp4"><img src="thumbnail.png"></a>`.
+2. **Screenshot di alta qualità** (larghezza ≥ 1280px, catturati con le
+   istanze Chrome headless dedicate del contratto 7, non a mano). Per questo
+   repo vivono in `docs/images/` (già contratto nella mappa qui sopra).
+3. **Pulsante/badge "Live Demo"** ben visibile, che punta alla stessa URL del
+   campo Website dell'About: un solo canale di verità per il link demo.
+- Emoji e badge sono ammessi qui (contratto D3 vieta emoji solo nel codice JS).
+
+### 3. GitHub Topics (tag)
+
+- Compila i **Topics** del repo (About → gear → Topics): sono il canale di
+  scoperta via `github.com/topics/<tag>` e pesano nella ricerca interna.
+- Per questo tipo di progetto (sim 3D front-end): `threejs`, `webgl`, `3d`,
+  `simulator`, `elevator`, `javascript`, `html5`, `game`, `first-person`,
+  `single-file` — i più importanti primi, massimo 20.
+- Anche la **descrizione** dell'About va compilata: una riga che dica cosa è
+  e che inviti a provare la demo (es. "Simulatore 3D di ascensore di hotel di
+  lusso, giocabile nel browser").
+
+**Checklist rapida per ogni repo pubblicato**: campo Website compilato →
+demo online funzionante in incognito → README con GIF/video + screenshot +
+badge Live Demo → Topics e descrizione About compilati.
+
+**Sync con le modifiche al progetto** (vedi tabella "Regole di
+aggiornamento della documentazione" qui sopra): ogni PR che cambia l'aspetto
+visibile della UI aggiorna anche screenshot e hero del README; ogni cambio
+di URL demo (rename repo, migrazione Pages ↔ Vercel) aggiorna campo About,
+badge README e link in `docs/` nello stesso commit. Limite strutturale da
+conoscere: **campo Website, Topics e descrizione vivono nelle impostazioni
+GitHub, non nei file del repo** — nessuna CI può verificarli (stessa lezione
+dei required status checks), quindi l'unico controllo reale è la verifica
+in incognito della checklist. Quello che la CI può invece intercettare
+(presenza badge/GIF nel README, parità link demo) si può aggiungere come job
+statica quando serve.
 
 ---
 
