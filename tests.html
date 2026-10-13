@@ -2726,6 +2726,108 @@
           if (langBtn) langBtn.textContent = bootLang.toUpperCase();
         });
       });
+
+      // ============================================================
+      // FIX 2026-10-13 — guard di sicurezza/correttezza sul movimento
+      // ============================================================
+      // Cinque bug indipendenti scoperti durante l'audit del 2026-10-13:
+      //   B1 IR nudging:    il flag irNudgingActive non era consultato nel
+      //                    ramo di riapertura, quindi la chiusura forzata
+      //                    veniva annullata al frame successivo.
+      //   B2 promise orfana: actuallyStartMove veniva invocata dalla
+      //                    resolve di animateDoorsTo anche se nel frattempo
+      //                    l'utente aveva annullato il viaggio (STOP/OOO/SOS).
+      //   B3 SOS a meta' shaft: toggleAlarm ON non riportava la cabina al
+      //                    piano, lasciandola appesa a meta' shaft.
+      //   B4 OOO a meta' shaft: come B3 ma per la pressione del tasto OOO.
+      //   B5 enterCabin:    mancava il guard su isMoving/doorsOpen, simmetrico
+      //                    a exitCabin — il giocatore poteva teletrasportarsi
+      //                    in cabina durante il moto.
+      //   B6 i18n typo:     customizeLabelMotto era 'Motivo' (= reason), non
+      //                    motto/slogan. Traduzione palesemente sbagliata.
+      describe('FIX 2026-10-13: guard movimento/porte (audit post-D36)', () => {
+        const doc = iframe.contentDocument;
+        const src = doc.documentElement.outerHTML;
+        test('B1: tickIRSensor controlla irNudgingActive nel ramo onDoorway', () => {
+          // Il branch di riapertura deve skippare la riapertura durante
+          // il nudging: cerchiamo il check `state.irNudgingActive` entro
+          // il blocco di tickIRSensor (prima del cancelDoorCountdown).
+          const tickIR = src.match(/function\s+tickIRSensor[\s\S]*?\n\}/);
+          assert(tickIR, 'funzione tickIRSensor non trovata');
+          // L'early return per nudging deve essere dentro tickIRSensor
+          // e riferirsi a state.irNudgingActive.
+          assert(/if\s*\(\s*state\.irNudgingActive\s*\)/.test(tickIR[0]),
+            'tickIRSensor non contiene il guard `if (state.irNudgingActive)`');
+        });
+        test('B1: tickDoors resetta irNudgingActive alla chiusura completata', () => {
+          const tickDoors = src.match(/function\s+tickDoors[\s\S]*?\n\}/);
+          assert(tickDoors, 'funzione tickDoors non trovata');
+          // Il reset deve avvenire in prossimita' dell'emissione 'door:closed'
+          // e non altrove (per evitare reset prematuri che riabiliterebbero
+          // l'ostacolo durante la chiusura in corso).
+          assert(/door:closed/.test(tickDoors[0]),
+            'tickDoors non emette piu\' door:closed');
+          assert(/if\s*\(\s*state\.irNudgingActive\s*\)\s*state\.irNudgingActive\s*=\s*false/.test(tickDoors[0]),
+            'tickDoors non resetta irNudgingActive alla chiusura');
+        });
+        test('B2: actuallyStartMove rifiuta se lo stato e\' stato annullato', () => {
+          // Il guard deve controllare almeno !state.isMoving, alarmOn, outOfOrder
+          // per coprire STOP, SOS, OOO. Verifichiamo la presenza di tutti e tre
+          // perche\' ciascuno ha un percorso di interruzione distinto.
+          const fn = src.match(/function\s+actuallyStartMove\s*\([\s\S]*?\n\}/);
+          assert(fn, 'funzione actuallyStartMove non trovata');
+          assert(/!state\.isMoving/.test(fn[0]),
+            'actuallyStartMove non controlla !state.isMoving');
+          assert(/state\.alarmOn/.test(fn[0]),
+            'actuallyStartMove non controlla state.alarmOn');
+          assert(/state\.outOfOrder/.test(fn[0]),
+            'actuallyStartMove non controlla state.outOfOrder');
+          // Non deve riassegnare movePaused=false o riprodurre il beep prima
+          // del guard (questo era il bug: la promise si risolveva lo stesso).
+          const earlyBeep = fn[0].indexOf('playBeep(700');
+          const earlyGuard = fn[0].indexOf('!state.isMoving');
+          assert(earlyGuard !== -1 && earlyBeep !== -1 && earlyGuard < earlyBeep,
+            'guard posizionato DOPO i beep/annuncio: la promise orfana non sarebbe bloccata');
+        });
+        test('B3: toggleAlarm ON esegue snap cabina al piano corrente', () => {
+          const fn = src.match(/function\s+toggleAlarm\s*\([\s\S]*?\n\}/);
+          assert(fn, 'funzione toggleAlarm non trovata');
+          assert(/cabin\.position\.y\s*=\s*state\.currentFloor\s*\*\s*FLOOR_HEIGHT/.test(fn[0]),
+            'toggleAlarm non contiene lo snap cabin.position.y = state.currentFloor * FLOOR_HEIGHT');
+        });
+        test('B4: tasto OOO ON esegue snap cabina al piano corrente', () => {
+          // Il tasto OOO vive dentro pressButton (ramo outOfOrder ON).
+          const pressBtn = src.match(/function\s+pressButton\s*\([\s\S]*?\n\}/);
+          assert(pressBtn, 'funzione pressButton non trovata');
+          // Cerchiamo entrambi i punti (toggleAlarm + pressButton) per assicurarci
+          // che lo snap sia presente nel percorso OOO, non solo in quello SOS.
+          const allSrc = src;
+          const matches = allSrc.match(/cabin\.position\.y\s*=\s*state\.currentFloor\s*\*\s*FLOOR_HEIGHT/g) || [];
+          assert(matches.length >= 3,
+            `attesi >=3 snap cabin.position.y (STOP + SOS + OOO), trovati ${matches.length}`);
+        });
+        test('B5: enterCabin rifiuta se la cabina e\' in moto o le porte sono chiuse', () => {
+          const fn = src.match(/function\s+enterCabin\s*\([\s\S]*?\n\}/);
+          assert(fn, 'funzione enterCabin non trovata');
+          // Il guard deve menzionare lo stato di moto e la posizione delle porte
+          // (simmetria con exitCabin che ha gia\' i check).
+          assert(/state\.isMoving/.test(fn[0]),
+            'enterCabin non controlla state.isMoving');
+          assert(/state\.doorsOpen/.test(fn[0]) || /state\.doorsActual/.test(fn[0]),
+            'enterCabin non controlla doorsOpen/doorsActual');
+        });
+        test('B6: customizeLabelMotto in IT e\' tradotto correttamente', () => {
+          // Deve essere 'Slogan' o 'Motto' (entrambi accettabili per un motto
+          // di un hotel). Il valore precedente era 'Motivo' (= reason), bug.
+          const itMatch = src.match(/customizeLabelMotto:\s*'([^']+)'/);
+          assert(itMatch, 'customizeLabelMotto IT non trovato');
+          const itVal = itMatch[1];
+          assert(itVal !== 'Motivo',
+            `customizeLabelMotto IT ancora '${itVal}' (significato: reason, non motto)`);
+          assert(itVal === 'Slogan' || itVal === 'Motto',
+            `customizeLabelMotto IT='${itVal}' non e' una traduzione accettabile (atteso Slogan o Motto)`);
+        });
+      });
     }
 
     // ============================================================

@@ -1615,7 +1615,7 @@ const STRINGS = {
     customizeLabelStars: 'Stelle (1-5)',
     customizeLabelYear: 'Anno fondazione',
     customizeLabelTag: 'Tagline',
-    customizeLabelMotto: 'Motivo',
+    customizeLabelMotto: 'Slogan',
     customizeLabelColor: 'Colore accent',
     customizeApplied: 'Configurazione salvata \u00b7 Riavvio in corso...',
     customizeResetDone: 'Default ripristinati nei campi. Premi "Applica e salva" per confermare.',
@@ -9999,10 +9999,30 @@ function actuallyStartMove() {
   // isMoving=true ma tickMove ritornava subito (gate movePaused) e la cabina
   // restava ferma per sempre pur mostrando "Diretto al piano X" — finché
   // l'utente non attivava e disattivava a caso OOO o SOS (gli unici due punti
-  // che azzerrano movePaused). Qui è l'unico punto di ingresso di ogni nuovo
+  // che azzerano movePaused). Qui è l'unico punto di ingresso di ogni nuovo
   // viaggio (unica chiamante: startMoveTo <- requestFloor), quindi il reset
   // copre tutti i path senza violare l'invariante 8 (requestFloor è già
   // bloccato se alarmOn, e toggleAlarm ON rimette movePaused=true).
+  // FIX 2026-10-13 (promise orfana): startMoveTo puo' lanciare actuallyStartMove
+  // come risolutore di animateDoorsTo().then() dopo ~0.8s di chiusura. Se in
+  // quella finestra l'utente preme STOP, attiva OOO o SOS, il viaggio viene
+  // annullato (isMoving=false, movePaused=true, coda svuotata) ma la promise
+  // si risolve comunque: si otterrebbero doppio beep, reset di movePaused e
+  // un annuncio vocale "In salita verso piano X" per un viaggio che non parte
+  // (tickMove ritorna subito perche' isMoving e' false). Guard: se un evento
+  // di interruzione ha reso lo stato incoerente con un nuovo viaggio, esci
+  // silenziosamente senza toccare nulla. NOTA: requestFloor setta sempre
+  // state.isMoving=true PRIMA di chiamare startMoveTo (riga 9958), quindi
+  // isMoving=false e' un segnale affidabile di annullamento. Allo stesso modo
+  // moveFrom/moveTo sono aggiornati da requestFloor; verifichiamo anche quelli.
+  if (!state.isMoving || state.alarmOn || state.outOfOrder) {
+    return;
+  }
+  if (state.currentFloor !== moveFrom) {
+    // La cabina e' stata teletrasportata (manutentore Shift+1..9) durante
+    // l'attesa della chiusura: il viaggio non e' piu' valido.
+    return;
+  }
   movePaused = false;
   playBeep(700, 0.1, 'sine', 0.1);
   setTimeout(() => playBeep(700, 0.1, 'sine', 0.1), 120);
@@ -10314,7 +10334,15 @@ function tickDoors(dt) {
       // scheduleAutoClose e drawModernDisplay ascoltano 'door:opened' invece
       // di fare polling ogni frame su state.doorsActual.
       if (state.doorsOpen && state.doorsActual >= 0.99) bus.emit('door:opened');
-      else if (!state.doorsOpen && state.doorsActual <= 0.01) bus.emit('door:closed');
+      else if (!state.doorsOpen && state.doorsActual <= 0.01) {
+        // FIX 2026-10-13: reset del flag di nudging quando la chiusura forzata
+        // (avviata da setDoors(false) nel blocco IR_TIMEOUT_MS sopra) termina.
+        // Senza questo reset irNudgingActive restava true per sempre, bloccando
+        // ogni successiva riapertura legittima dell'ostacolo anche dopo che il
+        // player avesse lasciato la soglia.
+        if (state.irNudgingActive) state.irNudgingActive = false;
+        bus.emit('door:closed');
+      }
     }
   }
   // applica posizione porte
@@ -10393,6 +10421,15 @@ function toggleAlarm() {
     // attiva: blocca movimento, chiudi porte, luci rosse lampeggianti
     state.isMoving = false;
     movePaused = true;
+    // FIX 2026-10-13: snap cabina al piano corrente. Senza questo, se l'allarme
+    // scatta a meta' viaggio cabin.position.y resta a meta' shaft mentre
+    // state.currentFloor e' ancora il piano di origine: il viaggio successivo
+    // teletrasporta la cabina al primo frame di tickMove (moveFrom = currentFloor).
+    // Il difetto era gia' stato corretto per STOP (pressButton ramo 'stop',
+    // vedi commento FIX 2026-10-13 lì sopra); SOS/OOO seguono lo stesso pattern.
+    if (typeof cabin !== 'undefined' && cabin && typeof cabin.position !== 'undefined') {
+      cabin.position.y = state.currentFloor * FLOOR_HEIGHT;
+    }
     cancelAutoClose(); // l'allarme chiude le porte manualmente, niente auto-close
     setDoors(false);
     // Polish Pack V3 Step 4 (Q4.4): fade-in 200ms invece di snap.
@@ -10695,6 +10732,17 @@ function enterCabin() {
     if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
     return;
   }
+  // FIX 2026-10-13: simmetria con exitCabin (riga sopra) — blocca rientro se
+  // la cabina e' in moto o se le porte non sono aperte. Senza questo guard,
+  // tenere premuto E durante la chiusura di partenza o mentre la cabina e' in
+  // movimento teletrasportava il giocatore in una cabina che sale/scende
+  // (placeCameraInCabin() riposiziona la camera dentro la cabina, ma la cabina
+  // si muove). In piu' il sensore IR e' disattivato in isMoving, quindi
+  // l'ostacolo-protezione non sarebbe disponibile nella finestra di moto.
+  if (state.isMoving || !state.doorsOpen || state.doorsActual < 0.7) {
+    if (typeof playBeep === 'function') playBeep(220, 0.2, 'square', 0.1);
+    return;
+  }
   // distanza dall'apertura della cabina (z vicino a CABIN.d/2 e |x| < 0.8m)
   const distZ = Math.abs(yawObj.position.z - CABIN.d/2);
   if (distZ > 1.0 || Math.abs(yawObj.position.x) > 0.9) return;
@@ -10919,6 +10967,18 @@ function tickIRSensor() {
   const doorIsClosing = !state.doorsOpen && state.doorsActual > 0.05 && state.doorsActual < 0.95;
 
   if (onDoorway && doorIsClosing) {
+    // FIX 2026-10-13: durante il "nudging" (chiusura forzata a 15s di ostruzione
+    // continua) la cabina sta deliberatamente ignorando l'ostacolo, come da norma
+    // ASME A17.1 §2.13.5. Il flag irNudgingActive viene impostato a true nel
+    // blocco di nudging sotto: senza questo guard il frame successivo, con il
+    // player ancora sulla soglia e doorsOpen/doorsActual in transizione,
+    // questo ramo riapriva le porte e ripristinava irObstacleActive=false,
+    // entrando in un ciclo perpetuo (chiusura forzata -> riapertura ->
+    // scheduleAutoClose -> nuovo ostacolo -> nudging -> annunci TTS a loop).
+    if (state.irNudgingActive) {
+      // Nudging in corso: ignora l'ostacolo e lascia chiudere le porte.
+      return;
+    }
     // Prima rilevazione ostacolo durante la chiusura
     if (!state.irObstacleActive) {
       state.irObstacleActive = true;
@@ -11247,6 +11307,12 @@ addEventListener('keydown', e => {
       // blocca movimento e coda, chiudi porte
       state.isMoving = false;
       movePaused = true;
+      // FIX 2026-10-13: snap cabina al piano corrente, simmetrico al fix in
+      // pressButton ramo 'stop' e toggleAlarm ON sopra. Senza questo, OOO
+      // attivato a meta' viaggio lascia la cabina appesa a meta' shaft.
+      if (typeof cabin !== 'undefined' && cabin && typeof cabin.position !== 'undefined') {
+        cabin.position.y = state.currentFloor * FLOOR_HEIGHT;
+      }
       queueClear();
       state.prenotationActive = false; // annulla prenotazione automatica
       setDoors(false);

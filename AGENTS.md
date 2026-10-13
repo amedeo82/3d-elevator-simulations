@@ -141,7 +141,7 @@ merge invece di due, e la coerenza del conteggio D-key resta garantita.
 
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi + brace balance
-node scripts/run-tests.js                      # 321 test in Chromium headless
+node scripts/run-tests.js                      # 328 test in Chromium headless
 node scripts/run-ui-tests.js                   # 21 test di layout e interazione (D31)
 cp elevator.html dist/index.html              # build copy
 ```
@@ -176,7 +176,7 @@ coordinate reali) e controllare che l'elemento sia dentro il viewport.
 ### Refactor: dimostra che è puro spostamento di codice
 
 Quando sposti il body di una funzione in helper (D24), i test esistenti
-**non bastano**: i 321 test coprono funzioni pure e i 21 test UI coprono
+**non bastano**: i 328 test coprono funzioni pure e i 21 test UI coprono
 layout e interazione, nessuno dei due guarda il contenuto disegnato su canvas.
 
 Metodo usato il 2026-09-29 per lo split di `renderDisplayDynamicLayer`
@@ -354,7 +354,7 @@ statica quando serve.
 | Comando | Scopo |
 |---|---|
 | `node scripts/check-balance.js elevator.html` | Verifica sintassi + brace balance (autorevole) |
-| `node scripts/run-tests.js` | Esegue i 321 test in Chromium headless, exit 1 se uno fallisce |
+| `node scripts/run-tests.js` | Esegue i 328 test in Chromium headless, exit 1 se uno fallisce |
 | `node scripts/run-ui-tests.js` | 21 test **comportamentali** di layout/interazione (D31), exit 1 se uno fallisce |
 | `cp elevator.html dist/index.html` | Build copy obbligatoria: la CI ne verifica la parità SHA-256 |
 | Aprire `elevator.html` in browser | Smoke test locale (Chrome/Edge/Firefox) |
@@ -369,7 +369,7 @@ required status checks: sono quelli da copiare in Settings → Branches.
 |---|---|---|
 | 1 | `Sintassi + brace balance + invarianti build` | `check-balance.js`, parità SHA-256 `dist/index.html` === `elevator.html`, invariante D24 (0 funzioni >= 150 righe) |
 | 2 | `Test framework (Polish Pack V2 Step 12)` | Validazione statica: presenza `window.BossHotelPure` in `elevator.html`, presenza `tests.html`, conteggio `test('` >= 30, referenziamento di `elevator.html` in `tests.html` |
-| 3 | `Esecuzione test in browser (Chromium headless)` | 321 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
+| 3 | `Esecuzione test in browser (Chromium headless)` | 328 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
 | 4 | `Test UI layout e interazione (Chromium headless)` | 21 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame, sovrapposizioni HUD su iPhone 15 Pro landscape (D31, D35). È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
 
 **Ottimizzazione tempi CI (2026-10-13, P1–P4)**: (a) `concurrency: ci-${{ github.ref }}`
@@ -447,7 +447,7 @@ build del browser, `chromium.launch()` fallisce con
 appeare illeggibile.
 
 I due runner usano la stessa installazione. `run-tests.js` copre la logica
-pura (321 test su `window.BossHotelPure` in un iframe nascosto),
+pura (328 test su `window.BossHotelPure` in un iframe nascosto),
 `run-ui-tests.js` copre layout e interazione (21 test che aprono l'app in
 viewport reali, desktop e mobile) — vedi D30 e D31. Scrivono rispettivamente
 `test-output.json` e `ui-test-output.json` nella root (gitignored).
@@ -515,6 +515,7 @@ $tdir = Join-Path $env:TEMP ("kilo-chrome-" + [Guid]::NewGuid().ToString().Subst
 | D34 | **Joystick: inversione drag-su/avanti + re-anchor del centro ad ogni touchmove (rotazione mid-gesto)** | Polish Pack fix 2026-10-01 (iPhone 15 Pro). L'utente riportava "stick invertiti quando ruoto lo schermo". La diagnosi corretta era 2 difetti distinti che si sommavano. **Difetto 1 (sempre presente, non legato alla rotazione)**: `state._joystick.dz = clientY - jsCenterY` è in coordinate schermo (Y cresce verso il basso), quindi drag su = dz negativo. In `tickPlayer`, `fwd += jz` rendeva `fwd` negativo quando l'utente spingeva il knob in alto, e il player andava all'indietro. Il commento nel codice ("dz positivo (drag su) = fwd (avanti)") era anch'esso sbagliato: confondeva la direzione dello schermo con quella del player. Fix: in `tickPlayer`, `fwd -= jz` (segno opposto) + aggiornamento del commento per dichiarare esplicitamente la convenzione screen-Y. **Difetto 2 (solo con rotazione mid-gesto)**: `jsCenterX/Y` venivano catturati al `touchstart` e non aggiornati. Se l'utente teneva il dito sul joystick mentre il device ruotava, il joystick si spostava ma il centro no, e i successivi `touchmove` calcolavano `dx/dy` rispetto a coordinate stale → knob che "salta" dall'altra parte. Fix: in `onMove` ricalcolo `jsCenterX/Y` da `getBoundingClientRect()` ad ogni evento (costo ~0 sul reflow corrente). Test: 2 nuovi test in `tests.html` che verificano (a) l'enunciato `fwd -= jz;` è presente in `tickPlayer` e `fwd += jz;` non lo è, (b) `onMove` richiama `getBoundingClientRect()` e ri-assegna `jsCenterX/Y`. La lezione: "è invertito dopo la rotazione" non significa necessariamente "la rotazione causa l'inversione" — può essere un bug costante che diventa sintomatico durante il cross-orientamento test. |
 | D35 | **Call-buttons ▲▼ virtuali nascosti in corridoio + HUD compatto landscape phone** | Polish Pack fix 2026-10-02 (iPhone 15 Pro). L'utente segnalava 2 difetti distinti, ricondotti a una stessa causa. (1) **In cabina i call-buttons ▲▼ restano utili** (chiamano un piano dall'interno); **in corridoio sono ridondanti** (ogni piano ha gia' la pulsantiera fisica ▲▼ sulla parete) e inutili: `tickPlayer` non li consulta, quindi toccarli non sposta il giocatore. Simmetria con D33: joystick nascosto in cabina (`body.cabin-mode #virtual-joystick { display: none }`), call-buttons nascosti in corridoio (`body.corridor-mode #virtual-call-buttons { display: none }`), entrambi commutati dalla stessa `refreshHudButtons`. (2) **Sovrapposizioni HUD su iPhone 15 Pro landscape (852x393)**: bounding boxes pre-fix mostravano `#floor-strip` (centro verticale destro, y=142-251) e `#virtual-call-buttons` (lato destro basso, y=207-363) collidenti per 44px verticali = ~3080 sq px di pixel-area sovrapposti. Aggiunto blocco `@media (max-height: 500px) body.mobile-mode` che: nasconde `#topbar` (info duplicata da `#mode-badge`), nasconde `#pointerhint` (mobile tocca direttamente, niente drag implicito), riposiziona `#floor-strip` da `top:50%` a `top:12px right:70px` (sotto l'hamburger, niente piu' overlap con i call-buttons), comprime `#mode-badge` (top:12px right:12px), `#status` (bottom:14px), `.hud-action` (top:68%, font 12px). Verificato con bounding boxes reali: cabin mode E corridor mode = zero sovrapposizioni su 852x393. Test: +2 in `tests.html` (regole CSS presenti) e +1 in `run-ui-tests.js` (overlap check 852x393 cabin mode, 21/21 UI tests pass). Lezione: **`max-width` da solo non basta** per i viewport phone landscape: serve anche `max-height` (o meglio `aspect-ratio`/`orientation`) per catturare i device 852x393, 932x430 ecc. la cui larghezza supera 768 ma l'altezza e' quella il vero vincolo. |
 | D36 | **Pool di materiali + PointLight + pre-warm shader per eliminare i freeze al cambio piano su iOS Safari** | Polish Pack fix 2026-10-05 (iPhone 15 Pro). Indagine 2026-10-02/05 (vedi `docs/SAFARI_IOS_COMPAT.md`): ad ogni arrivo a un nuovo piano, `buildCorridor` ricreava ~30-50 materiali + 4-7 PointLight ex-novo. Three.js vedeva un numero di luci diverso (o materiali con uuid diversi) e RICOMPILAVA i programmi shader in modo sincrono sul main thread, bloccando 0.3-2.4 secondi su WebKit/iOS (three.js issue #22254, chiusa come bug di WebKit non risolvibile in three.js). Verificato empiricamente con `scripts/diagnose-prewarm.js`: correlazione **deterministica** tra frame da 0.4-2.4s e `gl.createProgram` chiamate al cambio piano. **Fix in 4 layer (D36)**: (a) **`corridorLightPool`**: 7 PointLight pre-create (4 ceiling lamps + 3 furniture slots), aggiunte al `corridor` una volta, mai rimosse. Ogni `buildCorridor` le posiziona/attiva, le altre restano a intensity 0. `disposeCorridor` le risparmia. (b) **`themeMaterialPool[themeName]`**: ~5-6 materiali shell per tema (floor/carpet/ceiling/wall/led/frame), creati al primo uso del tema, **mai** disposed. (c) **Refactor di 13 helper furniture/porte/pulsantiera** (`addPlant`, `addSofa`, `addDesignerSofa`, `addCoffeeTable`, `addReception`, `addDesk`, `addRoomDoor`, `addPainting`, `addWallLamp`, `addWaterCooler`, `addFloorLamp`, `addSkylineWindow`, `addExternalCallPanel`, `makeFloorIndicator`, `makeCallButton`): ogni `new MeshXxxMaterial({...})` ora wrappato in `getOrCreateMat(currentThemeAssets, 'chiave_unica', ...)`. I materiali sono pooled per-tema con chiavi uniche per (theme, color, properties). (d) **Pre-warm async** con `renderer.compileAsync` per i 4 temi in `requestIdleCallback` durante la start screen, cosi' i programmi shader sono compilati prima che l'utente salga al primo piano. **Verifica finale** (3 run interleaved via `diagnose-prewarm.js`): primo arrivo = 0 programmi, arrivi successivi = 0 programmi e 0 freeze. Test: 314/314 (era 305, +9 D36) + 21/21 UI verdi. **Lezione chiave**: la cache dei programmi three.js è keyed sull'identità del materiale (uuid) e sul light count. Per renderla persistente serve **non** disporre i materiali. Poolarli li tiene vivi. La dispose del `disposeCorridor` e' l'antagonista: va filtrata con `isPooledMaterial` (esteso per coprire shell + furniture).
+| D37 | **Guard coerenti su interruzione viaggio e simmetria enterCabin/exitCabin** | Polish Pack fix 2026-10-13 (audit post-D36). L`'audit del movimento/porte ha rivelato 5 bug latenti indipendenti, tutti riconducibili a uno stesso pattern: i percorsi di interruzione (STOP, OOO, SOS) e l`'ingresso in cabina non erano simmetrici con i loro gemelli. **(B1) IR nudging ignorato**: `setDoors(false)` forzato a 15s di ostruzione veniva annullato al frame successivo, perche' `irNudgingActive` era settato ma mai consultato -> ciclo chiusura->riapertura->annuncio TTS. Fix: `if (state.irNudgingActive) return;` nel ramo di riapertura + reset del flag all`'evento `door:closed`. **(B2) Promise orfana startMoveTo->actuallyStartMove**: `.then(actuallyStartMove)` si risolveva comunque dopo STOP/OOO/SOS -> doppio beep + annuncio vocale per un viaggio mai partito. Fix: guard su `!isMoving || alarmOn || outOfOrder || currentFloor !== moveFrom`. **(B3/B4) Cabin a meta' shaft su SOS/OOO**: il fix 2026-10-13 esisteva solo per STOP. Fix: snap `cabin.position.y = state.currentFloor * FLOOR_HEIGHT` simmetrico in tutti e 3 i percorsi. **(B5) enterCabin asimmetrico**: `exitCabin` rifiuta se `!doorsOpen || isMoving || alarmOn`, ma `enterCabin` no -> teletrasporto in cabina in moto. Fix: `if (isMoving || !doorsOpen || doorsActual<0.7) return`. **(B6) i18n typo**: `customizeLabelMotto: 'Motivo'` (= reason) -> `'Slogan'`. Test: +7 in `tests.html` (328/328), 21/21 UI, 0 funzioni >=150. Lezione: un fix di sicurezza applicato in un solo percorso e' un bug futuro. |
 
 ---
 
@@ -540,9 +541,9 @@ array condiviso, segue lo stesso pattern di `buttonList`.
 - **Polish Pack V4**: 8/8 step (100%) — chiuso il 2026-09-26.
   Step 1-6 (Test exposure/Routing/A11y/Funzioni lunghe/Helper DRY/Open source)
   + Step 7 (Mobile scene separation D26est) + Step 8 (Mobile hamburger menu D27).
-  Contratti D-key totali: **36** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29, D32-D33 fix 2026-09-30 iPhone 15 Pro joystick+context, D34 fix 2026-10-01 inversione joystick, D35 fix 2026-10-02 call-buttons simmetria + HUD compatto landscape phone, D36 fix 2026-10-05 pool materiali+luci+pre-warm per eliminare blocchi shader su iOS Safari).
+  Contratti D-key totali: **37** (D1-D20 V1+V2+V3, D21-D27 V4, D28-D30 fix 2026-09-28, D31 fix 2026-09-29, D32-D33 fix 2026-09-30 iPhone 15 Pro joystick+context, D34 fix 2026-10-01 inversione joystick, D35 fix 2026-10-02 call-buttons simmetria + HUD compatto landscape phone, D36 fix 2026-10-05 pool materiali+luci+pre-warm per eliminare blocchi shader su iOS Safari, D37 fix 2026-10-13 guard simmetriche su interruzione viaggio + enter/exit cabina).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
-  Totale test vanilla: **321 test** (285 al 2026-09-28, poi +13 sui helper puri
+  Totale test vanilla: **328 test** (285 al 2026-09-28, poi +13 sui helper puri
   del movimento cabina il 2026-09-29: `computeMoveState`,
   `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`,
   `computeArrivalDirection` — estratti da `tickMove`, che fino a allora non
@@ -561,14 +562,16 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   `new THREE.PointLight` nei furniture helper (3 funzioni verificate),
   sorgente con `getOrCreateMat` in almeno 8 helper su 13, sorgente con
   `prewarmCorridorShaders` che chiama `compileAsync`.
-  **+7 test il 2026-10-13 (fix 5 bug)**: `actuallyStartMove` ripristina
-  `movePaused` (tasto STOP reversibile), ramo STOP riporta la cabina al piano
-  di partenza, `tickMove` gated da `state._prewarmInProgress` (no arrivo
-  fantasma), `prewarmCorridorShaders` non tocca più `state.isMoving`,
-  `initTouchControls` idempotente (no stacking listener touch),
-  `startMoveTo` allinea `doorsOpen`/`doorsTarget` alla chiusura di partenza,
-  watchdog D32 ri-aggancia i listener touch sul canvas ricreato.
-  54 blocchi
+  **+7 test il 2026-10-13 (D37)**: `tickIRSensor` consulta `irNudgingActive`
+  nel ramo `onDoorway && doorIsClosing` (skip riapertura durante nudging),
+  `tickDoors` resetta `irNudgingActive` all'evento `door:closed`,
+  `actuallyStartMove` rifiuta con guard su `!isMoving || alarmOn || outOfOrder
+  || currentFloor !== moveFrom` (annullamento promise orfana), `toggleAlarm` ON
+  esegue `cabin.position.y = state.currentFloor * FLOOR_HEIGHT`, il sorgente
+  contiene 3 occorrenze dello snap Y (STOP + SOS + OOO simmetrici),
+  `enterCabin` rifiuta su `isMoving || !doorsOpen`, `customizeLabelMotto` IT
+  non e' piu' `'Motivo'`.
+  55 blocchi
   `describe`. Test UI: **21** (era 20, +1 il 2026-10-02 D35: overlap check
   bounding boxes 852x393 cabin mode = zero sovrapposizioni).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
