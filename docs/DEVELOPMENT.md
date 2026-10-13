@@ -25,7 +25,7 @@ qui nulla: ogni file è la fonte autorevole del suo argomento.
 
 ```
 .
-├── elevator.html          # File principale (~507 KB, ~12.000 righe) — tutta la simulazione
+├── elevator.html          # File principale (~543 KB, ~12.100 righe) — tutta la simulazione
 ├── index.html             # Redirect a elevator.html (entry point per deploy)
 ├── tests.html             # Test framework (321 test su window.BossHotelPure)
 ├── scripts/
@@ -57,6 +57,14 @@ I 4 job della CI (`.github/workflows/ci.yml`), in parallelo:
 | `tests` | Test framework (Polish Pack V2 Step 12) | Validazione statica: presenza `window.BossHotelPure`, presenza `tests.html`, conteggio test |
 | `tests-run` | Esecuzione test in browser (Chromium headless) | I 321 test reali via `scripts/run-tests.js` |
 | `ui-tests` | Test UI layout e interazione (Chromium headless) | I 21 test comportamentali via `scripts/run-ui-tests.js` |
+
+
+> Dall'ottimizzazione 2026-10-13 (PR #38): browser Chromium e `node_modules`
+> Playwright sono cachati con le stesse key in `tests-run` e `ui-tests`, un push
+> rapido cancella il run precedente (`concurrency` + `cancel-in-progress`) e i
+> runner scaricano i file three.js da unpkg una volta per run servendoli via
+> route interception (`attachCdnRoute`), cosi' la CI non dipende dalla latenza
+> di unpkg a ogni page load.
 
 ## 💻 Sviluppo locale
 
@@ -97,7 +105,7 @@ php -S localhost:8000
 Il progetto include due suite:
 
 - **321 test di logica** in `tests.html`, su funzioni pure esposte in
-  `window.BossHotelPure` (56 blocchi `describe`), eseguiti da `scripts/run-tests.js`.
+  `window.BossHotelPure` (54 blocchi `describe`), eseguiti da `scripts/run-tests.js`.
 - **21 test UI** in `scripts/run-ui-tests.js`: aprono l'app in viewport reali
   (desktop e mobile) e verificano layout e interazione (raggiungibilità di
   `#startBtn`, tap che non finiscono su un overlay, frame 3D non vuoto). Coprono

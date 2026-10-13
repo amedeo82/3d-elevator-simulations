@@ -96,7 +96,7 @@
    |  - Tutorial contestuale prima volta (5 step)
    |  - 3-layer rendering caching (static/semistatic/dynamic)
    |  - Helper matematici puri (clamp, lerp, smoothstep, easeInOutCubic)
-   |  - 62 helper puri in window.BossHotelPure
+   |  - 68 helper puri in window.BossHotelPure
    |
    v
    CARICA PREFS (linee ~9130-9150)
@@ -316,7 +316,7 @@
 ## 7. Module dependencies (file interni)
 
 ```
-   elevator.html (single-file, ~12.000 righe, ~507 KB)
+   elevator.html (single-file, ~12.100 righe, ~543 KB)
    |
    +-- import { THREE } from 'three'
    +-- import { Reflector } from 'three/addons/objects/Reflector.js'
@@ -324,7 +324,7 @@
    |
    +-- window.BossHotelPure (esposto a tests.html)
    |    |
-   |    +-- 62 helper puri (matematici + business logic + accessibility + Q2.x + Q4.x + Q5.x + Q6.x)
+   |    +-- 68 helper puri (matematici + business logic + accessibility + Q2.x + Q4.x + Q5.x + Q6.x)
    |
    +-- bus (mini event bus homemade, V2 Step 1d)
    |    +-- emit/on/off — pattern semplice per disaccoppiare produttori/consumatori
