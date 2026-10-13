@@ -34,6 +34,64 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 const NAV_TIMEOUT = 90_000;
 const RESULTS_TIMEOUT = 60_000;
 
+// ---------------------------------------------------------------------------
+// three.js da buffer locale (ottimizzazione CI 2026-10-13, P4).
+// ---------------------------------------------------------------------------
+// elevator.html ha un importmap verso unpkg: ogni load di pagina scaricava
+// ~600 KB + addon dalla CDN con cache del contesto vuota, aggiungendo latenza
+// e un punto di fragilita' (unpkg lento/giu' = CI rossa per motivi non di
+// codice, esattamente il tipo di falso rosso che D30 voleva eliminare).
+// Scarichiamo i file una volta per run e li serviamo via route interception:
+// il browser riceve gli stessi byte senza toccare la rete. elevator.html
+// resta intatto (D1): l'intercettazione e' infrastruttura di solo test.
+// Degrado: se il prefetch fallisce (rete offline) non si registra nessun
+// route e la pagina usa la CDN direttamente, come prima della modifica.
+// ---------------------------------------------------------------------------
+const CDN_BASE = 'https://unpkg.com/three@0.160.0/';
+const CDN_FILES = [
+  'build/three.module.js',
+  'examples/jsm/objects/Reflector.js',
+  'examples/jsm/utils/BufferGeometryUtils.js',
+];
+const cdnBuffer = new Map();
+
+async function prefetchCdnFiles() {
+  const settled = await Promise.allSettled(CDN_FILES.map(async (rel) => {
+    const res = await fetch(CDN_BASE + rel, { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status} per ${rel}`);
+    return [rel, Buffer.from(await res.arrayBuffer())];
+  }));
+  for (const r of settled) {
+    if (r.status === 'fulfilled') cdnBuffer.set(r.value[0], r.value[1]);
+    else console.log(`CDN locale: prefetch parziale (${r.reason && r.reason.message})`);
+  }
+  if (cdnBuffer.size === 0) console.log('CDN locale: nessun file scaricato — degrado su rete diretta');
+}
+
+// Registra la route su un target Playwright (BrowserContext o Page).
+// NOTA 2026-10-13: NON usare `browser.on('context')` — verificato con probe
+// (DNS unpkg blackholato) che l'evento NON viene emesso per i contesti
+// impliciti creati da `browser.newPage()` in Playwright 1.56: la route non
+// sarebbe mai registrata e i test passerebbero comunque via rete reale,
+// cioe' un falso verde. La registrazione esplicita con `await` prima del
+// goto elimina anche la gara tra installazione route e prima richiesta.
+async function attachCdnRoute(target) {
+  if (cdnBuffer.size === 0) return;
+  await target.route('**/unpkg.com/three@0.160.0/**', async (route) => {
+    const url = new URL(route.request().url());
+    const rel = url.pathname.replace('/three@0.160.0/', '');
+    const body = cdnBuffer.get(rel);
+    if (body) {
+      // MIME javascript obbligatorio: i module script rifiutano altri type.
+      await route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body });
+    } else {
+      // Percorso non in cache (futuri addon): lascia andare in rete.
+      await route.continue();
+    }
+  });
+  console.log(`CDN locale: ${cdnBuffer.size}/${CDN_FILES.length} file three.js serviti da buffer`);
+}
+
 function startServer() {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -65,6 +123,7 @@ function startServer() {
   let exitCode = 1;
 
   try {
+    await prefetchCdnFiles();
     browser = await chromium.launch({
       args: [
         // WebGL in headless: senza questi lo SwiftShader puo' non essere
@@ -76,6 +135,7 @@ function startServer() {
       ],
     });
     const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    await attachCdnRoute(page);
 
     // Errori di pagina: un modulo che non si carica e' la causa piu' comune
     // di "0 test eseguiti", e va segnalato con messaggio utile. Raccolti in

@@ -370,6 +370,22 @@ required status checks: sono quelli da copiare in Settings → Branches.
 | 3 | `Esecuzione test in browser (Chromium headless)` | 314 test reali via `scripts/run-tests.js` (server HTTP statico + attesa di `window.__testResults`). È la job che intercetta i bug logici: le due precedenti sono solo `grep` ed eseguivano zero test (D30) |
 | 4 | `Test UI layout e interazione (Chromium headless)` | 21 test comportamentali via `scripts/run-ui-tests.js`: `#startBtn` premibile, tap su mobile che non finiscono su un overlay, scena che produce un frame, sovrapposizioni HUD su iPhone 15 Pro landscape (D31, D35). È l'unica job che avrebbe beccato i due bug bloccanti di CSS (D31) |
 
+**Ottimizzazione tempi CI (2026-10-13, P1–P4)**: (a) `concurrency: ci-${{ github.ref }}`
+con `cancel-in-progress: true` — un push rapido cancella il run obsoleto invece di
+accumulare code; (b) cache del browser Chromium (`~/.cache/ms-playwright`) anche in
+`tests-run`, prima presente solo in `ui-tests`: stesso key
+`playwright-chromium-<os>-1.56.0`, i due job la condividono e il download ~160 MB
+sparisce; (c) cache di `node_modules` (key `npm-playwright-<os>-1.56.0`) in entrambe
+le job pesanti — `npm install` saltato su cache hit (il progetto non ha lockfile per
+scelta, quindi `setup-node` con `cache: npm` non è usabile); (d) i due runner
+Playwright scaricano i 3 file three.js da unpkg **una volta per run** e li servono
+via route interception (`attachCdnRoute`): niente 7 download CDN per i page load di
+`run-ui-tests.js` e la CI non diventa rossa se unpkg è lento o giù. Lezione
+registrata nei runner: `browser.on('context')` **non** viene emesso per i contesti
+impliciti di `browser.newPage()` (Playwright 1.56, verificato con probe DNS
+blackholato) — la route va registrata esplicitamente con `await` su ogni
+contesto/pagina, altrimenti falso verde: i test passerebbero comunque via rete reale.
+
 ### Tutte e 4 devono essere "required status checks"
 
 Una job che gira ma non blocca il merge **non è un controllo**: è un
