@@ -9,6 +9,8 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- docs: sync numeri correnti e voci ROADMAP dopo PR #38/#39 (#42) (`5348b2e`)
+- docs(visibility): GIF hero, Live Demo button, galleria aggiornata + checklist repo (#41) (`cee12d2`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #38 (#40) (`9960673`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #35 e #36 (#37) (`7d530d0`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #33 (D35) (#34) (`243449f`)
