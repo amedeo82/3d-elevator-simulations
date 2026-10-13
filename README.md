@@ -129,6 +129,8 @@ Guida allo sviluppo e al deploy:
 | [`docs/CONTROLS.md`](docs/CONTROLS.md) | Comandi mouse, tastiera e touch |
 | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Struttura del progetto, sviluppo locale, test, deploy |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Storico release, Polish Pack, backlog residuo |
+| [`docs/REPO_VISIBILITY.md`](docs/REPO_VISIBILITY.md) | Checklist visibilità GitHub: demo live, topics, README visivo |
+| [`docs/SAFARI_IOS_COMPAT.md`](docs/SAFARI_IOS_COMPAT.md) | Indagine compatibilità iOS Safari (freeze shader, D36) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Diagrammi architetturali e flussi dati |
 | [`CHANGELOG.md`](CHANGELOG.md) | Storico commit auto-generato da `git log` |
 

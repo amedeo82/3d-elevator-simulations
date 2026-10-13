@@ -141,8 +141,8 @@ merge invece di due, e la coerenza del conteggio D-key resta garantita.
 
 ```bash
 node scripts/check-balance.js elevator.html   # sintassi + brace balance
-node scripts/run-tests.js                      # 303 test in Chromium headless
-node scripts/run-ui-tests.js                   # 20 test di layout e interazione (D31)
+node scripts/run-tests.js                      # 321 test in Chromium headless
+node scripts/run-ui-tests.js                   # 21 test di layout e interazione (D31)
 cp elevator.html dist/index.html              # build copy
 ```
 
@@ -176,7 +176,7 @@ coordinate reali) e controllare che l'elemento sia dentro il viewport.
 ### Refactor: dimostra che è puro spostamento di codice
 
 Quando sposti il body di una funzione in helper (D24), i test esistenti
-**non bastano**: i 303 test coprono funzioni pure e i 20 test UI coprono
+**non bastano**: i 321 test coprono funzioni pure e i 21 test UI coprono
 layout e interazione, nessuno dei due guarda il contenuto disegnato su canvas.
 
 Metodo usato il 2026-09-29 per lo split di `renderDisplayDynamicLayer`
@@ -253,10 +253,12 @@ sono in `docs/` e nei documenti di progetto alla root):
 | Doc | Contenuto | Manutenerlo quando... |
 |---|---|---|
 | `README.md` | Landing: hero, quick start, griglia funzioni sintetica, indice | Cambiano utenza, comandi ad alto livello, badge |
-| `docs/FEATURES.md` | Catalogo completo delle 30 aree funzionali | Aggiungi o modifichi una funzionalità |
+| `docs/FEATURES.md` | Catalogo completo delle 32 aree funzionali | Aggiungi o modifichi una funzionalità |
 | `docs/CONTROLS.md` | Comandi mouse / tastiera / touch | Aggiungi o cambi un tasto, un controllo touch |
 | `docs/DEVELOPMENT.md` | Struttura, sviluppo locale, test, deploy | Cambia il workflow di build/test/deploy |
 | `docs/ROADMAP.md` | Storico release, Polish Pack, backlog | Chiudi un pack o un hotfix |
+| `docs/REPO_VISIBILITY.md` | Checklist visibilità GitHub (Website, Topics, GIF hero, README visivo) | Cambi URL demo, hero del README o aspetti della pagina repo |
+| `docs/SAFARI_IOS_COMPAT.md` | Indagine compatibilità iOS Safari (freeze shader, D36) | Tocchi il pre-warm shader, i pool materiali/luci o vedi regressioni di scattosità su iOS |
 | `docs/images/` | Screenshot del README (WebP) | Cambia l'aspetto della UI in modo visibile |
 | `ARCHITECTURE.md` | Diagrammi e flussi dati | Cambia l'architettura |
 | `STATE.md` | Audit campo per campo di `state` | Aggiungi o rimuovi un campo di `state` |
@@ -445,8 +447,8 @@ build del browser, `chromium.launch()` fallisce con
 appeare illeggibile.
 
 I due runner usano la stessa installazione. `run-tests.js` copre la logica
-pura (303 test su `window.BossHotelPure` in un iframe nascosto),
-`run-ui-tests.js` copre layout e interazione (20 test che aprono l'app in
+pura (321 test su `window.BossHotelPure` in un iframe nascosto),
+`run-ui-tests.js` copre layout e interazione (21 test che aprono l'app in
 viewport reali, desktop e mobile) — vedi D30 e D31. Scrivono rispettivamente
 `test-output.json` e `ui-test-output.json` nella root (gitignored).
 Usa un server HTTP statico, non `file://`: `tests.html` carica `elevator.html`
@@ -566,24 +568,10 @@ array condiviso, segue lo stesso pattern di `buttonList`.
   `initTouchControls` idempotente (no stacking listener touch),
   `startMoveTo` allinea `doorsOpen`/`doorsTarget` alla chiusura di partenza,
   watchdog D32 ri-aggancia i listener touch sul canvas ricreato.
-  56 → 56 blocchi
+  54 blocchi
   `describe`. Test UI: **21** (era 20, +1 il 2026-10-02 D35: overlap check
   bounding boxes 852x393 cabin mode = zero sovrapposizioni).
   Vedi `PIANO_V4.md` per dettagli + `ROADMAP_POST_V7.md` per backlog futuro.
-  Totale test vanilla: **307 test** (285 al 2026-09-28, poi +13 sui helper puri
-  del movimento cabina il 2026-09-29: `computeMoveState`,
-  `computeArrivalPhase`, `computeMoveVibration`, `computeIdleVibration`,
-  `computeArrivalDirection` — estratti da `tickMove`, che fino a allora non
-  aveva alcuna copertura). +1 test per il probe WebGL (`probeWebGLSupport`),
-  +3 per il fix del joystick in cabina e la ricreazione del renderer
-  (`body.cabin-mode` + `refreshHudButtons` + `tryCreateRenderer` invocato dal
-  watchdog). **+2 test il 2026-10-01 (D34)**: inversione joystick
-  (`fwd -= jz;` presente / `fwd += jz;` assente in `tickPlayer`) e
-  re-anchor del centro ad ogni `touchmove`. **+2 test il 2026-10-02 (D35)**:
-  regola CSS `body.corridor-mode #virtual-call-buttons` + regola
-  `@media (max-height: 500px)` per il layout landscape phone. 56 → 56 blocchi
-  `describe`. Test UI: **21** (era 20, +1 il 2026-10-02 D35: overlap check
-  bounding boxes 852x393 cabin mode = zero sovrapposizioni).
 
 - **Polish Pack V3**: 9/9 step (100%) — chiuso il 2026-09-23 (vedi
   `PIANO_V3.md` storico per roadmap completa).
