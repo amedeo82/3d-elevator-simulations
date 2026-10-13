@@ -8,6 +8,22 @@ Per il backlog futuro aperto alla community vedi [`ROADMAP_POST_V7.md`](../ROADM
 ## Storico release (dal vivo)
 
 
+> **🔧 Hotfix 2026-10-13 (PR #39)** — cinque bug confermati con lettura del codice e
+> verificati (+7 test, 314 → 321): **STOP reversibile** (`actuallyStartMove` ripristina
+> `movePaused`, il ramo STOP riporta la cabina al piano di partenza), **no arrivo
+> fantasma** durante il pre-warm shader (`state._prewarmInProgress` gated in `tickMove`,
+> il pre-warm non tocca piu' `state.isMoving`), **`initTouchControls` idempotente**
+> (no stacking di listener touch alla transizione desktop<->mobile), **flag porte
+> allineati** (`startMoveTo` setta `doorsOpen`/`doorsTarget` alla chiusura di partenza),
+> **touch-look riagganciato** dopo il recovery WebGL (watchdog D32 ricollega i listener
+> sul canvas ricreato). Nuovo campo `state._prewarmInProgress` (STATE.md aggiornato).
+>
+> **⚡ Ottimizzazione CI (PR #38)** — tempi pipeline ridotti: `concurrency`
+> `ci-<ref>` con `cancel-in-progress` (un push rapido cancella il run obsoleto),
+> cache del browser Chromium condivisa tra `tests-run` e `ui-tests` (niente download
+> ~160 MB a run), cache `node_modules` Playwright, three.js scaricato una volta per
+> run e servito via route interception (`attachCdnRoute`) al posto di 7 fetch unpkg
+> per page load in `run-ui-tests.js`.
 > **🎉 Polish Pack V4 COMPLETO (2026-09-26)** — **8/8 step (100%)**.
 > Contratti D-key totali: **31**. Totale **299 test vanilla**.
 > V4 include:

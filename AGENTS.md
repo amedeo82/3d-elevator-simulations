@@ -2,7 +2,7 @@
 
 ## Cos'è il progetto
 Simulatore 3D prima-persona di una cabina ascensore di hotel di lusso.
-Single-file HTML (~507 KB, ~12.000 righe) con JS inline (modulo ES).
+Single-file HTML (~543 KB, ~12.100 righe) con JS inline (modulo ES).
 Three.js r160 via importmap (unpkg). Nessuna build step, nessuna dipendenza npm.
 
 Stato: **22/22 funzionalità backlog implementate (100%)** — V1 chiuso con v1.8.
@@ -73,7 +73,7 @@ rg -n "id=\"rotate-device-overlay\"" elevator.html
 | Settings QoL UI wiring | `function initSettingsQoL` | Slider volume + brightness + export JSON (D14) |
 | AVVIO | `// AVVIO` | `buildCorridor` iniziale, start screen, init eventi |
 | Preferenze persistenti | `const LANG_KEY`, `function loadLang` | Chiavi localStorage @v1: prefs, lang, config, audio, display, onboarded |
-| `window.BossHotelPure` namespace | `window.BossHotelPure = {` | 62 helper per `tests.html` — è il punto in cui finisce il file |
+| `window.BossHotelPure` namespace | `window.BossHotelPure = {` | 68 helper per `tests.html` — è il punto in cui finisce il file |
 
 ---
 

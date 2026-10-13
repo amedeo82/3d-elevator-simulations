@@ -9,6 +9,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V4 (2026-09)
 
+- docs(changelog): rigenera CHANGELOG.md dopo merge PR #38 (#40) (`9960673`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #35 e #36 (#37) (`7d530d0`)
 - docs(changelog): rigenera CHANGELOG.md dopo merge PR #33 (D35) (#34) (`243449f`)
 - refactor(movimento): tickMove 135 -> 63 righe, logica resa testabile (#26) (`c3394ed`)
@@ -112,6 +113,7 @@ I bucket sono assegnati euristicamente dal subject/body del commit (pattern
 
 ## Polish Pack V1 + fase iniziale (2026-08 e precedenti)
 
+- fix(core): STOP reversibile, no arrivo fantasma pre-warm, no stacking listener touch, flag porte allineati, touch-look dopo recovery WebGL (#39) (`888b3a4`)
 - fix(mobile): WebGL context recovery via renderer recreation + hide joystick in cabin (iPhone 15 Pro Safari) (#31) (`aa8aa90`)
 - docs: regole di aggiornamento documentale + ancole al posto dei numeri di riga (#18) (`7f4af39`)
 - docs(readme): promuovi link live preview GitHub Pages in cima (#3) (`1106e79`)
