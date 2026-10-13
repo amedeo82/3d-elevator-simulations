@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# ---------------------------------------------------------------------------
+# Ottimizzazione CI 2026-10-13 (P2): un push rapido su main o su una PR
+# cancella il run precedente ancora in corso. Senza questo, push consecutivi
+# accumulano run completi in coda e la CI "impiega parecchio" anche quando il
+# collo di bottiglia e' solo la fila. github.ref distingue le PR
+# (refs/pull/N/merge) dai push su main: i due gruppi non si cancellano a vicenda.
+# ---------------------------------------------------------------------------
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: Sintassi + brace balance + invarianti build
@@ -141,13 +152,31 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache browser Playwright (stessa key di ui-tests, i due job la condividono)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.56.0
+
+      - name: Cache node_modules (solo playwright, nessun lockfile per scelta di progetto)
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: npm-playwright-${{ runner.os }}-1.56.0
+
       - name: Installa Playwright + Chromium
         run: |
           # Versione pinnata: i runner Ubuntu GitHub non hanno Playwright
           # preinstallato e la versione deve essere allineata al build del
           # browser che viene scaricato, altrimenti si ottiene
           # "Executable doesn't exist" (esperienza diretta).
-          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          # Con cache hit di node_modules l'install npm e' saltata (P3); il
+          # browser Chromium e' coperto dalla cache sopra (P1): senza cache
+          # il download era ~160 MB a ogni run, ui-tests lo cachava gia'
+          # e tests-run no (asimmetria ereditata da D30 prima / D31 dopo).
+          if [ ! -d node_modules/playwright ]; then
+            npm install --no-save --no-audit --no-fund playwright@1.56.0
+          fi
           npx playwright install --with-deps chromium
 
       - name: Esegui tests.html (server HTTP + Chromium headless)
@@ -191,11 +220,20 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-1.56.0
 
+      - name: Cache node_modules (stessa key di tests-run)
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: npm-playwright-${{ runner.os }}-1.56.0
+
       - name: Installa Playwright + Chromium
         run: |
           # Stessa versione di tests-run: i due runner devono usare lo stesso
           # build del browser, altrimenti "Executable doesn't exist".
-          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          # Install npm saltato se node_modules arriva dalla cache (P3).
+          if [ ! -d node_modules/playwright ]; then
+            npm install --no-save --no-audit --no-fund playwright@1.56.0
+          fi
           npx playwright install --with-deps chromium
 
       - name: Esegui test UI (server HTTP + Chromium headless)
