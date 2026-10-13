@@ -386,6 +386,15 @@ impliciti di `browser.newPage()` (Playwright 1.56, verificato con probe DNS
 blackholato) — la route va registrata esplicitamente con `await` su ogni
 contesto/pagina, altrimenti falso verde: i test passerebbero comunque via rete reale.
 
+**Compatibilità runner CI (2026-10-13, P5)**: (a) `runs-on` pinnato a
+`ubuntu-24.04` in tutte e 4 le job — il label `ubuntu-latest` migra a Ubuntu
+26.04 dal 19/10/2026 (runner-images#14748) e la migrazione automatica può
+cambiare librerie/ambiente sotto `playwright install --with-deps`; da
+rivedere quando si vorrà migrare deliberatamente a 26.04; (b) `actions/cache`
+bumpato da `v4` a `v5` — `v4` usava il runtime Node 20 (deprecato, forzato a
+Node 24 dai runner), `v5` gira nativamente su Node 24 ed è backward
+compatible (stessi input `path`/`key`).
+
 ### Tutte e 4 devono essere "required status checks"
 
 Una job che gira ma non blocca il merge **non è un controllo**: è un

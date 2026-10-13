@@ -17,10 +17,20 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# ---------------------------------------------------------------------------
+# Runner pinnato a ubuntu-24.04 (2026-10-13): il label ubuntu-latest migra a
+# Ubuntu 26.04 a partire dal 19/10/2026 (runner-images#14748). Il pinnaggio
+# evita che la migrazione cambi le immagini sotto la CI (playwright
+# install --with-deps fa apt install su librerie condivise). Da rivedere
+# quando si vorra' migrare deliberatamente a 26.04.
+# actions/cache@v5 invece di @v4: v4 usa il runtime Node 20 (deprecato,
+# forzato a Node 24); v5 gira nativamente su Node 24, backward compatible.
+# ---------------------------------------------------------------------------
+
 jobs:
   check:
     name: Sintassi + brace balance + invarianti build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -93,7 +103,7 @@ jobs:
 
   tests:
     name: Test framework (Polish Pack V2 Step 12)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -144,7 +154,7 @@ jobs:
   # ===========================================================================
   tests-run:
     name: Esecuzione test in browser (Chromium headless)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -153,13 +163,13 @@ jobs:
           node-version: '20'
 
       - name: Cache browser Playwright (stessa key di ui-tests, i due job la condividono)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-1.56.0
 
       - name: Cache node_modules (solo playwright, nessun lockfile per scelta di progetto)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: npm-playwright-${{ runner.os }}-1.56.0
@@ -206,7 +216,7 @@ jobs:
   # ===========================================================================
   ui-tests:
     name: Test UI layout e interazione (Chromium headless)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -215,13 +225,13 @@ jobs:
           node-version: '20'
 
       - name: Cache browser Playwright
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-1.56.0
 
       - name: Cache node_modules (stessa key di tests-run)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: npm-playwright-${{ runner.os }}-1.56.0
