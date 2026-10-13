@@ -6,17 +6,22 @@
 > **un singolo file HTML** di ~507 KB. Nessuna build, nessun bundler, nessuna
 > dipendenza npm: si apre e funziona.
 
-## 🚀 Provalo subito
+## 🚀 Demo
 
-[![Live Preview](docs/images/cabina.webp)](https://amedeo82.github.io/3d-elevator-simulations/)
+<p align="center">
+  <a href="https://amedeo82.github.io/3d-elevator-simulations/"><img src="docs/images/demo.gif" alt="Demo del simulatore ascensore 3D" width="720"></a>
+</p>
 
-### **[https://amedeo82.github.io/3d-elevator-simulations/](https://amedeo82.github.io/3d-elevator-simulations/)**
+<p align="center">
+  <a href="https://amedeo82.github.io/3d-elevator-simulations/"><img src="https://img.shields.io/badge/%E2%96%B6%20Provalo%20nel%20browser-Live%20Demo-ffcf3a?style=for-the-badge&logoColor=000" alt="Live Demo"></a>
+</p>
 
-Simulazione completa nel browser, senza installazione né registrazione.
-Serve un browser con WebGL (Chrome, Edge, Firefox, Safari).
+Apri la demo nel browser, senza installazione né registrazione:
+**[https://amedeo82.github.io/3d-elevator-simulations/](https://amedeo82.github.io/3d-elevator-simulations/)**
 
-**Per giocare in locale**, senza toccare nulla: scarica `elevator.html` e
-aprilo con un server statico.
+Serve un browser con WebGL (Chrome, Edge, Firefox, Safari). Per giocare in locale
+scarica `elevator.html` e servilo con un qualunque static server (i moduli ES +
+importmap non funzionano su `file://`).
 
 ```bash
 python3 -m http.server 8000    # poi apri http://localhost:8000
@@ -58,15 +63,15 @@ staticamente, senza dipendenze npm in produzione.
 
 ## 📸 Galleria
 
-| Schermata iniziale | Corridoio del piano | Pannello touch |
+| Schermata iniziale | Corridoio (piano 9, attico) | Pannello touch |
 |---|---|---|
-| ![Schermata di avvio](docs/images/start-screen.webp) | ![Corridoio del piano](docs/images/corridoio.webp) | ![Pulsantiera moderna](docs/images/pulsantiera.webp) |
-| **Welcome interattivo** con riepilogo comandi e personalizzazione hotel | **Ogni piano ha il suo tema**: lobby, uffici, camere hotel, attico | **Display touch** con 3-layer caching e indicatore passo-passo |
+| ![Schermata di avvio](docs/images/start-screen.webp) | ![Corridoio dell'attico](docs/images/corridoio.webp) | ![Pulsantiera moderna](docs/images/pulsantiera.webp) |
+| Welcome interattivo con riepilogo comandi e personalizzazione hotel | Ogni piano ha il suo tema: lobby, uffici, camere hotel, attico | Display touch con 3-layer caching e indicatore passo-passo |
 
-| Mobile (iPhone, landscape) | Modalità manutentore | Personalizzazione hotel |
+| iPhone 15 Pro (landscape) | Modalità manutentore | Vista dalla cabina |
 |---|---|---|
-| ![Interfaccia mobile](docs/images/mobile.webp) | ![Overlay manutenzione](docs/images/manutenzione.webp) | ![Cabina](docs/images/cabina.webp) |
-| **Touch nativo**: joystick virtuale, ▲▼, menu `☰`. Nessun pointer lock | **Ispezione**: wireframe, teletrasporto, benchmark, log | **4 preset** di hotel modificabili, salvati in locale |
+| ![Interfaccia mobile](docs/images/mobile.webp) | ![Overlay manutenzione](docs/images/manutenzione.webp) | ![Vista dalla cabina](docs/images/cabina.webp) |
+| HUD compatto landscape (D35): call-buttons ▲▼ nascosti in corridoio, joystick virtuale, menu `☰` | Ispezione: FPS, draw call, teletrasporto, benchmark, log eventi, export JSON | Acciaio spazzolato, marmo, specchio, alluminio, LED, telecamera |
 
 ## ✨ Funzionalità
 
@@ -131,7 +136,7 @@ Documenti di progetto:
 
 | File | Contenuto |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 34 contratti D-key, layout del codice ad ancore |
+| [`AGENTS.md`](AGENTS.md) | Regole per gli agenti, 36 contratti D-key, layout del codice ad ancore |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guida contributor, workflow PR, code style |
 | [`STATE.md`](STATE.md) | Audit completo dello `state` globale |
 | [`STRINGS_REFERENCE.md`](STRINGS_REFERENCE.md) | Mappatura i18n IT/EN |
