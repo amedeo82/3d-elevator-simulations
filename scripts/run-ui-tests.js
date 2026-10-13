@@ -39,6 +39,62 @@ const NAV_TIMEOUT = 90_000;
 // procedurali prima di essere disegnabile.
 const RENDER_WAIT = 4000;
 
+// ---------------------------------------------------------------------------
+// three.js da buffer locale (ottimizzazione CI 2026-10-13, P4).
+// ---------------------------------------------------------------------------
+// Questo runner fa 7 page load completi (1 desktop + 1 reload + 5 contesti
+// mobile), ognuno con cache del contesto vuota: senza intercettazione sarebbero
+// 7 download di ~600 KB + addon da unpkg. I file vengono scaricati una volta
+// per run e serviti via route. elevator.html resta intatto (D1): l'intercetta-
+// zione e' infrastruttura di solo test. Degrado: prefetch fallito = nessun
+// route registrato, la pagina usa la CDN direttamente come prima.
+// ---------------------------------------------------------------------------
+const CDN_BASE = 'https://unpkg.com/three@0.160.0/';
+const CDN_FILES = [
+  'build/three.module.js',
+  'examples/jsm/objects/Reflector.js',
+  'examples/jsm/utils/BufferGeometryUtils.js',
+];
+const cdnBuffer = new Map();
+
+async function prefetchCdnFiles() {
+  const settled = await Promise.allSettled(CDN_FILES.map(async (rel) => {
+    const res = await fetch(CDN_BASE + rel, { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status} per ${rel}`);
+    return [rel, Buffer.from(await res.arrayBuffer())];
+  }));
+  for (const r of settled) {
+    if (r.status === 'fulfilled') cdnBuffer.set(r.value[0], r.value[1]);
+    else console.log(`CDN locale: prefetch parziale (${r.reason && r.reason.message})`);
+  }
+  if (cdnBuffer.size === 0) console.log('CDN locale: nessun file scaricato — degrado su rete diretta');
+}
+
+// Registra la route su un target Playwright (BrowserContext o Page).
+// NOTA 2026-10-13: NON usare `browser.on('context')` — verificato con probe
+// (DNS unpkg blackholato) che l'evento NON viene emesso per i contesti
+// impliciti creati da `browser.newPage()` in Playwright 1.56: la route non
+// sarebbe mai registrata e i test passerebbero comunque via rete reale,
+// cioe' un falso verde. La registrazione esplicita con `await` subito dopo
+// ogni newContext elimina anche la gara tra installazione route e prima
+// richiesta: i 7 page load di questo runner usano 6 contesti espliciti.
+async function attachCdnRoute(target) {
+  if (cdnBuffer.size === 0) return;
+  await target.route('**/unpkg.com/three@0.160.0/**', async (route) => {
+    const url = new URL(route.request().url());
+    const rel = url.pathname.replace('/three@0.160.0/', '');
+    const body = cdnBuffer.get(rel);
+    if (body) {
+      // MIME javascript obbligatorio: i module script rifiutano altri type.
+      await route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body });
+    } else {
+      // Percorso non in cache (futuri addon): lascia andare in rete.
+      await route.continue();
+    }
+  });
+  console.log(`CDN locale: ${cdnBuffer.size}/${CDN_FILES.length} file three.js serviti da buffer`);
+}
+
 // Risoluzioni in cui il pulsante start era irraggiungibile (D29) piu' quelle
 // in cui non lo era, come controllo negativo. 1366x768 e' la risoluzione
 // laptop piu' diffusa al mondo.
@@ -118,10 +174,12 @@ const fits = (b, vh, vw) => !!b && b.y >= -1 && b.bottom <= vh + 1 && b.x >= -1 
   let fatal = null;
 
   try {
+    await prefetchCdnFiles();
     browser = await chromium.launch({ args: LAUNCH_ARGS });
 
     // ===================== DESKTOP =====================
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await attachCdnRoute(ctx);
     const page = await ctx.newPage();
     const pageErrors = [];
     page.on('pageerror', (e) => pageErrors.push(e.message));
@@ -227,6 +285,7 @@ const fits = (b, vh, vw) => !!b && b.y >= -1 && b.bottom <= vh + 1 && b.x >= -1 
           userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
             + 'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
         });
+        await attachCdnRoute(m);
         const mp = await m.newPage();
         await mp.goto(url, { waitUntil: 'load' });
         await mp.waitForTimeout(RENDER_WAIT);
@@ -273,6 +332,7 @@ const fits = (b, vh, vw) => !!b && b.y >= -1 && b.bottom <= vh + 1 && b.x >= -1 
           userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
             + 'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
         });
+        await attachCdnRoute(m);
         const mp = await m.newPage();
         await mp.goto(url, { waitUntil: 'load' });
         await mp.waitForTimeout(RENDER_WAIT);
@@ -329,6 +389,7 @@ const fits = (b, vh, vw) => !!b && b.y >= -1 && b.bottom <= vh + 1 && b.x >= -1 
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
           + 'AppleWebKit/605.1.15 Mobile/15E148',
       });
+      await attachCdnRoute(m);
       const mp = await m.newPage();
       await mp.goto(url, { waitUntil: 'load' });
       await mp.waitForTimeout(RENDER_WAIT);
